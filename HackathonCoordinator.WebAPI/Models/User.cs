@@ -1,0 +1,41 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace HackathonCoordinator.WebAPI.Models;
+
+public partial class User
+{
+    public int Id { get; set; }
+
+    public string Username { get; set; } = null!;
+
+    public string Login { get; set; } = null!;
+
+    public string Email { get; set; } = null!;
+
+    public string PasswordHash { get; set; } = null!;
+
+    public int RoleId { get; set; }
+
+    public int? TeamId { get; set; }
+
+    public int? ProfileIconId { get; set; }
+
+    public virtual ICollection<ChatMember> ChatMembers { get; set; } = new List<ChatMember>();
+
+    public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+
+    public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
+
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+    public virtual ProfileIcon? ProfileIcon { get; set; }
+
+    public virtual Role Role { get; set; } = null!;
+
+    public virtual ICollection<TaskVoteResponse> TaskVoteResponses { get; set; } = new List<TaskVoteResponse>();
+
+    public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
+
+    public virtual Team? Team { get; set; }
+}

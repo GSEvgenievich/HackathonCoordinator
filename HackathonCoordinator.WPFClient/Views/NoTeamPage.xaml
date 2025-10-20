@@ -1,0 +1,99 @@
+﻿<Page x:Class="HackathonCoordinator.WPFClient.Views.NoTeamPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      Background="#FAFAFA">
+
+    <Page.DataContext>
+        <vm:NoTeamViewModel/>
+    </Page.DataContext>
+
+    <Grid>
+        <Border Background="White"
+                CornerRadius="20"
+                BorderBrush="#E0E0E0"
+                BorderThickness="1"
+                Padding="40"
+                Width="600"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center">
+
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
+
+                <TextBlock Text="У вас пока нет команды"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           Foreground="#333"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,10"/>
+
+                <TextBlock Text="Выберите, хотите ли вы создать новую команду или присоединиться к существующей."
+                           FontSize="14"
+                           Foreground="#666"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,30"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,0">
+
+                    <!-- Левая часть — Создание команды -->
+                    <StackPanel Width="220" Margin="0,0,40,0">
+                        <Button Content="Создать команду"
+                                Command="{Binding CreateTeamCommand}"
+                                Background="#4CAF50"
+                                Foreground="White"
+                                FontSize="16"
+                                FontWeight="Bold"
+                                Height="60"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Введите название новой команды:"
+                                   FontSize="13"
+                                   Foreground="#666"
+                                   Margin="0,0,0,5"/>
+
+                        <Border Background="White" CornerRadius="5" BorderBrush="#CCCCCC" BorderThickness="1">
+                            <TextBox Text="{Binding TeamName, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="35"
+                                     FontSize="14"
+                                     Padding="8"
+                                     BorderThickness="0"
+                                     Background="Transparent"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Правая часть — Присоединение к команде -->
+                    <StackPanel Width="220">
+                        <Button Content="Присоединиться"
+                                Command="{Binding JoinTeamCommand}"
+                                Background="#2196F3"
+                                Foreground="White"
+                                FontSize="16"
+                                FontWeight="Bold"
+                                Height="60"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Введите код приглашения:"
+                                   FontSize="13"
+                                   Foreground="#666"
+                                   Margin="0,0,0,5"/>
+
+                        <Border Background="White" CornerRadius="5" BorderBrush="#CCCCCC" BorderThickness="1">
+                            <TextBox Text="{Binding InviteCode, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="35"
+                                     FontSize="14"
+                                     Padding="8"
+                                     BorderThickness="0"
+                                     Background="Transparent"/>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>
