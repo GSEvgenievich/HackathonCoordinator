@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace HackathonCoordinator.ServiceLayer.DTOs
+﻿namespace HackathonCoordinator.ServiceLayer.DTOs
 {
     public class MemberDto
     {
@@ -12,7 +6,8 @@ namespace HackathonCoordinator.ServiceLayer.DTOs
         public string Username { get; set; }
         public string RoleName { get; set; }
         public string IconName { get; set; }
-
+        public bool IsCurrentUser { get; set; }
+        public bool IsCaptain => RoleName == "Капитан";
         public string IconPath => $"/Assets/Images/Profile/{IconName ?? "robot1"}.png";
     }
 }

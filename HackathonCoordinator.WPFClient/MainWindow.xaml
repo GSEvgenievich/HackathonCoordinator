@@ -4,61 +4,84 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-        xmlns:local="clr-namespace:HackathonCoordinator.WPFClient"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Hackathon Coordinator" Height="600" Width="1000"
+        MinHeight="300" MinWidth="550"
+        Background="{DynamicResource BackgroundColor}">
 
     <Window.DataContext>
         <vm:MainWindowViewModel/>
     </Window.DataContext>
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+        <!-- Основной контент занимает всё пространство -->
+        <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden" Margin="60 0 0 0"
+               Background="{DynamicResource BackgroundColor}"/>
 
+        <!-- Боковая панель поверх контента -->
         <Border x:Name="SideBar"
-                Background="#2D2F3A"
+                Background="{DynamicResource SidebarBackground}"
                 Width="60"
+                CornerRadius="0 12 0 0"
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Left"
                 MouseEnter="SideBar_MouseEnter"
                 MouseLeave="SideBar_MouseLeave"
-                VerticalAlignment="Stretch">
-
+                Panel.ZIndex="1000">
+            <!-- Высокий ZIndex чтобы была поверх контента -->
+            
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" 
+                                  ShadowDepth="2" 
+                                  Opacity="0.3" 
+                                  Direction="0"/>
+            </Border.Effect>
+            
             <StackPanel>
                 <Button Command="{Binding OpenProfileCommand}" Style="{StaticResource SidebarButtonStyle}" Tag="ProfilePage">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="👤" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Профиль" x:Name="ProfileText" Margin="10,0,0,0" Visibility="Collapsed"/>
+                        <TextBlock Text="Профиль" x:Name="ProfileText" Margin="10,0,0,0" Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"/>
                     </StackPanel>
                 </Button>
 
-                <Separator Margin="5"/>
+                <Separator Margin="5" Background="#404040"/>
 
                 <!-- Кнопки навигации -->
                 <Button Style="{StaticResource SidebarButtonStyle}" Tag="MainPage">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="🏠" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Главная" x:Name="MainText" Margin="10,0,0,0" Visibility="Collapsed"/>
+                        <TextBlock Text="Главная" x:Name="MainText" Margin="10,0,0,0" Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"/>
                     </StackPanel>
                 </Button>
 
                 <Button Style="{StaticResource SidebarButtonStyle}" Tag="NotificationsPage">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="🔔" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Уведомления" x:Name="NotificationsText" Margin="10,0,0,0" Visibility="Collapsed"/>
+                        <TextBlock Text="Уведомления" x:Name="NotificationsText" Margin="10,0,0,0" Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"/>
                     </StackPanel>
                 </Button>
 
                 <Button Style="{StaticResource SidebarButtonStyle}" Tag="ChatsPage">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="💬" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Чаты" x:Name="ChatsText" Margin="10,0,0,0" Visibility="Collapsed"/>
+                        <TextBlock Text="Чаты" x:Name="ChatsText" Margin="10,0,0,0" Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Кнопка переключения темы -->
+                <Button Style="{StaticResource SidebarButtonStyle}" Command="{Binding ToggleThemeCommand}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBlock Text="🌙" FontSize="18" Margin="10,0,0,0"/>
+                        <TextBlock Text="Тема" x:Name="ThemeText" Margin="10,0,0,0" Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
         </Border>
-
-        <Frame x:Name="MainFrame" Grid.Column="1" NavigationUIVisibility="Hidden"/>
     </Grid>
 </Window>

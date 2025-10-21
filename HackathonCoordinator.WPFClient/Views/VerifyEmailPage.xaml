@@ -3,30 +3,29 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      xmlns:local="clr-namespace:HackathonCoordinator.WPFClient.Views"
-      Title="VerifyEmailPage">
+      mc:Ignorable="d" 
+      Title="Подтверждение Email"
+      Background="{DynamicResource BackgroundColor}">
 
     <Grid>
-        <Border Background="#F5F5F5"
-                BorderBrush="#DDDDDD"
-                BorderThickness="1"
-                CornerRadius="10"
-                Width="350" Height="250"
+        <Border Style="{StaticResource CardStyle}"
+                Width="350"
                 VerticalAlignment="Center"
-                HorizontalAlignment="Center">
+                HorizontalAlignment="Center"
+                Padding="40">
 
-            <StackPanel Margin="30" VerticalAlignment="Center">
+            <StackPanel>
                 <TextBlock Text="Подтверждение Email" 
-                           FontSize="22" FontWeight="Bold" 
-                           HorizontalAlignment="Center" 
-                           Margin="0,0,0,20"/>
+                           Style="{StaticResource PageTitleStyle}"/>
 
                 <TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}"
-                         Margin="0,0,0,20" />
+                         Tag="Код подтверждения"
+                         Style="{StaticResource ModernTextBox}"
+                         Margin="0,0,0,20"/>
 
                 <Button Content="Подтвердить" 
                         Command="{Binding VerifyCommand}" 
-                        Height="40" />
+                        Style="{StaticResource PrimaryButton}"/>
             </StackPanel>
         </Border>
     </Grid>

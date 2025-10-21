@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace HackathonCoordinator.ServiceLayer.DTOs
+﻿namespace HackathonCoordinator.ServiceLayer.DTOs
 {
     public class TeamDto
     {

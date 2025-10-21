@@ -129,6 +129,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 {
                     Id = p.Id,
                     Name = p.Name,
+                    CreatedAt = p.CreatedAt.Value,
                     Description = p.Description
                 }).ToList()
             };

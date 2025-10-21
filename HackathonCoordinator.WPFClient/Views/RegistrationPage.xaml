@@ -4,33 +4,25 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels" 
-      xmlns:local="clr-namespace:HackathonCoordinator.WPFClient.Views"
       mc:Ignorable="d" 
-      Title="RegistrationPage"
-      Background="White">
-    
+      Title="Регистрация"
+      Background="{DynamicResource BackgroundColor}">
+
     <Page.DataContext>
         <vm:RegistrationViewModel/>
     </Page.DataContext>
-    
-    <Grid>
-        <Border Background="#F5F5F5" 
-                BorderBrush="#DDDDDD" 
-                BorderThickness="1" 
-                CornerRadius="10"
-                Width="400" 
-                Height="500"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Center">
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="30" VerticalAlignment="Center">
+    <Grid>
+        <Border Style="{StaticResource CardStyle}"
+                Width="400"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Center"
+                Padding="40">
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
                     <TextBlock Text="Регистрация" 
-                              FontSize="24" 
-                              FontWeight="Bold" 
-                              HorizontalAlignment="Center" 
-                              Margin="0,0,0,25"
-                              Foreground="#333333"/>
+                              Style="{StaticResource PageTitleStyle}"/>
 
                     <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                              Tag="Имя пользователя"
@@ -60,18 +52,15 @@
                     <Button Content="Зарегистрироваться" 
                             Command="{Binding RegisterCommand}"
                             Style="{StaticResource PrimaryButton}"
-                            Height="40"
                             Margin="0,0,0,20"/>
 
                     <TextBlock Text="Уже есть аккаунт?" 
-                              HorizontalAlignment="Center" 
-                              Foreground="#666666"
+                              Style="{StaticResource BodyTextStyle}"
                               Margin="0,0,0,10"/>
 
                     <Button Content="Войти" 
                             Command="{Binding NavigateToAuthorizationCommand}"
-                            Style="{StaticResource SecondaryButton}"
-                            Height="35"/>
+                            Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
