@@ -7,12 +7,14 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class TeamViewModel : INotifyPropertyChanged
     {
         private readonly TeamService _teamService;
+        private readonly UserService _userService;
         private readonly NavigationService _navigationService;
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -33,55 +35,63 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _inviteCode = value; OnPropertyChanged(); }
         }
 
+        private bool _isCaptain;
+        public bool IsCaptain
+        {
+            get => _isCaptain;
+            set { _isCaptain = value; OnPropertyChanged(); }
+        }
+
+        public string ProjectsCountText => $"Проектов: {Projects?.Count ?? 0}";
+        public bool HasProjects => Projects?.Any() == true;
         public ObservableCollection<MemberDto> Members { get; set; } = new();
         public ObservableCollection<ProjectDto> Projects { get; set; } = new();
 
-        public RelayCommand OpenChatCommand { get; }
-        public RelayCommand<int> OpenProjectCommand { get; }
-        public RelayCommand<int> OpenProjectChatCommand { get; }
-        public RelayCommand LeaveTeamCommand { get; }
+        public ICommand LeaveTeamCommand { get; }
+        public ICommand CreateProjectCommand { get; }
+        public ICommand CopyInviteCodeCommand { get; }
+        public ICommand SelectProjectCommand { get; }
 
         public TeamViewModel()
         {
             _teamService = new TeamService();
+            _userService = new UserService();
             _navigationService = App.NavigationService;
-
-            OpenChatCommand = new RelayCommand(() =>
-            {
-                //_navigationService.NavigateTo(new TeamChatPage());
-            });
-
-            OpenProjectCommand = new RelayCommand<int>(id =>
-            {
-                MessageBox.Show($"Открываем проект {id}");
-            });
-
-            OpenProjectChatCommand = new RelayCommand<int>(id =>
-            {
-                MessageBox.Show($"Открываем чат проекта {id}");
-            });
 
             LeaveTeamCommand = new RelayCommand(async () =>
             {
-                var confirm = MessageBox.Show("Вы уверены, что хотите покинуть команду?",
-                                              "Подтверждение", MessageBoxButton.YesNo);
-                if (confirm != MessageBoxResult.Yes)
+                if (MessageBox.Show("Вы уверены, что хотите покинуть команду?", "Подтверждение",
+                                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                     return;
 
-                var leaveResult = await _teamService.LeaveTeamAsync();
-
-                if (leaveResult.Success)
+                var result = await _teamService.LeaveTeamAsync();
+                if (result.Success)
                 {
                     MessageBox.Show("Вы покинули команду.");
                     _navigationService.NavigateTo(new NoTeamPage());
                 }
-                else
-                {
-                    MessageBox.Show(leaveResult.Message);
-                }
+                else MessageBox.Show(result.Message);
+            });
+
+            SelectProjectCommand = new RelayCommand<ProjectDto>(OnSelectProject);
+
+            CreateProjectCommand = new RelayCommand(() =>
+            {
+                MessageBox.Show("Открывается окно создания проекта (реализуй позже).");
+            });
+
+            CopyInviteCodeCommand = new RelayCommand(() =>
+            {
+                Clipboard.SetText(InviteCode ?? "");
+                MessageBox.Show("Код приглашения скопирован!");
             });
 
             LoadTeamDataAsync();
+        }
+        private void OnSelectProject(ProjectDto project)
+        {
+            if (project == null) return;
+            MessageBox.Show($"Проект выбран: {project.Name}");
         }
 
         private async void LoadTeamDataAsync()
@@ -97,13 +107,28 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             TeamName = team.Name;
             InviteCode = team.InviteCode;
 
+            var user = await _userService.GetCurrentUserAsync();
+
+            if (user.RoleId == 1)
+                IsCaptain = true;
+
+            var orderedMembers = team.Members
+                .OrderByDescending(m => m.IsCaptain)
+                .ThenBy(m => m.Username)
+                .ToList();
+
             Members.Clear();
-            foreach (var m in team.Members)
+            foreach (var m in orderedMembers)
+            {
+                m.IsCurrentUser = m.Id == user.Id;
                 Members.Add(m);
+            }
 
             Projects.Clear();
             foreach (var p in team.Projects)
                 Projects.Add(p);
+
+            OnPropertyChanged(nameof(ProjectsCountText));
         }
     }
 }

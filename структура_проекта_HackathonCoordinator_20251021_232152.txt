@@ -1,0 +1,141 @@
+﻿Анализ структуры проекта: C:\Users\geras\OneDrive\Рабочий стол\HackathonCoordinator
+Дата анализа: 21.10.2025 23:21:52
+================================================================================
+
+АНАЛИЗ РЕШЕНИЙ И ПРОЕКТОВ:
+────────────────────────────────────────────────────────────
+
+Решение: HackathonCoordinator.sln
+   Проект: HackathonCoordinator.ServiceLayer
+      Путь: HackathonCoordinator.ServiceLayer\HackathonCoordinator.ServiceLayer.csproj
+   Проект: HackathonCoordinator.WebAPI
+      Путь: HackathonCoordinator.WebAPI\HackathonCoordinator.WebAPI.csproj
+      Конфиг: appsettings.Development.json
+      Конфиг: appsettings.json
+   Проект: HackathonCoordinator.WPFClient
+      Путь: HackathonCoordinator.WPFClient\HackathonCoordinator.WPFClient.csproj
+
+СТРУКТУРА ПАПОК И ФАЙЛОВ:
+────────────────────────────────────────────────────────────
+.github/
+        workflows/
+HackathonCoordinator.ServiceLayer/
+    HackathonCoordinator.ServiceLayer.csproj (353 B)
+        DTOs/
+        IconDto.cs
+        MemberDto.cs
+        ProjectDto.cs
+        TeamDto.cs
+        UserProfileDto.cs
+        Services/
+        AuthService.cs
+        TeamService.cs
+        UserService.cs
+        Storages/
+        SecureTokenStorage.cs
+HackathonCoordinator.WebAPI/
+    Program.cs
+    HackathonCoordinator.WebAPI.csproj (1,04 KB)
+    HackathonCoordinator.WebAPI.http (66 B)
+    appsettings.Development.json
+    appsettings.json
+        Controllers/
+        AuthController.cs
+        IconsController.cs
+        TeamController.cs
+        UserController.cs
+        Data/
+        HackathonCoordinatorContext.cs
+        DTOs/
+        CreateTeamDto.cs
+        IconDto.cs
+        JoinTeamDto.cs
+        LoginDto.cs
+        MemberDto.cs
+        ProjectDto.cs
+        RegisterDto.cs
+        TeamDto.cs
+        UpdateProfileDto.cs
+        UserProfileDto.cs
+        VerifyEmailDto.cs
+        Helpers/
+        SmtpEmailSender.cs
+        Models/
+        Chat.cs
+        ChatMember.cs
+        Document.cs
+        FileCategory.cs
+        Message.cs
+        Notification.cs
+        NotificationType.cs
+        PendingRegistration.cs
+        ProfileIcon.cs
+        Project.cs
+        Role.cs
+        Task.cs
+        TaskStatus.cs
+        TaskType.cs
+        TaskVote.cs
+        TaskVoteResponse.cs
+        Team.cs
+        User.cs
+        Properties/
+        launchSettings.json
+HackathonCoordinator.WPFClient/
+    App.xaml.cs
+    AssemblyInfo.cs
+    MainWindow.xaml.cs
+    HackathonCoordinator.WPFClient.csproj (1,61 KB)
+    App.xaml
+    MainWindow.xaml
+        Assets/
+                Images/
+                        Profile/
+                boy1.png (64,83 KB)
+                boy2.png (66,06 KB)
+                girl1.png (77,46 KB)
+                girl2.png (70,45 KB)
+                robot1.png (66,7 KB)
+                robot2.png (63,75 KB)
+        Converters/
+        BoolToBrushConverter.cs
+        BoolToVisibilityConverter.cs
+        Helpers/
+        AsyncRelayCommand.cs
+        RelayCommand.cs
+        Services/
+        INavigationService.cs
+        NavigationService.cs
+        ViewModels/
+        AuthorizationViewModel.cs
+        BaseViewModel.cs
+        MainWindowViewModel.cs
+        NoTeamViewModel.cs
+        ProfileViewModel.cs
+        RegistrationViewModel.cs
+        TeamViewModel.cs
+        VerifyEmailViewModel.cs
+        Views/
+        AuthorizationPage.xaml.cs
+        ConfirmCodePage.xaml.cs
+        NoTeamPage.xaml.cs
+        ProfilePage.xaml.cs
+        RegistrationPage.xaml.cs
+        TeamPage.xaml.cs
+        VerifyEmailPage.xaml.cs
+        AuthorizationPage.xaml
+        ConfirmCodePage.xaml
+        NoTeamPage.xaml
+        ProfilePage.xaml
+        RegistrationPage.xaml
+        TeamPage.xaml
+        VerifyEmailPage.xaml
+
+================================================================================
+ИТОГОВАЯ СТАТИСТИКА:
+• Решений: 1
+• Проектов: 3
+• Папок: 22
+• Файлов: 91
+• Время анализа: 0,09 сек
+• Общий размер: 139,8 MB

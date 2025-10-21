@@ -6,30 +6,22 @@
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
       xmlns:local="clr-namespace:HackathonCoordinator.WPFClient.Views"
       mc:Ignorable="d" 
-      Title="AuthorizationPage"
-      Background="White">
+      Title="Авторизация"
+      Background="{DynamicResource BackgroundColor}">
 
     <Page.DataContext>
         <vm:AuthorizationViewModel/>
     </Page.DataContext>
 
     <Grid>
-        <Border Background="#F5F5F5" 
-                BorderBrush="#DDDDDD" 
-                BorderThickness="1" 
-                CornerRadius="10"
+        <Border Style="{StaticResource CardStyle}"
                 Width="350" 
-                Height="400"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center">
 
             <StackPanel Margin="30" VerticalAlignment="Center">
                 <TextBlock Text="Авторизация" 
-                          FontSize="24" 
-                          FontWeight="Bold" 
-                          HorizontalAlignment="Center" 
-                          Margin="0,0,0,30"
-                          Foreground="#333333"/>
+                          Style="{StaticResource PageTitleStyle}"/>
 
                 <TextBox Text="{Binding Login, UpdateSourceTrigger=PropertyChanged}"
                          Tag="Логин"
@@ -44,18 +36,16 @@
                 <Button Content="Войти" 
                         Command="{Binding LoginCommand}"
                         Style="{StaticResource PrimaryButton}"
-                        Height="40"
                         Margin="0,0,0,20"/>
 
                 <TextBlock Text="Нет аккаунта?" 
+                          Style="{StaticResource BodyTextStyle}"
                           HorizontalAlignment="Center" 
-                          Foreground="#666666"
                           Margin="0,0,0,10"/>
 
                 <Button Content="Зарегистрироваться" 
                         Command="{Binding NavigateToRegistrationCommand}"
-                        Style="{StaticResource SecondaryButton}"
-                        Height="35"/>
+                        Style="{StaticResource SecondaryButton}"/>
             </StackPanel>
         </Border>
     </Grid>

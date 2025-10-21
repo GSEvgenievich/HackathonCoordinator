@@ -3,7 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
       xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
-      Background="#FAFAFA">
+      Background="{DynamicResource BackgroundColor}">
 
     <Page.DataContext>
         <vm:ProfileViewModel/>
@@ -14,113 +14,84 @@
         <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
 
         <!-- стиль круглой кнопки -->
-        <Style x:Key="RoundIconButton" TargetType="Button">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="15"
-                                Width="{TemplateBinding Width}"
-                                Height="{TemplateBinding Height}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="RoundIconButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
         </Style>
     </Page.Resources>
 
     <Grid>
-        <Border Background="White"
-                CornerRadius="15"
-                BorderBrush="#E0E0E0"
-                BorderThickness="1"
+        <Border Style="{StaticResource CardStyle}"
                 Padding="30"
                 Width="500"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center">
 
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">
-
                 <!-- Фото профиля -->
                 <Grid HorizontalAlignment="Center" Margin="0,0,0,20">
-                    <Border Width="100" Height="100" CornerRadius="50" BorderBrush="#CCCCCC" BorderThickness="2">
+                    <Border Width="100" Height="100" CornerRadius="50" 
+                            BorderBrush="{DynamicResource BorderColor}" BorderThickness="2">
+                        <Border.Clip>
+                            <EllipseGeometry RadiusX="50" RadiusY="50" Center="50,50"/>
+                        </Border.Clip>
                         <Image Source="{Binding CurrentIconPath}" Stretch="UniformToFill" />
                     </Border>
 
                     <!-- Иконка редактирования -->
                     <Button Content="🖉"
                             ToolTip="Изменить иконку"
-                            Width="30" Height="30"
-                            FontSize="16"
-                            Background="#2196F3"
-                            Foreground="White"
-                            BorderThickness="0"
-                            Cursor="Hand"
+                            Command="{Binding ChangeIconCommand}"
+                            Style="{StaticResource RoundIconButton}"
                             VerticalAlignment="Bottom"
                             HorizontalAlignment="Right"
-                            Margin="0,0,5,5"
-                            Command="{Binding ChangeIconCommand}"
-                            Style="{StaticResource RoundIconButton}"/>
+                            Margin="0,0,5,5"/>
                 </Grid>
 
                 <!-- Информация о пользователе -->
                 <StackPanel HorizontalAlignment="Center" Margin="0,0,0,15">
-                    <TextBlock Text="{Binding Username}" FontSize="18" FontWeight="Bold" Foreground="#333" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding Email}" FontSize="14" Foreground="#666" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Username}" 
+                               FontSize="18" 
+                               FontWeight="Bold" 
+                               Foreground="{DynamicResource TextColor}" 
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Email}" 
+                               Style="{StaticResource BodyTextStyle}"
+                               HorizontalAlignment="Center"/>
                     <TextBlock Text="{Binding TeamName, StringFormat='Команда: {0}'}"
-                               FontSize="14" Foreground="#666"
+                               Style="{StaticResource BodyTextStyle}"
                                HorizontalAlignment="Center"
                                Margin="0,5,0,0"/>
                 </StackPanel>
 
                 <!-- Редактирование имени -->
-                <TextBlock Text="Изменить имя пользователя:" FontWeight="Bold" Foreground="#444" />
+                <TextBlock Text="Изменить имя пользователя:" 
+                           FontWeight="Bold" 
+                           Foreground="{DynamicResource TextColor}" />
                 <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                         Width="250" Height="35"
-                         Padding="8"
-                         Margin="0,5,0,15"
-                         FontSize="14"/>
+                         Style="{StaticResource ModernTextBox}"
+                         Width="250"
+                         Margin="0,5,0,15"/>
 
                 <!-- Кнопки действий -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
                     <Button Content="Сохранить изменения"
                             Command="{Binding SaveProfileCommand}"
-                            Width="180" Height="40"
-                            Margin="0,0,10,0"
-                            Background="#4CAF50"
-                            Foreground="White"
-                            FontWeight="Bold"
-                            BorderThickness="0"
-                            Cursor="Hand"/>
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0,0,10,0"/>
                     <Button Content="Выйти"
                             Command="{Binding LogoutCommand}"
-                            Width="100" Height="40"
-                            Background="#E53935"
-                            Foreground="White"
-                            FontWeight="Bold"
-                            BorderThickness="0"
-                            Cursor="Hand"/>
+                            Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
-
-                <!-- Заглушка для темы -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-                    <TextBlock Text="Тема: " FontSize="14" VerticalAlignment="Center"/>
-                    <ComboBox Width="120" SelectedIndex="0" Margin="10,0,0,0">
-                        <ComboBoxItem Content="Светлая"/>
-                        <ComboBoxItem Content="Тёмная (в разработке)" IsEnabled="False"/>
-                    </ComboBox>
-                </StackPanel>
-
             </StackPanel>
         </Border>
 
         <!-- Панель выбора иконок -->
-        <Border Background="#F9F9F9"
+        <Border Background="{DynamicResource CardBackground}"
                 CornerRadius="10"
-                BorderBrush="#CCCCCC"
+                BorderBrush="{DynamicResource BorderColor}"
                 BorderThickness="1"
                 Padding="5"
                 HorizontalAlignment="Center"

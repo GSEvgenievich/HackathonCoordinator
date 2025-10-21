@@ -9,10 +9,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly NavigationService _navigationService;
 
         public RelayCommand OpenProfileCommand { get; }
+        public RelayCommand ToggleThemeCommand { get; }
 
         public MainWindowViewModel()
         {
             _navigationService = App.NavigationService;
+
+            ToggleThemeCommand = new RelayCommand(App.ToggleTheme);
             OpenProfileCommand = new RelayCommand(() =>
                 _navigationService.NavigateTo(new ProfilePage()));
         }
