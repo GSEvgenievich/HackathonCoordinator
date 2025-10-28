@@ -4,11 +4,11 @@ using MimeKit;
 
 namespace HackathonCoordinator.WebAPI.Helpers
 {
-    public class SmtpEmailSender
+    public class SmtpEmailSenderService
     {
         private readonly IConfiguration _config;
 
-        public SmtpEmailSender(IConfiguration config)
+        public SmtpEmailSenderService(IConfiguration config)
         {
             _config = config;
         }

@@ -41,7 +41,7 @@
                 <Button Command="{Binding OpenProfileCommand}" Style="{StaticResource SidebarButtonStyle}" Tag="ProfilePage">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="👤" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Профиль" x:Name="ProfileText" Margin="10,0,0,0" Visibility="Collapsed"
+                        <TextBlock Text="{Binding Username}" x:Name="ProfileText" Margin="10,0,0,0" Visibility="Collapsed"
                                    Foreground="{DynamicResource SidebarTextColor}"/>
                     </StackPanel>
                 </Button>
@@ -49,7 +49,7 @@
                 <Separator Margin="5" Background="#404040"/>
 
                 <!-- Кнопки навигации -->
-                <Button Style="{StaticResource SidebarButtonStyle}" Tag="MainPage">
+                <Button Command="{Binding OpenMainPageCommand}" Style="{StaticResource SidebarButtonStyle}" Tag="MainPage">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="🏠" FontSize="18" Margin="10,0,0,0"/>
                         <TextBlock Text="Главная" x:Name="MainText" Margin="10,0,0,0" Visibility="Collapsed"

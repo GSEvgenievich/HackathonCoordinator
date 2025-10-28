@@ -14,245 +14,314 @@
     </Page.DataContext>
 
     <Grid Margin="30">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        <!-- Основной контент -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-        <!-- Заголовок -->
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,15">
-            <TextBlock Text="{Binding TeamName}" 
-                       FontSize="26" 
-                       FontWeight="Bold"
-                       Foreground="{DynamicResource TextColor}"/>
-            <TextBlock Text="  |  " FontSize="22" Foreground="{DynamicResource TextSecondaryColor}"/>
-            <TextBlock Text="{Binding ProjectsCountText}" 
-                       FontSize="22" 
-                       Foreground="{DynamicResource TextSecondaryColor}"/>
+            <!-- Заголовок -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,15">
+                <TextBlock Text="{Binding TeamName}" 
+                           FontSize="26" 
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextColor}"/>
+                <TextBlock Text="  |  " FontSize="22" Foreground="{DynamicResource TextSecondaryColor}"/>
+                <TextBlock Text="{Binding ProjectsCountText}" 
+                           FontSize="22" 
+                           Foreground="{DynamicResource TextSecondaryColor}"/>
 
-            <Button Content="🚪 Выйти"
-                    Command="{Binding LeaveTeamCommand}"
-                    Style="{StaticResource SecondaryButton}"
-                    Margin="20,0,0,0"
-                    Padding="12,6"/>
-        </StackPanel>
+                <Button Content="👑 Передать права"
+                        Command="{Binding TransferLeadershipCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="20,0,10,0"
+                        Padding="12,6"
+                        Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-        <!-- Участники и код приглашения -->
-        <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,15">
-            <StackPanel>
-                <DockPanel>
-                    <!-- Код приглашения (только капитану видно) -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" 
-                                Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Код приглашения: " 
-                                   FontWeight="SemiBold" 
-                                   VerticalAlignment="Center"
+                <Button Content="🚪 Выйти"
+                        Command="{Binding LeaveTeamCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        Margin="20,0,0,0"
+                        Padding="12,6"/>
+            </StackPanel>
+
+            <!-- Участники и код приглашения -->
+            <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,15">
+                <StackPanel>
+                    <DockPanel>
+                        <!-- Код приглашения (только капитану видно) -->
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" 
+                                    Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="Код приглашения: " 
+                                       FontWeight="SemiBold" 
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextColor}"/>
+                            <TextBox Text="{Binding InviteCode}" 
+                                     IsReadOnly="True" 
+                                     Width="120"
+                                     Margin="5,0"
+                                     VerticalContentAlignment="Center"
+                                     Background="{DynamicResource ControlBackground}"
+                                     BorderThickness="0"
+                                     Padding="5,2"/>
+                            <Button Content="📋" 
+                                    Command="{Binding CopyInviteCodeCommand}" 
+                                    Style="{StaticResource PrimaryButton}"
+                                    Padding="0"
+                                    Width="30" Height="30"/>
+                        </StackPanel>
+
+                        <TextBlock Text="Участники команды"
+                                   FontWeight="SemiBold"
+                                   FontSize="18"
                                    Foreground="{DynamicResource TextColor}"/>
-                        <TextBox Text="{Binding InviteCode}" 
-                                 IsReadOnly="True" 
-                                 Width="120"
-                                 Margin="5,0"
-                                 VerticalContentAlignment="Center"
-                                 Background="{DynamicResource ControlBackground}"
-                                 BorderThickness="0"
-                                 Padding="5,2"/>
-                        <Button Content="📋" 
-                                Command="{Binding CopyInviteCodeCommand}" 
-                                Style="{StaticResource PrimaryButton}"
-                                Padding="0"
-                                Width="30" Height="30"/>
+                    </DockPanel>
+
+                    <!-- GitHub ссылка команды -->
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,5">
+                        <TextBlock Text="GitHub команды: "
+                                   Style="{StaticResource BodyTextStyle}"
+                                   VerticalAlignment="Center"/>
+
+                        <TextBlock Text="{Binding TeamGitHubStatus}"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{Binding TeamGitHubStatusColor}"
+                                   VerticalAlignment="Center"/>
+
+                        <Button Content="🔗"
+                                Command="{Binding OpenTeamGitHubCommand}"
+                                Style="{StaticResource RoundIconButton}"
+                                Margin="5,0,0,0"
+                                ToolTip="Открыть GitHub команды"
+                                Visibility="{Binding HasTeamGitHub, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     </StackPanel>
 
-                    <TextBlock Text="Участники команды"
-                               FontWeight="SemiBold"
-                               FontSize="18"
-                               Foreground="{DynamicResource TextColor}"/>
-                </DockPanel>
+                    <!-- Контейнер для списка участников с фиксированной высотой и прокруткой -->
+                    <Border Background="Transparent" 
+                            Margin="0,10,0,0"
+                            MaxHeight="130"
+                            BorderBrush="{DynamicResource BorderColor}"
+                            BorderThickness="0,1,0,0"
+                            Padding="0,5,0,0">
 
-                <!-- Контейнер для списка участников с фиксированной высотой и прокруткой -->
-                <Border Background="Transparent" 
-                        Margin="0,10,0,0"
-                        MaxHeight="130"
-                        BorderBrush="{DynamicResource BorderColor}"
-                        BorderThickness="0,1,0,0"
-                        Padding="0,5,0,0">
-
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled"
-                                  Padding="2">
-                        <ItemsControl ItemsSource="{Binding Members}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border CornerRadius="8" 
-                                            Background="{DynamicResource ControlBackground}" 
-                                            Margin="2"
-                                            Padding="6">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border Width="36" Height="36" CornerRadius="18" 
-                                                    BorderBrush="{DynamicResource BorderColor}" 
-                                                    BorderThickness="1" 
-                                                    Margin="0,0,8,0">
-                                                <Border.Clip>
-                                                    <EllipseGeometry RadiusX="18" RadiusY="18" Center="18,18"/>
-                                                </Border.Clip>
-                                                <Image Source="{Binding IconPath}" Stretch="UniformToFill"/>
-                                            </Border>
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Username}" 
-                                                               FontSize="14" 
-                                                               VerticalAlignment="Center"
-                                                               Foreground="{DynamicResource TextColor}"/>
-                                                    <TextBlock Text=" (Вы)" 
-                                                               Foreground="{DynamicResource SuccessBrush}" 
-                                                               FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               Margin="4,0,0,0"
-                                                               Visibility="{Binding IsCurrentUser, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                    <TextBlock Text=" 👑" 
-                                                               FontSize="14"
-                                                               Margin="4,0,0,0"
-                                                               Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="2">
+                            <ItemsControl ItemsSource="{Binding Members}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" 
+                                                Background="{DynamicResource ControlBackground}" 
+                                                Margin="2"
+                                                Padding="6">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Border Width="36" Height="36" CornerRadius="18" 
+                                                        BorderBrush="{DynamicResource BorderColor}" 
+                                                        BorderThickness="1" 
+                                                        Margin="0,0,8,0">
+                                                    <Border.Clip>
+                                                        <EllipseGeometry RadiusX="18" RadiusY="18" Center="18,18"/>
+                                                    </Border.Clip>
+                                                    <Image Source="{Binding IconPath}" Stretch="UniformToFill"/>
+                                                </Border>
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Username}" 
+                                                                   FontSize="14" 
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource TextColor}"/>
+                                                        <TextBlock Text=" (Вы)" 
+                                                                   Foreground="{DynamicResource SuccessBrush}" 
+                                                                   FontSize="12"
+                                                                   FontWeight="SemiBold"
+                                                                   Margin="4,0,0,0"
+                                                                   Visibility="{Binding IsCurrentUser, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <TextBlock Text=" 👑" 
+                                                                   FontSize="14"
+                                                                   Margin="4,0,0,0"
+                                                                   Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding RoleName}" 
+                                                               Foreground="{DynamicResource TextSecondaryColor}" 
+                                                               FontSize="12"/>
                                                 </StackPanel>
-                                                <TextBlock Text="{Binding RoleName}" 
-                                                           Foreground="{DynamicResource TextSecondaryColor}" 
-                                                           FontSize="12"/>
                                             </StackPanel>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Проекты -->
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="Проекты команды"
+                       FontWeight="SemiBold"
+                       FontSize="18"
+                       Foreground="{DynamicResource TextColor}"
+                       Margin="0,0,0,15"/>
+
+                    <!-- Контейнер для списка проектов -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <WrapPanel Orientation="Horizontal">
+                            <ItemsControl ItemsSource="{Binding Projects}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" Margin="0,5,0,0"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource CardBackground}"
+                                                CornerRadius="12"
+                                                BorderBrush="{DynamicResource BorderColor}"
+                                                BorderThickness="1"
+                                                Margin="10"
+                                                Padding="12"
+                                                Width="260"
+                                                Height="150"
+                                                Cursor="Hand">
+
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Effect">
+                                                        <Setter.Value>
+                                                            <DropShadowEffect BlurRadius="3" 
+                                                                              ShadowDepth="1" 
+                                                                              Opacity="0.1"
+                                                                              Color="{DynamicResource ShadowColor}"/>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <!-- Сильная тень при наведении -->
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Effect">
+                                                                <Setter.Value>
+                                                                    <DropShadowEffect BlurRadius="20" 
+                                                                                      ShadowDepth="8" 
+                                                                                      Opacity="0.4"
+                                                                                      Color="{DynamicResource HoverShadowColor}"/>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                            <Setter Property="BorderThickness" Value="2"/>
+
+                                                            <!-- Легкое увеличение для эффекта "поднятия" -->
+                                                            <Setter Property="RenderTransform">
+                                                                <Setter.Value>
+                                                                    <ScaleTransform ScaleX="1.02" ScaleY="1.02"/>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+
+                                            <!-- Для плавной анимации трансформации -->
+                                            <Border.RenderTransformOrigin>
+                                                <Point X="0.5" Y="0.5"/>
+                                            </Border.RenderTransformOrigin>
+                                            <Border.RenderTransform>
+                                                <TransformGroup>
+                                                    <ScaleTransform/>
+                                                </TransformGroup>
+                                            </Border.RenderTransform>
+
+                                            <Border.InputBindings>
+                                                <MouseBinding Gesture="LeftClick"
+                                                              Command="{Binding DataContext.SelectProjectCommand, 
+                                                                                RelativeSource={RelativeSource AncestorType=Page}}"
+                                                              CommandParameter="{Binding}" />
+                                            </Border.InputBindings>
+
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" 
+                                                            FontSize="18" 
+                                                            FontWeight="SemiBold" 
+                                                            Foreground="{DynamicResource TextColor}"/>
+                                                <TextBlock Text="{Binding CreatedAt, StringFormat='Дата: {0:dd.MM.yyyy}'}"
+                                                            FontSize="12" 
+                                                            Foreground="{DynamicResource TextSecondaryColor}" 
+                                                            Margin="0,2"/>
+                                                <TextBlock Text="{Binding Description}"
+                                                            FontSize="14" 
+                                                            Foreground="{DynamicResource TextSecondaryColor}"
+                                                            TextWrapping="Wrap"
+                                                            TextTrimming="CharacterEllipsis"
+                                                            MaxHeight="60"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="В команде пока нет проектов"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="20"
+                                       Visibility="{Binding HasProjects, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=true}"/>
+                        </WrapPanel>
                     </ScrollViewer>
-                </Border>
-            </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Кнопка создания проекта -->
+            <Button Content="＋ Новый проект"
+                    Command="{Binding CreateProjectCommand}"
+                    Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"
+                    Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Width="180"
+                    Height="45"
+                    Margin="0,0,20,20"/>
+        </Grid>
+
+        <!-- Диалог передачи прав - поверх всего контента -->
+        <Border Background="#CC000000" 
+                Visibility="{Binding ShowTransferDialog, Converter={StaticResource BoolToVisibilityConverter}}"
+                Panel.ZIndex="1000">
+            <Border Style="{StaticResource CardStyle}"
+                    Width="400"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <StackPanel>
+                    <TextBlock Text="Передача прав капитана"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextColor}"
+                               Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Выберите нового капитана команды:"
+                               Style="{StaticResource BodyTextStyle}"
+                               Margin="0,0,0,10"/>
+
+                    <ComboBox ItemsSource="{Binding AvailableMembers}"
+                              SelectedItem="{Binding SelectedNewCaptain}"
+                              DisplayMemberPath="Username"
+                              Style="{StaticResource ModernComboBox}"
+                              Margin="0,0,0,15"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Отмена"
+                                Command="{Binding CancelTransferCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,10,0"/>
+
+                        <Button Content="Передать права"
+                                Command="{Binding ConfirmTransferCommand}"
+                                Style="{StaticResource PrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Border>
-
-        <!-- Проекты -->
-        <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
-            <StackPanel>
-                <TextBlock Text="Проекты команды"
-                   FontWeight="SemiBold"
-                   FontSize="18"
-                   Foreground="{DynamicResource TextColor}"
-                   Margin="0,0,0,15"/>
-
-                <!-- Контейнер для списка проектов -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <WrapPanel Orientation="Horizontal">
-                        <ItemsControl ItemsSource="{Binding Projects}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal" Margin="0,5,0,0"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{DynamicResource CardBackground}"
-                                            CornerRadius="12"
-                                            BorderBrush="{DynamicResource BorderColor}"
-                                            BorderThickness="1"
-                                            Margin="10"
-                                            Padding="12"
-                                            Width="260"
-                                            Height="150"
-                                            Cursor="Hand">
-
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Effect">
-                                                    <Setter.Value>
-                                                        <DropShadowEffect BlurRadius="3" 
-                                                                          ShadowDepth="1" 
-                                                                          Opacity="0.1"
-                                                                          Color="{DynamicResource ShadowColor}"/>
-                                                    </Setter.Value>
-                                                </Setter>
-                                                <Style.Triggers>
-                                                    <!-- Сильная тень при наведении -->
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Effect">
-                                                            <Setter.Value>
-                                                                <DropShadowEffect BlurRadius="20" 
-                                                                                  ShadowDepth="8" 
-                                                                                  Opacity="0.4"
-                                                                                  Color="{DynamicResource HoverShadowColor}"/>
-                                                            </Setter.Value>
-                                                        </Setter>
-                                                        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                                        <Setter Property="BorderThickness" Value="2"/>
-
-                                                        <!-- Легкое увеличение для эффекта "поднятия" -->
-                                                        <Setter Property="RenderTransform">
-                                                            <Setter.Value>
-                                                                <ScaleTransform ScaleX="1.5" ScaleY="1.5"/>
-                                                            </Setter.Value>
-                                                        </Setter>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-
-                                        <!-- Для плавной анимации трансформации -->
-                                        <Border.RenderTransformOrigin>
-                                            <Point X="0.5" Y="0.5"/>
-                                        </Border.RenderTransformOrigin>
-                                        <Border.RenderTransform>
-                                            <TransformGroup>
-                                                <ScaleTransform/>
-                                            </TransformGroup>
-                                        </Border.RenderTransform>
-
-                                        <Border.InputBindings>
-                                            <MouseBinding Gesture="LeftClick"
-                                                          Command="{Binding DataContext.SelectProjectCommand, 
-                                                                            RelativeSource={RelativeSource AncestorType=Page}}"
-                                                          CommandParameter="{Binding}" />
-                                        </Border.InputBindings>
-
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" 
-                                                        FontSize="18" 
-                                                        FontWeight="SemiBold" 
-                                                        Foreground="{DynamicResource TextColor}"/>
-                                            <TextBlock Text="{Binding CreatedAt, StringFormat='Дата: {0:dd.MM.yyyy}'}"
-                                                        FontSize="12" 
-                                                        Foreground="{DynamicResource TextSecondaryColor}" 
-                                                        Margin="0,2"/>
-                                            <TextBlock Text="{Binding Description}"
-                                                        FontSize="14" 
-                                                        Foreground="{DynamicResource TextSecondaryColor}"
-                                                        TextWrapping="Wrap"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        MaxHeight="60"/>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="В команде пока нет проектов"
-                                   Style="{StaticResource BodyTextStyle}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Margin="20"
-                                   Visibility="{Binding HasProjects, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=true}"/>
-                    </WrapPanel>
-                </ScrollViewer>
-            </StackPanel>
-        </Border>
-
-        <!-- Кнопка создания проекта -->
-        <Button Content="＋ Новый проект"
-                Command="{Binding CreateProjectCommand}"
-                Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"
-                Style="{StaticResource PrimaryButton}"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Bottom"
-                Width="180"
-                Height="45"
-                Margin="0,0,20,20"/>
     </Grid>
 </Page>

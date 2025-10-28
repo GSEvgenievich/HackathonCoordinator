@@ -29,7 +29,7 @@ public partial class Task
 
     public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
 
-    public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+    public virtual ICollection<File> Files { get; set; } = new List<File>();
 
     public virtual Project Project { get; set; } = null!;
 

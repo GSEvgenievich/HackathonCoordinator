@@ -1,5 +1,6 @@
 using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.Helpers;
+using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -40,7 +41,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 builder.Services.AddDbContext<HackathonCoordinatorContext>();
-builder.Services.AddScoped<SmtpEmailSender>();
+builder.Services.AddScoped<SmtpEmailSenderService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
 
@@ -81,6 +82,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
 
 var app = builder.Build();
 

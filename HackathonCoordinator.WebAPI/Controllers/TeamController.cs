@@ -42,6 +42,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (teamExists)
                 return BadRequest("Команда с таким названием уже существует.");
 
+            // Проверяем привязку GitHub если требуется
+            if (dto.LinkToGitHub && string.IsNullOrEmpty(user.GitHubAccessToken))
+                return BadRequest("Для привязки команды к GitHub необходимо привязать GitHub аккаунт.");
+
             var inviteCode = GenerateInviteCode();
 
             var team = new Team
@@ -51,14 +55,21 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
+            if (dto.LinkToGitHub)
+            {
+                team.GitHubUrl = $"https://github.com/{user.GitHubUsername}";
+            }
+
             _context.Teams.Add(team);
             await _context.SaveChangesAsync();
 
             user.TeamId = team.Id;
-            user.RoleId = 1;
+            user.RoleId = 1; // Лидер команды
             await _context.SaveChangesAsync();
 
-            return Ok("Команда успешно создана.");
+            return Ok(dto.LinkToGitHub
+                ? "Команда успешно создана и привязана к GitHub!"
+                : "Команда успешно создана.");
         }
 
         [HttpPost("join")]
@@ -118,6 +129,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 Id = team.Id,
                 Name = team.Name,
                 InviteCode = team.InviteCode,
+                GitHubUrl = team.GitHubUrl,
                 Members = team.Users.Select(m => new MemberDto
                 {
                     Id = m.Id,
@@ -137,6 +149,25 @@ namespace HackathonCoordinator.WebAPI.Controllers
             return Ok(teamDto);
         }
 
+        [HttpGet("current/id")]
+        public async Task<ActionResult<int>> GetCurrentTeamId()
+        {
+            var userId = GetUserId();
+            if (userId == 0)
+                return Unauthorized("Не удалось определить пользователя.");
+
+            var user= await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return NotFound("Пользователь не найден.");
+
+            if (user.TeamId == null)
+                return NotFound("Вы не состоите в команде.");
+
+            return Ok(user.TeamId);
+        }
+
         [HttpPost("leave")]
         public async Task<IActionResult> LeaveTeam()
         {
@@ -146,6 +177,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             var user = await _context.Users
                 .Include(u => u.Team)
+                .ThenInclude(t => t.Users) // Важно: включаем всех участников команды
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null)
@@ -156,20 +188,76 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             var team = user.Team;
 
-            var membersCount = await _context.Users.CountAsync(u => u.TeamId == team.Id);
-            if (membersCount == 1)
+            // Правильно считаем количество участников ДО удаления текущего пользователя
+            var membersCount = team.Users.Count;
+
+            // Если пользователь - капитан (RoleId = 1) и в команде больше 1 участника
+            if (user.RoleId == 1 && membersCount > 1)
             {
+                // Находим нового капитана (первого обычного участника)
+                var newCaptain = team.Users
+                    .FirstOrDefault(u => u.Id != userId && u.RoleId != 1);
+
+                if (newCaptain != null)
+                {
+                    newCaptain.RoleId = 1; // Назначаем нового капитана
+                    user.TeamId = null; // Текущий пользователь покидает команду
+                }
+                else
+                {
+                    // Если нет других участников (маловероятно, но на всякий случай)
+                    _context.Teams.Remove(team);
+                    user.TeamId = null;
+                }
+            }
+            else if (membersCount == 1)
+            {
+                // Если в команде только один участник - удаляем команду
                 _context.Teams.Remove(team);
                 user.TeamId = null;
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "Вы покинули команду, команда была удалена (в ней больше нет участников)." });
+            }
+            else
+            {
+                // Обычный участник просто покидает команду
+                user.TeamId = null;
             }
 
-            user.TeamId = null;
             await _context.SaveChangesAsync();
 
-            return Ok($"Вы покинули команду {team.Name}.");
+            return Ok(new { message = "Вы покинули команду." });
+        }
+
+        [HttpPost("transfer-leadership")]
+        public async Task<IActionResult> TransferLeadership([FromBody] TransferLeadershipDto dto)
+        {
+            var userId = GetUserId();
+            if (userId == 0)
+                return Unauthorized("Не удалось определить пользователя.");
+
+            var currentUser = await _context.Users
+                .Include(u => u.Team)
+                .ThenInclude(t => t.Users)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (currentUser == null || currentUser.TeamId == null)
+                return NotFound("Вы не состоите в команде.");
+
+            if (currentUser.RoleId != 1)
+                return BadRequest("Только капитан может передавать права.");
+
+            var newCaptain = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == dto.NewCaptainUserId && u.TeamId == currentUser.TeamId);
+
+            if (newCaptain == null)
+                return BadRequest("Участник не найден в вашей команде.");
+
+            // Передаем права
+            currentUser.RoleId = 2; // Становится обычным участником
+            newCaptain.RoleId = 1;  // Становится капитаном
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Права капитана переданы участнику {newCaptain.Username}" });
         }
 
         private int GetUserId()

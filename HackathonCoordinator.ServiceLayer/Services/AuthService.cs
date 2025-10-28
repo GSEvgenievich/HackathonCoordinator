@@ -1,6 +1,7 @@
 ﻿using HackathonCoordinator.ServiceLayer.Storages;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
@@ -147,5 +148,57 @@ namespace HackathonCoordinator.ServiceLayer.Services
             _client.DefaultRequestHeaders.Authorization = null;
             Token = null;
         }
+
+        public async Task<(bool Success, string Message)> LinkGitHubAccountAsync(string githubUsername, string accessToken, string avatarUrl)
+        {
+            SetAuthHeader();
+
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                GitHubUsername = githubUsername,
+                GitHubAccessToken = accessToken,
+                GitHubAvatarUrl = avatarUrl
+            });
+
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _client.PostAsync("auth/link-github", content);
+
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                return (false, $"Ошибка: {body}");
+
+            return (true, "GitHub аккаунт успешно привязан");
+        }
+
+        public async Task<(bool Success, string Message)> UnlinkGitHubAccountAsync()
+        {
+            SetAuthHeader();
+
+            var response = await _client.PostAsync("auth/unlink-github", null);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                return (false, $"Ошибка: {body}");
+
+            return (true, "GitHub аккаунт отвязан");
+        }
+
+        public async Task<GitHubUserInfo> GetGitHubUserInfoAsync()
+        {
+            SetAuthHeader();
+
+            var response = await _client.GetAsync("auth/github-info");
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<GitHubUserInfo>();
+        }
+    }
+
+    public class GitHubUserInfo
+    {
+        public string GitHubUsername { get; set; }
+        public string GitHubAvatarUrl { get; set; }
     }
 }

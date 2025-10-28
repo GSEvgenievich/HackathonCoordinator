@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
@@ -35,6 +36,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _inviteCode = value; OnPropertyChanged(); }
         }
 
+        private string _teamGitHubUrl;
+        public string TeamGitHubUrl
+        {
+            get => _teamGitHubUrl;
+            set { _teamGitHubUrl = value; OnPropertyChanged(); OnPropertyChanged(nameof(TeamGitHubStatus)); }
+        }
+
         private bool _isCaptain;
         public bool IsCaptain
         {
@@ -42,15 +50,45 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _isCaptain = value; OnPropertyChanged(); }
         }
 
+        private bool _showTransferDialog;
+        public bool ShowTransferDialog
+        {
+            get => _showTransferDialog;
+            set { _showTransferDialog = value; OnPropertyChanged(); }
+        }
+
+        private MemberDto _selectedNewCaptain;
+        public MemberDto SelectedNewCaptain
+        {
+            get => _selectedNewCaptain;
+            set { _selectedNewCaptain = value; OnPropertyChanged(); }
+        }
+
+        public string TeamGitHubStatus => string.IsNullOrEmpty(TeamGitHubUrl)
+            ? "Не привязан"
+            : "Привязан";
+
+        public Brush TeamGitHubStatusColor => string.IsNullOrEmpty(TeamGitHubUrl)
+            ? Brushes.Red
+            : Brushes.Green;
+
+        public bool HasTeamGitHub => !string.IsNullOrEmpty(TeamGitHubUrl);
+
         public string ProjectsCountText => $"Проектов: {Projects?.Count ?? 0}";
         public bool HasProjects => Projects?.Any() == true;
+
         public ObservableCollection<MemberDto> Members { get; set; } = new();
         public ObservableCollection<ProjectDto> Projects { get; set; } = new();
+        public ObservableCollection<MemberDto> AvailableMembers { get; set; } = new();
 
         public ICommand LeaveTeamCommand { get; }
         public ICommand CreateProjectCommand { get; }
         public ICommand CopyInviteCodeCommand { get; }
         public ICommand SelectProjectCommand { get; }
+        public ICommand OpenTeamGitHubCommand { get; }
+        public ICommand TransferLeadershipCommand { get; }
+        public ICommand ConfirmTransferCommand { get; }
+        public ICommand CancelTransferCommand { get; }
 
         public TeamViewModel()
         {
@@ -58,43 +96,130 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
             _navigationService = App.NavigationService;
 
-            LeaveTeamCommand = new RelayCommand(async () =>
-            {
-                if (MessageBox.Show("Вы уверены, что хотите покинуть команду?", "Подтверждение",
-                                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                    return;
-
-                var result = await _teamService.LeaveTeamAsync();
-                if (result.Success)
-                {
-                    MessageBox.Show("Вы покинули команду.");
-                    _navigationService.NavigateTo(new NoTeamPage());
-                }
-                else MessageBox.Show(result.Message);
-            });
-
+            LeaveTeamCommand = new RelayCommand(async () => await ExecuteLeaveTeamAsync());
             SelectProjectCommand = new RelayCommand<ProjectDto>(OnSelectProject);
-
-            CreateProjectCommand = new RelayCommand(() =>
-            {
-                MessageBox.Show("Открывается окно создания проекта (реализуй позже).");
-            });
-
-            CopyInviteCodeCommand = new RelayCommand(() =>
-            {
-                Clipboard.SetText(InviteCode ?? "");
-                MessageBox.Show("Код приглашения скопирован!");
-            });
+            CreateProjectCommand = new RelayCommand(() => ExecuteCreateProject());
+            CopyInviteCodeCommand = new RelayCommand(() => ExecuteCopyInviteCode());
+            OpenTeamGitHubCommand = new RelayCommand(() => ExecuteOpenTeamGitHub());
+            TransferLeadershipCommand = new RelayCommand(() => ExecuteTransferLeadership());
+            ConfirmTransferCommand = new RelayCommand(async () => await ExecuteConfirmTransferAsync());
+            CancelTransferCommand = new RelayCommand(() => ExecuteCancelTransfer());
 
             LoadTeamDataAsync();
         }
+
+        private async Task ExecuteLeaveTeamAsync()
+        {
+            if (MessageBox.Show("Вы уверены, что хотите покинуть команду?", "Подтверждение",
+                                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            var result = await _teamService.LeaveTeamAsync();
+            if (result.Success)
+            {
+                MessageBox.Show("Вы покинули команду.");
+                _navigationService.NavigateTo(new NoTeamPage());
+            }
+            else
+            {
+                MessageBox.Show(result.Message);
+            }
+        }
+
+        private void ExecuteTransferLeadership()
+        {
+            // Фильтруем участников, исключая текущего капитана
+            AvailableMembers.Clear();
+            foreach (var member in Members.Where(m => !m.IsCaptain))
+            {
+                AvailableMembers.Add(member);
+            }
+
+            if (!AvailableMembers.Any())
+            {
+                MessageBox.Show("В команде нет других участников для передачи прав.");
+                return;
+            }
+
+            SelectedNewCaptain = AvailableMembers.FirstOrDefault();
+            ShowTransferDialog = true;
+        }
+
+        private async Task ExecuteConfirmTransferAsync()
+        {
+            if (SelectedNewCaptain == null)
+            {
+                MessageBox.Show("Выберите участника для передачи прав.");
+                return;
+            }
+
+            if (MessageBox.Show($"Вы уверены, что хотите передать права капитана участнику {SelectedNewCaptain.Username}?",
+                              "Подтверждение передачи прав",
+                              MessageBoxButton.YesNo,
+                              MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                var result = await _teamService.TransferLeadershipAsync(SelectedNewCaptain.Id);
+
+                if (result.Success)
+                {
+                    MessageBox.Show($"Права капитана успешно переданы участнику {SelectedNewCaptain.Username}");
+                    ShowTransferDialog = false;
+
+                    // Обновляем данные команды
+                    await LoadTeamDataAsync();
+                }
+                else
+                {
+                    MessageBox.Show(result.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при передаче прав: {ex.Message}");
+            }
+        }
+
+        private void ExecuteCancelTransfer()
+        {
+            ShowTransferDialog = false;
+            SelectedNewCaptain = null;
+        }
+
         private void OnSelectProject(ProjectDto project)
         {
             if (project == null) return;
             MessageBox.Show($"Проект выбран: {project.Name}");
         }
 
-        private async void LoadTeamDataAsync()
+        private void ExecuteCreateProject()
+        {
+            MessageBox.Show("Открывается окно создания проекта (реализуй позже).");
+        }
+
+        private void ExecuteCopyInviteCode()
+        {
+            Clipboard.SetText(InviteCode ?? "");
+            MessageBox.Show("Код приглашения скопирован!");
+        }
+
+        private void ExecuteOpenTeamGitHub()
+        {
+            if (!string.IsNullOrEmpty(TeamGitHubUrl))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = TeamGitHubUrl,
+                    UseShellExecute = true
+                });
+            }
+        }
+
+        private async Task LoadTeamDataAsync()
         {
             var team = await _teamService.GetCurrentTeamAsync();
             if (team == null)
@@ -106,12 +231,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             TeamName = team.Name;
             InviteCode = team.InviteCode;
+            TeamGitHubUrl = team.GitHubUrl;
 
             var user = await _userService.GetCurrentUserAsync();
 
-            if (user.RoleId == 1)
-                IsCaptain = true;
+            // Обновляем статус капитана
+            IsCaptain = user.RoleId == 1;
 
+            // Сортируем участников: капитан первый, затем остальные
             var orderedMembers = team.Members
                 .OrderByDescending(m => m.IsCaptain)
                 .ThenBy(m => m.Username)
@@ -128,7 +255,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             foreach (var p in team.Projects)
                 Projects.Add(p);
 
+            // Обновляем все свойства
             OnPropertyChanged(nameof(ProjectsCountText));
+            OnPropertyChanged(nameof(TeamGitHubStatus));
+            OnPropertyChanged(nameof(TeamGitHubStatusColor));
+            OnPropertyChanged(nameof(HasTeamGitHub));
+            OnPropertyChanged(nameof(IsCaptain));
         }
     }
 }

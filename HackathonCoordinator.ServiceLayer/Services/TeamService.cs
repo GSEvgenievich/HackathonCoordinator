@@ -26,11 +26,15 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 : new AuthenticationHeaderValue("Bearer", token);
         }
 
-        public async Task<(bool Success, string Message)> CreateTeamAsync(string name)
+        public async Task<(bool Success, string Message)> CreateTeamAsync(string name, bool linkToGitHub = false)
         {
             SetAuthHeader();
 
-            var json = JsonConvert.SerializeObject(new { Name = name });
+            var json = JsonConvert.SerializeObject(new
+            {
+                Name = name,
+                LinkToGitHub = linkToGitHub
+            });
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await _client.PostAsync("teams/create", content);
 
@@ -73,6 +77,21 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 return (true, "У вас новая команда!");
             }
         }
+        public async Task<(bool Success, string Message)> TransferLeadershipAsync(int newCaptainUserId)
+        {
+            SetAuthHeader();
+
+            var json = JsonConvert.SerializeObject(new { NewCaptainUserId = newCaptainUserId });
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _client.PostAsync("teams/transfer-leadership", content);
+
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                return (false, $"Ошибка: {body}");
+
+            return (true, "Права капитана успешно переданы");
+        }
 
         public async Task<TeamDto?> GetCurrentTeamAsync()
         {
@@ -83,6 +102,17 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 return null;
 
             return await response.Content.ReadFromJsonAsync<TeamDto>();
+        }
+
+        public async Task<int?> GetCurrentTeamIdAsync()
+        {
+            SetAuthHeader();
+
+            var response = await _client.GetAsync("teams/current/id");
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<int?>();
         }
 
         public async Task<(bool Success, string Message)> LeaveTeamAsync()

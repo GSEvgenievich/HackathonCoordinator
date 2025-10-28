@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.EntityFrameworkCore;
+using File = HackathonCoordinator.WebAPI.Models.File;
 using Task = HackathonCoordinator.WebAPI.Models.Task;
 using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
 
@@ -22,7 +23,7 @@ public partial class HackathonCoordinatorContext : DbContext
 
     public virtual DbSet<ChatMember> ChatMembers { get; set; }
 
-    public virtual DbSet<Document> Documents { get; set; }
+    public virtual DbSet<File> Files { get; set; }
 
     public virtual DbSet<FileCategory> FileCategories { get; set; }
 
@@ -102,7 +103,7 @@ public partial class HackathonCoordinatorContext : DbContext
                 .HasConstraintName("FK_ChatMembers_UserId");
         });
 
-        modelBuilder.Entity<Document>(entity =>
+        modelBuilder.Entity<File>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Document__3214EC0711910DC6");
 
@@ -112,23 +113,23 @@ public partial class HackathonCoordinatorContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
 
-            entity.HasOne(d => d.Category).WithMany(p => p.Documents)
+            entity.HasOne(d => d.Category).WithMany(p => p.Files)
                 .HasForeignKey(d => d.CategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Documents_CategoryId");
+                .HasConstraintName("FK_Files_CategoryId");
 
-            entity.HasOne(d => d.Project).WithMany(p => p.Documents)
+            entity.HasOne(d => d.Project).WithMany(p => p.Files)
                 .HasForeignKey(d => d.ProjectId)
-                .HasConstraintName("FK_Documents_ProjectId");
+                .HasConstraintName("FK_Files_ProjectId");
 
-            entity.HasOne(d => d.Task).WithMany(p => p.Documents)
+            entity.HasOne(d => d.Task).WithMany(p => p.Files)
                 .HasForeignKey(d => d.TaskId)
-                .HasConstraintName("FK_Documents_TaskId");
+                .HasConstraintName("FK_Files_TaskId");
 
-            entity.HasOne(d => d.UploadedBy).WithMany(p => p.Documents)
+            entity.HasOne(d => d.UploadedBy).WithMany(p => p.Files)
                 .HasForeignKey(d => d.UploadedById)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Documents_UploadedById");
+                .HasConstraintName("FK_Files_UploadedById");
         });
 
         modelBuilder.Entity<FileCategory>(entity =>
@@ -225,7 +226,7 @@ public partial class HackathonCoordinatorContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.GithubRepoUrl).HasMaxLength(255);
+            entity.Property(e => e.GithubRepoName).HasMaxLength(100);
             entity.Property(e => e.Name).HasMaxLength(150);
 
             entity.HasOne(d => d.Team).WithMany(p => p.Projects)
@@ -338,6 +339,7 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+            entity.Property(e => e.GitHubUrl).HasMaxLength(255);
             entity.Property(e => e.InviteCode).HasMaxLength(36);
             entity.Property(e => e.Name).HasMaxLength(100);
         });
@@ -349,6 +351,9 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.HasIndex(e => e.Email, "UQ__Users__A9D1053498E69DD7").IsUnique();
 
             entity.Property(e => e.Email).HasMaxLength(150);
+            entity.Property(e => e.GitHubAccessToken).HasMaxLength(255);
+            entity.Property(e => e.GitHubAvatarUrl).HasMaxLength(255);
+            entity.Property(e => e.GitHubUsername).HasMaxLength(100);
             entity.Property(e => e.Login).HasMaxLength(50);
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
             entity.Property(e => e.Username).HasMaxLength(100);

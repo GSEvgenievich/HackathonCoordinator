@@ -11,6 +11,7 @@ namespace HackathonCoordinator.WebAPI.DTOs
         public int Id { get; set; }
         public string Name { get; set; }
         public string InviteCode { get; set; }
+        public string GitHubUrl { get; set; }
         public List<MemberDto> Members { get; set; } = new();
         public List<ProjectDto> Projects { get; set; } = new();
     }
