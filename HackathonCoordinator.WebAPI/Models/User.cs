@@ -21,9 +21,15 @@ public partial class User
 
     public int? ProfileIconId { get; set; }
 
+    public string? GitHubUsername { get; set; }
+
+    public string? GitHubAccessToken { get; set; }
+
+    public string? GitHubAvatarUrl { get; set; }
+
     public virtual ICollection<ChatMember> ChatMembers { get; set; } = new List<ChatMember>();
 
-    public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+    public virtual ICollection<File> Files { get; set; } = new List<File>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 

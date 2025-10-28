@@ -10,6 +10,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     {
         private readonly NavigationService _navigationService;
         private readonly AuthService _authService;
+        private readonly TeamService _teamService;
         private string _login = "";
         private string _password = "";
 
@@ -32,6 +33,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             _navigationService = App.NavigationService;
             _authService = new AuthService();
+            _teamService = new TeamService();
 
             LoginCommand = new RelayCommand(async () => await ExecuteLoginAsync());
             NavigateToRegistrationCommand = new RelayCommand(() =>
@@ -50,8 +52,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (resultMessage == "OK")
             {
-                MessageBox.Show("Успешный вход!");
-                _navigationService.NavigateTo(new NoTeamPage());
+                var teamId = await _teamService.GetCurrentTeamIdAsync();
+
+                if (teamId == null)
+                    _navigationService.NavigateTo(new NoTeamPage());
+                else
+                    _navigationService.NavigateTo(new TeamPage());
             }
             else
             {

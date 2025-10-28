@@ -18,9 +18,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
         private readonly IConfiguration _config;
-        private readonly SmtpEmailSender _emailSender;
+        private readonly SmtpEmailSenderService _emailSender;
 
-        public AuthController(HackathonCoordinatorContext context, IConfiguration config, SmtpEmailSender emailSender)
+        public AuthController(HackathonCoordinatorContext context, IConfiguration config, SmtpEmailSenderService emailSender)
         {
             _context = context;
             _config = config;

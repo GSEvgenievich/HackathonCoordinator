@@ -25,7 +25,6 @@
     <Grid>
         <Border Style="{StaticResource CardStyle}"
                 Padding="30"
-                Width="500"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center">
 
@@ -64,6 +63,13 @@
                                Style="{StaticResource BodyTextStyle}"
                                HorizontalAlignment="Center"
                                Margin="0,5,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <TextBlock Text="GitHub: "
+                                   Style="{StaticResource BodyTextStyle}"/>
+                        <TextBlock Text="{Binding GitHubStatus}"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{Binding GitHubStatusColor}"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Редактирование имени -->
@@ -80,6 +86,10 @@
                     <Button Content="Сохранить изменения"
                             Command="{Binding SaveProfileCommand}"
                             Style="{StaticResource PrimaryButton}"
+                            Margin="0,0,10,0"/>
+                    <Button Content="{Binding GitHubButtonText}"
+                            Command="{Binding LinkGitHubCommand}"
+                            Style="{StaticResource SecondaryButton}"
                             Margin="0,0,10,0"/>
                     <Button Content="Выйти"
                             Command="{Binding LogoutCommand}"

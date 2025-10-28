@@ -9,5 +9,5 @@ public partial class FileCategory
 
     public string Name { get; set; } = null!;
 
-    public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+    public virtual ICollection<File> Files { get; set; } = new List<File>();
 }

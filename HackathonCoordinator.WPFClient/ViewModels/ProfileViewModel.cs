@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Media;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
@@ -55,6 +56,26 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _isIconPanelVisible = value; OnPropertyChanged(); }
         }
 
+        // GitHub свойства
+        private string _gitHubUsername;
+        public string GitHubUsername
+        {
+            get => _gitHubUsername;
+            set { _gitHubUsername = value; OnPropertyChanged(); OnPropertyChanged(nameof(GitHubStatus)); }
+        }
+
+        public string GitHubStatus => string.IsNullOrEmpty(GitHubUsername)
+            ? "Не привязан"
+            : $"Привязан ({GitHubUsername})";
+
+        public Brush GitHubStatusColor => string.IsNullOrEmpty(GitHubUsername)
+            ? Brushes.Red
+            : Brushes.Green;
+
+        public string GitHubButtonText => string.IsNullOrEmpty(GitHubUsername)
+            ? "Привязать GitHub"
+            : "Отвязать GitHub";
+
         public ObservableCollection<IconDto> AvailableIcons { get; set; } = new ObservableCollection<IconDto>();
 
         private IconDto _selectedIcon;
@@ -68,6 +89,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public RelayCommand<IconDto> SelectIconCommand { get; }
         public RelayCommand SaveProfileCommand { get; }
         public RelayCommand LogoutCommand { get; }
+        public RelayCommand LinkGitHubCommand { get; }
 
         public ProfileViewModel()
         {
@@ -105,6 +127,38 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 _navigationService.NavigateTo(new AuthorizationPage());
             });
 
+            LinkGitHubCommand = new RelayCommand(async () =>
+            {
+                if (string.IsNullOrEmpty(GitHubUsername))
+                {
+                    // Переходим на страницу привязки GitHub
+                    _navigationService.NavigateTo(new GitHubAuthPage());
+                }
+                else
+                {
+                    // Отвязываем GitHub
+                    var result = MessageBox.Show(
+                        $"Вы уверены, что хотите отвязать аккаунт {GitHubUsername}?",
+                        "Подтверждение",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        var unlinkResult = await _userService.UnlinkGitHubAsync();
+                        if (unlinkResult.IsSuccess)
+                        {
+                            GitHubUsername = null;
+                            MessageBox.Show("GitHub аккаунт отвязан");
+                        }
+                        else
+                        {
+                            MessageBox.Show(unlinkResult.Message);
+                        }
+                    }
+                }
+            });
+
             LoadUserDataAsync();
         }
 
@@ -120,6 +174,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             Username = user.Username;
             Email = user.Email;
             TeamName = user.TeamName;
+            GitHubUsername = user.GitHubUsername;
             CurrentIconPath = user.IconName != null ? $"/Assets/Images/Profile/{user.IconName}.png" : "/Assets/Images/Profile/robot1.png";
 
             var icons = await _userService.GetAllIconsAsync();

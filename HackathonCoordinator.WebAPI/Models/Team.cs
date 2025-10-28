@@ -13,6 +13,8 @@ public partial class Team
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? GitHubUrl { get; set; }
+
     public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();

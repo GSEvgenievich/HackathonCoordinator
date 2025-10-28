@@ -93,5 +93,65 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 return (false, "Ошибка соединения с сервером.");
             }
         }
+
+        public async Task<ApiResultDto> LinkGitHubAccountAsync(string accessToken, string username, string avatarUrl)
+        {
+            try
+            {
+                SetAuthHeader();
+
+                var linkData = new
+                {
+                    GitHubAccessToken = accessToken,
+                    GitHubUsername = username,
+                    GitHubAvatarUrl = avatarUrl
+                };
+
+                var json = JsonConvert.SerializeObject(linkData);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                // Обновленный endpoint
+                var response = await _client.PostAsync("users/me/github/link", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return ApiResultDto.Success();
+                }
+                else
+                {
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    return ApiResultDto.Failure(errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ApiResultDto.Failure($"Ошибка привязки GitHub: {ex.Message}");
+            }
+        }
+
+        // Отвязка GitHub аккаунта
+        public async Task<ApiResultDto> UnlinkGitHubAsync()
+        {
+            try
+            {
+                SetAuthHeader();
+                // Обновленный endpoint
+                var response = await _client.PostAsync("users/me/github/unlink", null);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return ApiResultDto.Success();
+                }
+                else
+                {
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    return ApiResultDto.Failure(errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ApiResultDto.Failure($"Ошибка отвязки GitHub: {ex.Message}");
+            }
+        }
     }
 }
