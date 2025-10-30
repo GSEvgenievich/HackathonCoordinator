@@ -5,8 +5,7 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels" 
       mc:Ignorable="d" 
-      Title="Регистрация"
-      Background="{DynamicResource BackgroundColor}">
+      Title="Регистрация">
 
     <Page.DataContext>
         <vm:RegistrationViewModel/>

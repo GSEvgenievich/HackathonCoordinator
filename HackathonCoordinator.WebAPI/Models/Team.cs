@@ -7,6 +7,8 @@ public partial class Team
 {
     public int Id { get; set; }
 
+    public int CompetitionId { get; set; }
+
     public string Name { get; set; } = null!;
 
     public string? InviteCode { get; set; }
@@ -16,6 +18,8 @@ public partial class Team
     public string? GitHubUrl { get; set; }
 
     public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
+
+    public virtual Competition Competition { get; set; } = null!;
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 

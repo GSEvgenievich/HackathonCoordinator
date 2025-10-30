@@ -9,8 +9,6 @@ public partial class File
 
     public int? ProjectId { get; set; }
 
-    public int? TaskId { get; set; }
-
     public Guid FileKey { get; set; }
 
     public string FileName { get; set; } = null!;
@@ -26,8 +24,6 @@ public partial class File
     public virtual FileCategory Category { get; set; } = null!;
 
     public virtual Project? Project { get; set; }
-
-    public virtual Task? Task { get; set; }
 
     public virtual User UploadedBy { get; set; } = null!;
 }

@@ -2,8 +2,7 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
-      Background="{DynamicResource BackgroundColor}">
+      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters">
 
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>

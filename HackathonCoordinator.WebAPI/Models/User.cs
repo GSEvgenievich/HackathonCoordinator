@@ -29,6 +29,8 @@ public partial class User
 
     public virtual ICollection<ChatMember> ChatMembers { get; set; } = new List<ChatMember>();
 
+    public virtual ICollection<Competition> Competitions { get; set; } = new List<Competition>();
+
     public virtual ICollection<File> Files { get; set; } = new List<File>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();

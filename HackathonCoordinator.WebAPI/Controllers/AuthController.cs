@@ -34,58 +34,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email || u.Login == dto.Login))
                 return BadRequest("Пользователь с таким логином или email уже существует.");
 
-            await _context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM PendingRegistrations WHERE IsVerified = 0 AND ExpiresAt < GETDATE()");
-
-            var existingPending = await _context.PendingRegistrations
-                .FirstOrDefaultAsync(p => p.Email == dto.Email);
-
-            if (existingPending != null)
-                _context.PendingRegistrations.Remove(existingPending);
-
-            var code = new Random().Next(100000, 999999).ToString();
-
-            var pending = new PendingRegistration
+            var user = new User
             {
                 Username = dto.Username,
                 Login = dto.Login,
                 Email = dto.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                VerificationCode = code
-            };
-
-            _context.PendingRegistrations.Add(pending);
-            await _context.SaveChangesAsync();
-
-            await _emailSender.SendEmailAsync(dto.Email, code);
-            return Ok("Код подтверждения отправлен на вашу почту.");
-        }
-
-        [HttpPost("verify")]
-        public async Task<IActionResult> Verify([FromBody] VerifyEmailDto dto)
-        {
-            var pending = await _context.PendingRegistrations
-                .FirstOrDefaultAsync(p => p.Email == dto.Email && p.IsVerified == false);
-
-            if (pending == null)
-                return BadRequest("Регистрация не найдена.");
-
-            if (pending.ExpiresAt < DateTime.Now)
-                return BadRequest("Срок действия данной регистрации истёк");
-
-            pending.IsVerified = true;
-
-            var user = new User
-            {
-                Username = pending.Username,
-                Login = pending.Login,
-                Email = pending.Email,
-                PasswordHash = pending.PasswordHash,
                 RoleId = 2
             };
 
             _context.Users.Add(user);
-            _context.PendingRegistrations.Remove(pending);
             await _context.SaveChangesAsync();
 
             return Ok("Регистрация успешно завершена!");

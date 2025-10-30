@@ -4,8 +4,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       mc:Ignorable="d" 
-      Title="Подтверждение Email"
-      Background="{DynamicResource BackgroundColor}">
+      Title="Подтверждение Email">
 
     <Grid>
         <Border Style="{StaticResource CardStyle}"
