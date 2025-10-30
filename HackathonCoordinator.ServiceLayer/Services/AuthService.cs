@@ -62,7 +62,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
-        public async Task<string> RegisterAsync(string username, string login, string email, string password)
+        public async Task<(bool Success, string Message)> RegisterAsync(string username, string login, string email, string password)
         {
             SetAuthHeader();
 
@@ -76,47 +76,18 @@ namespace HackathonCoordinator.ServiceLayer.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return "Ошибка регистрации";
+                    return (false, body);
                 }
 
-                return "Ок";
+                return (true, "Регистрация успешно завершена!");
             }
             catch (HttpRequestException)
             {
-                return "Ошибка соединения с сервером";
+                return (false, "Ошибка соединения с сервером");
             }
             catch (Exception ex)
             {
-                return $"Неожиданная ошибка: {ex.Message}";
-            }
-        }
-
-        public async Task<string> VerifyCodeAsync(string email, string code)
-        {
-            SetAuthHeader();
-
-            try
-            {
-                var json = JsonConvert.SerializeObject(new { Email = email, Code = code });
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _client.PostAsync("auth/verify", content);
-                var body = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return "Ошибка регистрации";
-                }
-
-                return "Ок";
-            }
-            catch (HttpRequestException)
-            {
-                return "Ошибка соединения с сервером";
-            }
-            catch (Exception ex)
-            {
-                return $"Неожиданная ошибка: {ex.Message}";
+                return (false, $"Неожиданная ошибка: {ex.Message}");
             }
         }
 

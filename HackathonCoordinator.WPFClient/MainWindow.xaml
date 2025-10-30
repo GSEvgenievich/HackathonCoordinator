@@ -7,20 +7,25 @@
         mc:Ignorable="d"
         Title="Hackathon Coordinator" Height="600" Width="1000"
         MinHeight="300" MinWidth="550"
-        Background="{DynamicResource BackgroundColor}">
+        WindowStartupLocation="CenterScreen">
 
     <Window.DataContext>
         <vm:MainWindowViewModel/>
     </Window.DataContext>
 
     <Grid>
+        <!-- Основной фон с изображением активной темы -->
+        <Grid.Background>
+            <DynamicResource ResourceKey="MainBackgroundBrush"/>
+        </Grid.Background>
+
         <!-- Основной контент занимает всё пространство -->
         <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden" Margin="60 0 0 0"
-               Background="{DynamicResource BackgroundColor}"/>
+               Background="Transparent"/>
 
-        <!-- Боковая панель поверх контента -->
+        <!-- Боковая панель с акцентным фоном активной темы -->
         <Border x:Name="SideBar"
-                Background="{DynamicResource SidebarBackground}"
+                Background="{DynamicResource AccentBackgroundBrush}"
                 Width="60"
                 CornerRadius="0 12 0 0"
                 VerticalAlignment="Stretch"
@@ -28,57 +33,120 @@
                 MouseEnter="SideBar_MouseEnter"
                 MouseLeave="SideBar_MouseLeave"
                 Panel.ZIndex="1000">
-            <!-- Высокий ZIndex чтобы была поверх контента -->
-            
+
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" 
                                   ShadowDepth="2" 
                                   Opacity="0.3" 
                                   Direction="0"/>
             </Border.Effect>
-            
+
             <StackPanel>
-                <Button Command="{Binding OpenProfileCommand}" Style="{StaticResource SidebarButtonStyle}" Tag="ProfilePage">
+                <!-- Профиль пользователя -->
+                <Button Command="{Binding OpenProfileCommand}" 
+                        Style="{StaticResource SidebarButtonStyle}" 
+                        Tag="ProfilePage"
+                        ToolTip="Профиль">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="👤" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="{Binding Username}" x:Name="ProfileText" Margin="10,0,0,0" Visibility="Collapsed"
-                                   Foreground="{DynamicResource SidebarTextColor}"/>
+                        <TextBlock Text="{Binding Username}" 
+                                   x:Name="ProfileText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Separator Margin="5" Background="#404040"/>
+                <Separator Margin="5" Background="{DynamicResource BorderColor}"/>
 
                 <!-- Кнопки навигации -->
-                <Button Command="{Binding OpenMainPageCommand}" Style="{StaticResource SidebarButtonStyle}" Tag="MainPage">
+                <Button Command="{Binding OpenMainPageCommand}" 
+                        Style="{StaticResource SidebarButtonStyle}" 
+                        Tag="MainPage"
+                        ToolTip="Главная">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="🏠" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Главная" x:Name="MainText" Margin="10,0,0,0" Visibility="Collapsed"
-                                   Foreground="{DynamicResource SidebarTextColor}"/>
+                        <TextBlock Text="Главная" 
+                                   x:Name="MainText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button Style="{StaticResource SidebarButtonStyle}" Tag="NotificationsPage">
+                <Button Style="{StaticResource SidebarButtonStyle}" 
+                        Tag="NotificationsPage"
+                        ToolTip="Уведомления">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="🔔" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Уведомления" x:Name="NotificationsText" Margin="10,0,0,0" Visibility="Collapsed"
-                                   Foreground="{DynamicResource SidebarTextColor}"/>
+                        <TextBlock Text="Уведомления" 
+                                   x:Name="NotificationsText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <Button Style="{StaticResource SidebarButtonStyle}" Tag="ChatsPage">
+                <Button Style="{StaticResource SidebarButtonStyle}" 
+                        Tag="ChatsPage"
+                        ToolTip="Чаты">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="💬" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Чаты" x:Name="ChatsText" Margin="10,0,0,0" Visibility="Collapsed"
-                                   Foreground="{DynamicResource SidebarTextColor}"/>
+                        <TextBlock Text="Чаты" 
+                                   x:Name="ChatsText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <!-- Кнопка переключения темы -->
-                <Button Style="{StaticResource SidebarButtonStyle}" Command="{Binding ToggleThemeCommand}">
+                <Separator Margin="5" Background="{DynamicResource BorderColor}"/>
+
+                <!-- Управление темами -->
+                <Button Style="{StaticResource SidebarButtonStyle}" 
+                        Command="{Binding ToggleThemeCommand}"
+                        ToolTip="Сменить тему">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <TextBlock Text="🌙" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Тема" x:Name="ThemeText" Margin="10,0,0,0" Visibility="Collapsed"
-                                   Foreground="{DynamicResource SidebarTextColor}"/>
+                        <TextBlock Text="🎨" FontSize="18" Margin="10,0,0,0"/>
+                        <TextBlock Text="Тема" 
+                                   x:Name="ThemeText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Индикатор текущей темы -->
+                <Border Background="{DynamicResource CardBackground}"
+                        CornerRadius="5"
+                        Margin="5,2,5,2"
+                        Padding="2"
+                        Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{Binding CurrentThemeName}"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- Кнопка выхода -->
+                <Button Style="{StaticResource SidebarButtonStyle}" 
+                        Command="{Binding LogoutCommand}"
+                        ToolTip="Выйти">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBlock Text="🚪" FontSize="18" Margin="10,0,0,0"/>
+                        <TextBlock Text="Выйти" 
+                                   x:Name="LogoutText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
             </StackPanel>

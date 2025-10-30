@@ -1,7 +1,7 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Цвета темной темы -->
+    <!-- Основные цвета темной темы -->
     <Color x:Key="PrimaryColor">#5FA8FF</Color>
     <Color x:Key="PrimaryDarkColor">#4A90E2</Color>
     <Color x:Key="SuccessColor">#2ECC71</Color>
@@ -20,7 +20,15 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
 
-    <!-- Фоны и тексты -->
+    <!-- Фоновые изображения для темной темы -->
+    <ImageSource x:Key="MainBackgroundImage">/Assets/Images/Themes/dark_bg.png</ImageSource>
+    <ImageSource x:Key="AccentBackgroundImage">/Assets/Images/Themes/dark_accent.png</ImageSource>
+
+    <!-- Фоны -->
+    <ImageBrush x:Key="MainBackgroundBrush" ImageSource="{StaticResource MainBackgroundImage}" Stretch="UniformToFill"/>
+    <ImageBrush x:Key="AccentBackgroundBrush" ImageSource="{StaticResource AccentBackgroundImage}" Stretch="UniformToFill"/>
+
+    <!-- Цвета интерфейса -->
     <SolidColorBrush x:Key="BackgroundColor">#1E1E1E</SolidColorBrush>
     <SolidColorBrush x:Key="CardBackground">#2D2D2D</SolidColorBrush>
     <SolidColorBrush x:Key="ControlBackground">#252525</SolidColorBrush>
@@ -30,5 +38,8 @@
     <SolidColorBrush x:Key="HoverColor">#383838</SolidColorBrush>
     <SolidColorBrush x:Key="SidebarBackground">#1A1C23</SolidColorBrush>
     <SolidColorBrush x:Key="SidebarTextColor">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="SidebarHoverColor">#2A2C33</SolidColorBrush>
+    <SolidColorBrush x:Key="IconButtonBackground">#5FA8FF</SolidColorBrush>
+    <SolidColorBrush x:Key="IconButtonForeground">#FFFFFF</SolidColorBrush>
 
 </ResourceDictionary>

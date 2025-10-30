@@ -11,6 +11,8 @@ namespace HackathonCoordinator.WPFClient
         private readonly AuthService _authService;
         private readonly UserService _userService;
 
+        public bool IsSidebarExpanded => _isExpanded;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -53,6 +55,7 @@ namespace HackathonCoordinator.WPFClient
             }
             catch (Exception ex)
             {
+                MessageBox.Show($"Ошибка загрузки: {ex.Message}");
                 App.NavigationService.NavigateTo(new AuthorizationPage());
             }
         }
@@ -88,10 +91,12 @@ namespace HackathonCoordinator.WPFClient
 
         private void SetTextVisibility(Visibility visibility)
         {
-            MainText.Visibility = visibility;
             ProfileText.Visibility = visibility;
+            MainText.Visibility = visibility;
             NotificationsText.Visibility = visibility;
             ChatsText.Visibility = visibility;
+            ThemeText.Visibility = visibility;
+            LogoutText.Visibility = visibility;
         }
     }
 }
