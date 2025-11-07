@@ -1,8 +1,7 @@
 ﻿namespace HackathonCoordinator.WebAPI.DTOs
 {
-    public class CreateTeamDto
+    public class CreateTeamInCompetitionDto
     {
         public string Name { get; set; } = string.Empty;
-        public bool LinkToGitHub { get; set; }
     }
 }

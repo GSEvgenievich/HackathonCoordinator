@@ -2,8 +2,6 @@
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
@@ -68,12 +66,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void OpenMainPage()
+        private async void OpenMainPage()
         {
-            var teamId = _teamService.GetCurrentTeamIdAsync();
+            var teamId = await _teamService.GetCurrentTeamIdAsync();
 
             if (teamId == null)
-                _navigationService.NavigateTo(new NoTeamPage());
+                _navigationService.NavigateTo(new CompetitionsPage());
             else
                 _navigationService.NavigateTo(new TeamPage());
         }

@@ -37,9 +37,10 @@
                         Style="{StaticResource SecondaryButton}"
                         Margin="20,0,10,0"
                         Padding="12,6"
-                        Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        Visibility="{Binding IsCaptainOrOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                 <Button Content="🚪 Выйти"
+                        Visibility="{Binding IsTeamMember, Converter={StaticResource BoolToVisibilityConverter}}"
                         Command="{Binding LeaveTeamCommand}"
                         Style="{StaticResource SecondaryButton}"
                         Margin="20,0,0,0"
@@ -52,7 +53,7 @@
                     <DockPanel>
                         <!-- Код приглашения (только капитану видно) -->
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" 
-                                    Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    Visibility="{Binding IsCaptainOrOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
                             <TextBlock Text="Код приглашения: " 
                                        FontWeight="SemiBold" 
                                        VerticalAlignment="Center"
@@ -180,48 +181,12 @@
                                         <Border Background="{DynamicResource CardBackground}"
                                                 CornerRadius="12"
                                                 BorderBrush="{DynamicResource BorderColor}"
+                                                Style="{StaticResource InteractiveCardStyle}"
                                                 BorderThickness="1"
                                                 Margin="10"
                                                 Padding="12"
                                                 Width="260"
-                                                Height="150"
-                                                Cursor="Hand">
-
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Effect">
-                                                        <Setter.Value>
-                                                            <DropShadowEffect BlurRadius="3" 
-                                                                              ShadowDepth="1" 
-                                                                              Opacity="0.1"
-                                                                              Color="{DynamicResource ShadowColor}"/>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Style.Triggers>
-                                                        <!-- Сильная тень при наведении -->
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter Property="Effect">
-                                                                <Setter.Value>
-                                                                    <DropShadowEffect BlurRadius="20" 
-                                                                                      ShadowDepth="8" 
-                                                                                      Opacity="0.4"
-                                                                                      Color="{DynamicResource HoverShadowColor}"/>
-                                                                </Setter.Value>
-                                                            </Setter>
-                                                            <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-                                                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                                                            <Setter Property="BorderThickness" Value="2"/>
-
-                                                            <!-- Легкое увеличение для эффекта "поднятия" -->
-                                                            <Setter Property="RenderTransform">
-                                                                <Setter.Value>
-                                                                    <ScaleTransform ScaleX="1.02" ScaleY="1.02"/>
-                                                                </Setter.Value>
-                                                            </Setter>
-                                                        </Trigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
+                                                Height="150">
 
                                             <!-- Для плавной анимации трансформации -->
                                             <Border.RenderTransformOrigin>

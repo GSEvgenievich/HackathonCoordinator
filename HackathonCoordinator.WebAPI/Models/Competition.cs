@@ -15,6 +15,8 @@ public partial class Competition
 
     public DateTime EndDate { get; set; }
 
+    public bool IsActive { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public int CreatedById { get; set; }

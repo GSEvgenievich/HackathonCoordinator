@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using HackathonCoordinator.WebAPI.Models;
+﻿using HackathonCoordinator.WebAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using File = HackathonCoordinator.WebAPI.Models.File;
 using Task = HackathonCoordinator.WebAPI.Models.Task;
@@ -22,6 +20,8 @@ public partial class HackathonCoordinatorContext : DbContext
     public virtual DbSet<Chat> Chats { get; set; }
 
     public virtual DbSet<ChatMember> ChatMembers { get; set; }
+
+    public virtual DbSet<ChatType> ChatTypes { get; set; }
 
     public virtual DbSet<Competition> Competitions { get; set; }
 
@@ -69,19 +69,10 @@ public partial class HackathonCoordinatorContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Name).HasMaxLength(150);
-            entity.Property(e => e.Type).HasMaxLength(30);
 
-            entity.HasOne(d => d.Project).WithMany(p => p.Chats)
-                .HasForeignKey(d => d.ProjectId)
-                .HasConstraintName("FK_Chats_ProjectId");
-
-            entity.HasOne(d => d.Task).WithMany(p => p.Chats)
-                .HasForeignKey(d => d.TaskId)
-                .HasConstraintName("FK_Chats_TaskId");
-
-            entity.HasOne(d => d.Team).WithMany(p => p.Chats)
-                .HasForeignKey(d => d.TeamId)
-                .HasConstraintName("FK_Chats_TeamId");
+            entity.HasOne(d => d.Type).WithMany(p => p.Chats)
+                .HasForeignKey(d => d.TypeId)
+                .HasConstraintName("FK_Chats_ChatTypes");
         });
 
         modelBuilder.Entity<ChatMember>(entity =>
@@ -103,11 +94,17 @@ public partial class HackathonCoordinatorContext : DbContext
                 .HasConstraintName("FK_ChatMembers_UserId");
         });
 
+        modelBuilder.Entity<ChatType>(entity =>
+        {
+            entity.Property(e => e.Name).HasMaxLength(50);
+        });
+
         modelBuilder.Entity<Competition>(entity =>
         {
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.EndDate).HasColumnType("datetime");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(200);
             entity.Property(e => e.StartDate).HasColumnType("datetime");
 
@@ -219,6 +216,10 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.GithubRepoName).HasMaxLength(100);
             entity.Property(e => e.Name).HasMaxLength(150);
 
+            entity.HasOne(d => d.Chat).WithMany(p => p.Projects)
+                .HasForeignKey(d => d.ChatId)
+                .HasConstraintName("FK_Projects_Chats");
+
             entity.HasOne(d => d.Team).WithMany(p => p.Projects)
                 .HasForeignKey(d => d.TeamId)
                 .HasConstraintName("FK_Projects_TeamId");
@@ -248,6 +249,10 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.HasOne(d => d.AssignedTo).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.AssignedToId)
                 .HasConstraintName("FK_Tasks_AssignedToId");
+
+            entity.HasOne(d => d.Chat).WithMany(p => p.Tasks)
+                .HasForeignKey(d => d.ChatId)
+                .HasConstraintName("FK_Tasks_Chats");
 
             entity.HasOne(d => d.Project).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.ProjectId)
@@ -330,6 +335,10 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.GitHubUrl).HasMaxLength(255);
             entity.Property(e => e.InviteCode).HasMaxLength(36);
             entity.Property(e => e.Name).HasMaxLength(100);
+
+            entity.HasOne(d => d.Chat).WithMany(p => p.Teams)
+                .HasForeignKey(d => d.ChatId)
+                .HasConstraintName("FK_Teams_Chats");
 
             entity.HasOne(d => d.Competition).WithMany(p => p.Teams)
                 .HasForeignKey(d => d.CompetitionId)

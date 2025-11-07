@@ -1,6 +1,5 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
-using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,58 +17,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
         public TeamsController(HackathonCoordinatorContext context)
         {
             _context = context;
-        }
-
-        [HttpPost("create")]
-        public async Task<IActionResult> CreateTeam([FromBody] CreateTeamDto dto)
-        {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
-                return BadRequest("Название команды не может быть пустым.");
-
-            var userId = GetUserId();
-            if (userId == 0)
-                return Unauthorized("Не удалось определить пользователя.");
-
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-                return NotFound("Пользователь не найден.");
-
-            if (user.TeamId != null)
-                return BadRequest("Вы уже состоите в команде. Сначала покиньте текущую.");
-
-            var teamExists = await _context.Teams
-                .AnyAsync(t => t.Name.ToLower() == dto.Name.Trim().ToLower());
-            if (teamExists)
-                return BadRequest("Команда с таким названием уже существует.");
-
-            // Проверяем привязку GitHub если требуется
-            if (dto.LinkToGitHub && string.IsNullOrEmpty(user.GitHubAccessToken))
-                return BadRequest("Для привязки команды к GitHub необходимо привязать GitHub аккаунт.");
-
-            var inviteCode = GenerateInviteCode();
-
-            var team = new Team
-            {
-                Name = dto.Name.Trim(),
-                InviteCode = inviteCode,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            if (dto.LinkToGitHub)
-            {
-                team.GitHubUrl = $"https://github.com/{user.GitHubUsername}";
-            }
-
-            _context.Teams.Add(team);
-            await _context.SaveChangesAsync();
-
-            user.TeamId = team.Id;
-            user.RoleId = 1; // Лидер команды
-            await _context.SaveChangesAsync();
-
-            return Ok(dto.LinkToGitHub
-                ? "Команда успешно создана и привязана к GitHub!"
-                : "Команда успешно создана.");
         }
 
         [HttpPost("join")]
@@ -112,8 +59,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 .Include(u => u.Team)
                     .ThenInclude(t => t.Users)
                         .ThenInclude(m => m.ProfileIcon)
+                .Include(u => u.Team)
+                    .ThenInclude(t => t.Users)
+                        .ThenInclude(m => m.Role)
                 .Include(u => u.Team.Projects)
-                .Include(u => u.Role)
                 .FirstOrDefaultAsync();
 
             if (user == null)
@@ -142,7 +91,61 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     Id = p.Id,
                     Name = p.Name,
                     CreatedAt = p.CreatedAt.Value,
-                    Description = p.Description
+                    Description = p.Description,
+                    GithubRepoName = p.GithubRepoName,
+                    ChatId = p.ChatId
+                }).ToList()
+            };
+
+            return Ok(teamDto);
+        }
+
+        [HttpGet("{teamId}")]
+        public async Task<ActionResult<TeamDto>> GetTeamById(int teamId)
+        {
+            var userId = GetUserId();
+            if (userId == 0)
+                return Unauthorized("Не удалось определить пользователя.");
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return NotFound("Пользователь не найден.");
+
+            if (user.RoleId != 3)
+                return NotFound("Только организатор имеет доступ к данным всех команд.");
+
+            var team = await _context.Teams
+                .Where(t => t.Id == teamId)
+                .Include(t => t.Users)
+                    .ThenInclude(u => u.ProfileIcon)
+                .Include(t => t.Users)
+                    .ThenInclude(u => u.Role)
+                .Include(t => t.Projects)
+                .FirstOrDefaultAsync();
+
+            var teamDto = new TeamDto
+            {
+                Id = team.Id,
+                Name = team.Name,
+                InviteCode = team.InviteCode,
+                GitHubUrl = team.GitHubUrl,
+                Members = team.Users.Select(m => new MemberDto
+                {
+                    Id = m.Id,
+                    Username = m.Username,
+                    RoleName = m.Role?.Name ?? "Участник",
+                    IconName = m.ProfileIcon?.Name
+                }).ToList(),
+                Projects = team.Projects.Select(p => new ProjectDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    CreatedAt = p.CreatedAt.Value,
+                    Description = p.Description,
+                    GithubRepoName = p.GithubRepoName,
+                    ChatId = p.ChatId
                 }).ToList()
             };
 
@@ -156,7 +159,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (userId == 0)
                 return Unauthorized("Не удалось определить пользователя.");
 
-            var user= await _context.Users
+            var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null)
@@ -200,64 +203,76 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 if (newCaptain != null)
                 {
-                    newCaptain.RoleId = 1; // Назначаем нового капитана
-                    user.TeamId = null; // Текущий пользователь покидает команду
-                }
-                else
-                {
-                    // Если нет других участников (маловероятно, но на всякий случай)
-                    _context.Teams.Remove(team);
-                    user.TeamId = null;
+                    newCaptain.RoleId = 1;
                 }
             }
-            else if (membersCount == 1)
-            {
-                // Если в команде только один участник - удаляем команду
-                _context.Teams.Remove(team);
-                user.TeamId = null;
-            }
-            else
-            {
-                // Обычный участник просто покидает команду
-                user.TeamId = null;
-            }
-
+            user.TeamId = null;
+            user.RoleId = 2;
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Вы покинули команду." });
         }
 
-        [HttpPost("transfer-leadership")]
-        public async Task<IActionResult> TransferLeadership([FromBody] TransferLeadershipDto dto)
+        [HttpPost("{teamId}/assign-captain")]
+        public async Task<IActionResult> AssignCaptain(int teamId, [FromBody] AssignCaptainDto dto)
         {
             var userId = GetUserId();
-            if (userId == 0)
-                return Unauthorized("Не удалось определить пользователя.");
+            var user = await _context.Users.FindAsync(userId);
 
-            var currentUser = await _context.Users
-                .Include(u => u.Team)
-                .ThenInclude(t => t.Users)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                return Unauthorized("Пользователь не найден");
 
-            if (currentUser == null || currentUser.TeamId == null)
-                return NotFound("Вы не состоите в команде.");
+            if (user.RoleId == 2)
+                return Forbid("Только организатор или капитан может назначать капитанов");
 
-            if (currentUser.RoleId != 1)
-                return BadRequest("Только капитан может передавать права.");
+            var team = await _context.Teams
+                .Include(t => t.Users)
+                .FirstOrDefaultAsync(t => t.Id == teamId);
 
-            var newCaptain = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == dto.NewCaptainUserId && u.TeamId == currentUser.TeamId);
+            if (team == null)
+                return NotFound("Команда не найдена");
 
+            if (user.TeamId != teamId && user.RoleId != 3)
+                return BadRequest("Капитан может назначить капитаном только члена своей команды");
+
+            var newCaptain = team.Users.FirstOrDefault(u => u.Id == dto.UserId);
             if (newCaptain == null)
-                return BadRequest("Участник не найден в вашей команде.");
+                return BadRequest("Участник не найден в команде");
 
-            // Передаем права
-            currentUser.RoleId = 2; // Становится обычным участником
-            newCaptain.RoleId = 1;  // Становится капитаном
+
+            var currentCaptain = team.Users.FirstOrDefault(u => u.RoleId == 1);
+            if (currentCaptain != null)
+            {
+                if (currentCaptain.Id == dto.UserId)
+                    return BadRequest("Участник уже является капитаном");
+
+                currentCaptain.RoleId = 2;
+            }
+
+            newCaptain.RoleId = 1;
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = $"Права капитана переданы участнику {newCaptain.Username}" });
+            return Ok("Капитан успешно назначен");
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteTeam(int id)
+        {
+            var userId = GetUserId();
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user?.RoleId != 3) // Только организатор
+                return Forbid("Только организатор может удалять команды");
+
+            var team = await _context.Teams.FindAsync(id);
+            if (team == null)
+                return NotFound("Команда не найдена");
+
+            _context.Teams.Remove(team);
+            await _context.SaveChangesAsync();
+
+            return Ok("Команда успешно удалена");
         }
 
         private int GetUserId()
@@ -266,11 +281,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         ?? User.FindFirstValue("id");
 
             return int.TryParse(idClaim, out var userId) ? userId : 0;
-        }
-
-        private static string GenerateInviteCode()
-        {
-            return Guid.NewGuid().ToString();
         }
     }
 }

@@ -36,6 +36,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _inviteCode = value; OnPropertyChanged(); }
         }
 
+        private TeamDto? _currentTeam;
+        public TeamDto? CurrentTeam
+        {
+            get => _currentTeam;
+            set { _currentTeam = value; OnPropertyChanged(); }
+        }
+
         private string _teamGitHubUrl;
         public string TeamGitHubUrl
         {
@@ -50,12 +57,27 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _isCaptain = value; OnPropertyChanged(); }
         }
 
+        private bool _isCaptainOrOrganizer;
+        public bool IsCaptainOrOrganizer
+        {
+            get => _isCaptainOrOrganizer;
+            set { _isCaptainOrOrganizer = value; OnPropertyChanged(); }
+        }
+
+        private bool _isTeamMember;
+        public bool IsTeamMember
+        {
+            get => _isTeamMember;
+            set { _isTeamMember = value; OnPropertyChanged(); }
+        }
         private bool _showTransferDialog;
         public bool ShowTransferDialog
         {
             get => _showTransferDialog;
             set { _showTransferDialog = value; OnPropertyChanged(); }
         }
+
+
 
         private MemberDto _selectedNewCaptain;
         public MemberDto SelectedNewCaptain
@@ -98,14 +120,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             LeaveTeamCommand = new RelayCommand(async () => await ExecuteLeaveTeamAsync());
             SelectProjectCommand = new RelayCommand<ProjectDto>(OnSelectProject);
-            CreateProjectCommand = new RelayCommand(() => ExecuteCreateProject());
+            CreateProjectCommand = new RelayCommand(async () => await ExecuteCreateProjectAsync());
             CopyInviteCodeCommand = new RelayCommand(() => ExecuteCopyInviteCode());
             OpenTeamGitHubCommand = new RelayCommand(() => ExecuteOpenTeamGitHub());
             TransferLeadershipCommand = new RelayCommand(() => ExecuteTransferLeadership());
             ConfirmTransferCommand = new RelayCommand(async () => await ExecuteConfirmTransferAsync());
             CancelTransferCommand = new RelayCommand(() => ExecuteCancelTransfer());
-
-            LoadTeamDataAsync();
         }
 
         private async Task ExecuteLeaveTeamAsync()
@@ -163,7 +183,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             try
             {
-                var result = await _teamService.TransferLeadershipAsync(SelectedNewCaptain.Id);
+                var result = await _teamService.AssignCaptainAsync(CurrentTeam.Id, SelectedNewCaptain.Id);
 
                 if (result.Success)
                 {
@@ -171,7 +191,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     ShowTransferDialog = false;
 
                     // Обновляем данные команды
-                    await LoadTeamDataAsync();
+                    await LoadTeamDataAsync(CurrentTeam.Id);
                 }
                 else
                 {
@@ -193,12 +213,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private void OnSelectProject(ProjectDto project)
         {
             if (project == null) return;
-            MessageBox.Show($"Проект выбран: {project.Name}");
+            
+            _navigationService.NavigateTo(new ProjectPage(project));
         }
 
-        private void ExecuteCreateProject()
+        private async Task ExecuteCreateProjectAsync()
         {
-            MessageBox.Show("Открывается окно создания проекта (реализуй позже).");
+            var teamId = await _teamService.GetCurrentTeamIdAsync();
+
+            if (teamId != null)
+            {
+                _navigationService.NavigateTo(new EditProjectPage(teamId.Value));
+            }
+            else
+            {
+                MessageBox.Show("Не удалось определить команду");
+            }
         }
 
         private void ExecuteCopyInviteCode()
@@ -219,27 +249,42 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private async Task LoadTeamDataAsync()
+        public async Task LoadTeamDataAsync(int? teamId)
         {
-            var team = await _teamService.GetCurrentTeamAsync();
-            if (team == null)
+            if (teamId == null)
             {
-                MessageBox.Show("Вы не состоите в команде.");
-                _navigationService.NavigateTo(new NoTeamPage());
-                return;
+                CurrentTeam = await _teamService.GetCurrentTeamAsync();
+                if (CurrentTeam == null)
+                {
+                    MessageBox.Show("Вы не состоите в команде.");
+                    _navigationService.NavigateTo(new CompetitionsPage());
+                    return;
+                }
+            }
+            else
+            {
+                CurrentTeam = await _teamService.GetTeamByIdAsync(teamId);
+                if (CurrentTeam == null)
+                {
+                    MessageBox.Show("Команда не найдена");
+                    _navigationService.NavigateTo(new CompetitionsPage());
+                    return;
+                }
             }
 
-            TeamName = team.Name;
-            InviteCode = team.InviteCode;
-            TeamGitHubUrl = team.GitHubUrl;
+            TeamName = CurrentTeam.Name;
+            InviteCode = CurrentTeam.InviteCode;
+            TeamGitHubUrl = CurrentTeam.GitHubUrl;
 
             var user = await _userService.GetCurrentUserAsync();
 
             // Обновляем статус капитана
-            IsCaptain = user.RoleId == 1;
+            IsCaptain = user?.RoleId == 1;
+            IsCaptainOrOrganizer = user?.RoleId == 3 || IsCaptain;
+            IsTeamMember = user?.RoleId == 2 || IsCaptain;
 
             // Сортируем участников: капитан первый, затем остальные
-            var orderedMembers = team.Members
+            var orderedMembers = CurrentTeam.Members
                 .OrderByDescending(m => m.IsCaptain)
                 .ThenBy(m => m.Username)
                 .ToList();
@@ -247,12 +292,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             Members.Clear();
             foreach (var m in orderedMembers)
             {
-                m.IsCurrentUser = m.Id == user.Id;
+                m.IsCurrentUser = m.Id == user?.Id;
                 Members.Add(m);
             }
 
             Projects.Clear();
-            foreach (var p in team.Projects)
+            foreach (var p in CurrentTeam.Projects)
                 Projects.Add(p);
 
             // Обновляем все свойства

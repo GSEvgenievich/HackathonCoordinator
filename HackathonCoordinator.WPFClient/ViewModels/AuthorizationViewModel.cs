@@ -55,7 +55,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var teamId = await _teamService.GetCurrentTeamIdAsync();
 
                 if (teamId == null)
-                    _navigationService.NavigateTo(new NoTeamPage());
+                    _navigationService.NavigateTo(new CompetitionsPage());
                 else
                     _navigationService.NavigateTo(new TeamPage());
             }

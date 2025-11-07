@@ -77,20 +77,21 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 return (true, "У вас новая команда!");
             }
         }
-        public async Task<(bool Success, string Message)> TransferLeadershipAsync(int newCaptainUserId)
+
+        public async Task<(bool Success, string Message)> AssignCaptainAsync(int teamId, int userId)
         {
             SetAuthHeader();
 
-            var json = JsonConvert.SerializeObject(new { NewCaptainUserId = newCaptainUserId });
+            var json = JsonConvert.SerializeObject(new { UserId = userId });
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("teams/transfer-leadership", content);
+            var response = await _client.PostAsync($"teams/{teamId}/assign-captain", content);
 
             var body = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
                 return (false, $"Ошибка: {body}");
 
-            return (true, "Права капитана успешно переданы");
+            return (true, "Капитан успешно назначен");
         }
 
         public async Task<TeamDto?> GetCurrentTeamAsync()
@@ -98,6 +99,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
             SetAuthHeader();
 
             var response = await _client.GetAsync("teams/current");
+
             if (!response.IsSuccessStatusCode)
                 return null;
 
@@ -127,6 +129,18 @@ namespace HackathonCoordinator.ServiceLayer.Services
 
             dynamic data = JsonConvert.DeserializeObject(body)!;
             return (true, data.message?.ToString() ?? "Вы покинули команду");
+        }
+
+        public async Task<TeamDto?> GetTeamByIdAsync(int? teamId)
+        {
+            SetAuthHeader();
+
+            var response = await _client.GetAsync($"teams/{teamId}");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<TeamDto>();
         }
     }
 }
