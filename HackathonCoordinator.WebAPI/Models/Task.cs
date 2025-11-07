@@ -25,9 +25,11 @@ public partial class Task
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? ChatId { get; set; }
+
     public virtual User? AssignedTo { get; set; }
 
-    public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
+    public virtual Chat? Chat { get; set; }
 
     public virtual Project Project { get; set; } = null!;
 

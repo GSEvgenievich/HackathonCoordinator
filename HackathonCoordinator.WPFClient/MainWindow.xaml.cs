@@ -50,7 +50,7 @@ namespace HackathonCoordinator.WPFClient
                 }
                 else
                 {
-                    App.NavigationService.NavigateTo(new NoTeamPage());
+                    App.NavigationService.NavigateTo(new CompetitionsPage());
                 }
             }
             catch (Exception ex)

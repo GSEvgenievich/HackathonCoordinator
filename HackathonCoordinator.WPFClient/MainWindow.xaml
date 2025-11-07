@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
         mc:Ignorable="d"
         Title="Hackathon Coordinator" Height="600" Width="1000"
-        MinHeight="300" MinWidth="550"
+        MinHeight="680" MinWidth="550"
         WindowStartupLocation="CenterScreen">
 
     <Window.DataContext>

@@ -1,16 +1,15 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Зимние цвета -->
-    <Color x:Key="PrimaryColor">#FF4A90E2</Color>
-    <!-- Ледяной синий -->
-    <Color x:Key="PrimaryDarkColor">#FF3A7BC8</Color>
-    <Color x:Key="SuccessColor">#FF27AE60</Color>
-    <Color x:Key="WarningColor">#FFE67E22</Color>
-    <Color x:Key="DangerColor">#FFE74C3C</Color>
-    <Color x:Key="InfoColor">#FF95C1E5</Color>
-    <Color x:Key="ShadowColor">#40000000</Color>
-    <Color x:Key="HoverShadowColor">#60000000</Color>
+    <!-- Зимние цвета - гармония с холодными синими фонами -->
+    <Color x:Key="PrimaryColor">#4A90E2</Color>
+    <Color x:Key="PrimaryDarkColor">#3A80D2</Color>
+    <Color x:Key="SuccessColor">#4CAF50</Color>
+    <Color x:Key="WarningColor">#FF9800</Color>
+    <Color x:Key="DangerColor">#F44336</Color>
+    <Color x:Key="InfoColor">#00BCD4</Color>
+    <Color x:Key="ShadowColor">#20000000</Color>
+    <Color x:Key="HoverShadowColor">#40000000</Color>
 
     <SolidColorBrush x:Key="ShadowBrush" Color="{StaticResource ShadowColor}"/>
     <SolidColorBrush x:Key="HoverShadowBrush" Color="{StaticResource HoverShadowColor}"/>
@@ -21,26 +20,26 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
 
-    <!-- Фоновые изображения для зимы -->
+    <!-- Фоны -->
     <ImageSource x:Key="MainBackgroundImage">/Assets/Images/Themes/winter_bg.png</ImageSource>
     <ImageSource x:Key="AccentBackgroundImage">/Assets/Images/Themes/winter_accent.png</ImageSource>
 
-    <!-- Фоны -->
     <ImageBrush x:Key="MainBackgroundBrush" ImageSource="{StaticResource MainBackgroundImage}" Stretch="UniformToFill"/>
     <ImageBrush x:Key="AccentBackgroundBrush" ImageSource="{StaticResource AccentBackgroundImage}" Stretch="UniformToFill"/>
 
-    <!-- Цвета интерфейса для зимы -->
-    <SolidColorBrush x:Key="BackgroundColor">#FFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="CardBackground">#F8FBFF</SolidColorBrush>
-    <SolidColorBrush x:Key="ControlBackground">#FFFFFF</SolidColorBrush>
+    <!-- Цвета интерфейса -->
+    <SolidColorBrush x:Key="BackgroundColor">#F0F8FF</SolidColorBrush>
+    <SolidColorBrush x:Key="CardBackground">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="ControlBackground">#F7FBFF</SolidColorBrush>
     <SolidColorBrush x:Key="TextColor">#2C3E50</SolidColorBrush>
-    <SolidColorBrush x:Key="TextSecondaryColor">#7F8C8D</SolidColorBrush>
-    <SolidColorBrush x:Key="BorderColor">#E1F0FF</SolidColorBrush>
-    <SolidColorBrush x:Key="HoverColor">#F0F8FF</SolidColorBrush>
-    <SolidColorBrush x:Key="SidebarBackground">#804A90E2</SolidColorBrush>
-    <SolidColorBrush x:Key="SidebarTextColor">#FFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="SidebarHoverColor">#A04A90E2</SolidColorBrush>
-    <SolidColorBrush x:Key="IconButtonBackground">#FF4A90E2</SolidColorBrush>
+    <SolidColorBrush x:Key="TextSecondaryColor">#5D6D7E</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderColor">#D6EAF8</SolidColorBrush>
+    <SolidColorBrush x:Key="HoverColor">#E8F4FF</SolidColorBrush>
+    <SolidColorBrush x:Key="SidebarBackground">#ACCDE2</SolidColorBrush>
+    <!-- Используем accent цвет -->
+    <SolidColorBrush x:Key="SidebarTextColor">#2C3E50</SolidColorBrush>
+    <SolidColorBrush x:Key="SidebarHoverColor">#9CBDD2</SolidColorBrush>
+    <SolidColorBrush x:Key="IconButtonBackground">#4A90E2</SolidColorBrush>
     <SolidColorBrush x:Key="IconButtonForeground">#FFFFFF</SolidColorBrush>
 
 </ResourceDictionary>

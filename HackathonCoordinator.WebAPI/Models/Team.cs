@@ -17,7 +17,9 @@ public partial class Team
 
     public string? GitHubUrl { get; set; }
 
-    public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
+    public int? ChatId { get; set; }
+
+    public virtual Chat? Chat { get; set; }
 
     public virtual Competition Competition { get; set; } = null!;
 

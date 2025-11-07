@@ -17,7 +17,9 @@ public partial class Project
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
+    public int? ChatId { get; set; }
+
+    public virtual Chat? Chat { get; set; }
 
     public virtual ICollection<File> Files { get; set; } = new List<File>();
 

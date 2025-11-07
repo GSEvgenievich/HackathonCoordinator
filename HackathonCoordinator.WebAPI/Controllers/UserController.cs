@@ -42,6 +42,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     Email = u.Email,
                     RoleId = u.RoleId,
                     GitHubUsername = u.GitHubUsername,
+                    TeamId = u.TeamId,
                     TeamName = u.Team != null ? u.Team.Name : null,
                     IconId = u.ProfileIconId,
                     IconName = u.ProfileIcon != null ? u.ProfileIcon.Name : null

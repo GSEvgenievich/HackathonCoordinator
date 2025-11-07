@@ -15,14 +15,8 @@
     <None Remove="Assets\Images\Profile\girl2.png" />
     <None Remove="Assets\Images\Profile\robot1.png" />
     <None Remove="Assets\Images\Profile\robot2.png" />
-    <None Remove="Assets\Images\Themes\autumn_accent.png" />
-    <None Remove="Assets\Images\Themes\autumn_bg.png" />
     <None Remove="Assets\Images\Themes\dark_accent.png" />
     <None Remove="Assets\Images\Themes\dark_bg.png" />
-    <None Remove="Assets\Images\Themes\light_accent.png" />
-    <None Remove="Assets\Images\Themes\light_bg.png" />
-    <None Remove="Assets\Images\Themes\spring_accent.png" />
-    <None Remove="Assets\Images\Themes\spring_bg.png" />
     <None Remove="Assets\Images\Themes\summer_accent.png" />
     <None Remove="Assets\Images\Themes\summer_bg.png" />
     <None Remove="Assets\Images\Themes\winter_accent.png" />
@@ -64,10 +58,10 @@
     <Resource Include="Assets\Images\Themes\dark_bg.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Assets\Images\Themes\light_accent.png">
+    <Resource Include="Assets\Images\Themes\light_bg.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Assets\Images\Themes\light_bg.png">
+    <Resource Include="Assets\Images\Themes\light_accent.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Assets\Images\Themes\spring_accent.png">
@@ -88,6 +82,10 @@
     <Resource Include="Assets\Images\Themes\winter_bg.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Assets\Fonts\" />
   </ItemGroup>
 
 </Project>
