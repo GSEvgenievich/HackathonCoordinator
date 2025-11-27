@@ -1,6 +1,7 @@
-﻿using HackathonCoordinator.WebAPI.Models;
+﻿using System;
+using System.Collections.Generic;
+using HackathonCoordinator.WebAPI.Models;
 using Microsoft.EntityFrameworkCore;
-using File = HackathonCoordinator.WebAPI.Models.File;
 using Task = HackathonCoordinator.WebAPI.Models.Task;
 using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
 
@@ -19,15 +20,9 @@ public partial class HackathonCoordinatorContext : DbContext
 
     public virtual DbSet<Chat> Chats { get; set; }
 
-    public virtual DbSet<ChatMember> ChatMembers { get; set; }
-
     public virtual DbSet<ChatType> ChatTypes { get; set; }
 
     public virtual DbSet<Competition> Competitions { get; set; }
-
-    public virtual DbSet<File> Files { get; set; }
-
-    public virtual DbSet<FileCategory> FileCategories { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
 
@@ -36,8 +31,6 @@ public partial class HackathonCoordinatorContext : DbContext
     public virtual DbSet<NotificationType> NotificationTypes { get; set; }
 
     public virtual DbSet<ProfileIcon> ProfileIcons { get; set; }
-
-    public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -72,26 +65,8 @@ public partial class HackathonCoordinatorContext : DbContext
 
             entity.HasOne(d => d.Type).WithMany(p => p.Chats)
                 .HasForeignKey(d => d.TypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Chats_ChatTypes");
-        });
-
-        modelBuilder.Entity<ChatMember>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__ChatMemb__3214EC07A08E8C5A");
-
-            entity.Property(e => e.JoinedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-
-            entity.HasOne(d => d.Chat).WithMany(p => p.ChatMembers)
-                .HasForeignKey(d => d.ChatId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ChatMembers_ChatId");
-
-            entity.HasOne(d => d.User).WithMany(p => p.ChatMembers)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ChatMembers_UserId");
         });
 
         modelBuilder.Entity<ChatType>(entity =>
@@ -101,10 +76,11 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Competition>(entity =>
         {
-            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.EndDate).HasColumnType("datetime");
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(200);
             entity.Property(e => e.StartDate).HasColumnType("datetime");
 
@@ -112,40 +88,6 @@ public partial class HackathonCoordinatorContext : DbContext
                 .HasForeignKey(d => d.CreatedById)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Competitions_CreatedById");
-        });
-
-        modelBuilder.Entity<File>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__Document__3214EC0711910DC6");
-
-            entity.Property(e => e.FileKey).HasDefaultValueSql("(newid())");
-            entity.Property(e => e.FileName).HasMaxLength(255);
-            entity.Property(e => e.UploadedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-
-            entity.HasOne(d => d.Category).WithMany(p => p.Files)
-                .HasForeignKey(d => d.CategoryId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Files_CategoryId");
-
-            entity.HasOne(d => d.Project).WithMany(p => p.Files)
-                .HasForeignKey(d => d.ProjectId)
-                .HasConstraintName("FK_Files_ProjectId");
-
-            entity.HasOne(d => d.UploadedBy).WithMany(p => p.Files)
-                .HasForeignKey(d => d.UploadedById)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Files_UploadedById");
-        });
-
-        modelBuilder.Entity<FileCategory>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__FileCate__3214EC07B4361BC0");
-
-            entity.HasIndex(e => e.Name, "UQ__FileCate__737584F633DD6A36").IsUnique();
-
-            entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Message>(entity =>
@@ -175,7 +117,6 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.IsRead).HasDefaultValue(false);
             entity.Property(e => e.Message).HasMaxLength(1000);
 
             entity.HasOne(d => d.NotificationType).WithMany(p => p.Notifications)
@@ -205,26 +146,6 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
-        modelBuilder.Entity<Project>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__Projects__3214EC074397AA85");
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.GithubRepoName).HasMaxLength(100);
-            entity.Property(e => e.Name).HasMaxLength(150);
-
-            entity.HasOne(d => d.Chat).WithMany(p => p.Projects)
-                .HasForeignKey(d => d.ChatId)
-                .HasConstraintName("FK_Projects_Chats");
-
-            entity.HasOne(d => d.Team).WithMany(p => p.Projects)
-                .HasForeignKey(d => d.TeamId)
-                .HasConstraintName("FK_Projects_TeamId");
-        });
-
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC074348EF0D");
@@ -252,16 +173,18 @@ public partial class HackathonCoordinatorContext : DbContext
 
             entity.HasOne(d => d.Chat).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.ChatId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Tasks_Chats");
-
-            entity.HasOne(d => d.Project).WithMany(p => p.Tasks)
-                .HasForeignKey(d => d.ProjectId)
-                .HasConstraintName("FK_Tasks_ProjectId");
 
             entity.HasOne(d => d.Status).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.StatusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Tasks_StatusId");
+
+            entity.HasOne(d => d.Team).WithMany(p => p.Tasks)
+                .HasForeignKey(d => d.TeamId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Tasks_Teams");
 
             entity.HasOne(d => d.Type).WithMany(p => p.Tasks)
                 .HasForeignKey(d => d.TypeId)
@@ -297,8 +220,6 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.IsClosed).HasDefaultValue(false);
-            entity.Property(e => e.IsResultsVisible).HasDefaultValue(false);
 
             entity.HasOne(d => d.Task).WithOne(p => p.TaskVote)
                 .HasForeignKey<TaskVote>(d => d.TaskId)
@@ -332,7 +253,7 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.GitHubUrl).HasMaxLength(255);
+            entity.Property(e => e.GitRepoName).HasMaxLength(100);
             entity.Property(e => e.InviteCode).HasMaxLength(36);
             entity.Property(e => e.Name).HasMaxLength(100);
 

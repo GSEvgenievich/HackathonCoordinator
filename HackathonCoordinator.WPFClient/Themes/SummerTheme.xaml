@@ -7,7 +7,7 @@
     <Color x:Key="PrimaryDarkColor">#5A7447</Color>
     <Color x:Key="SuccessColor">#4CAF50</Color>
     <Color x:Key="WarningColor">#FF9800</Color>
-    <Color x:Key="DangerColor">#F44336</Color>
+    <Color x:Key="DangerColor">#E74C3C</Color>
     <Color x:Key="InfoColor">#2196F3</Color>
     <Color x:Key="ShadowColor">#20000000</Color>
     <Color x:Key="HoverShadowColor">#40000000</Color>
@@ -33,6 +33,7 @@
     <SolidColorBrush x:Key="CardBackground">#FFFFFF</SolidColorBrush>
     <SolidColorBrush x:Key="ControlBackground">#F9FDF7</SolidColorBrush>
     <SolidColorBrush x:Key="TextColor">#2E4C2E</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarColor">#4CAF50</SolidColorBrush>
     <!-- Темно-зеленый для контраста -->
     <SolidColorBrush x:Key="TextSecondaryColor">#556E55</SolidColorBrush>
     <SolidColorBrush x:Key="BorderColor">#DCEBD4</SolidColorBrush>

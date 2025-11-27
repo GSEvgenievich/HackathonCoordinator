@@ -1,6 +1,6 @@
 ﻿namespace HackathonCoordinator.ServiceLayer.DTOs
 {
-    public class TaskType
+    public class TaskTypeDto
     {
         public int Id { get; set; }
 

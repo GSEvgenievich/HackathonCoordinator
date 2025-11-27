@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\Images\Icon.ico" />
+    <None Remove="Assets\Images\Icon.png" />
     <None Remove="Assets\Images\Profile\boy1.png" />
     <None Remove="Assets\Images\Profile\boy2.png" />
     <None Remove="Assets\Images\Profile\girl1.png" />
@@ -28,6 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\Images\Icon.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Images\Icon.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Assets\Images\Profile\boy1.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>

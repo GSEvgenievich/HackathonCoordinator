@@ -36,6 +36,7 @@
     <SolidColorBrush x:Key="ControlBackground">#252545</SolidColorBrush>
     <!-- Для инпутов и кнопок -->
     <SolidColorBrush x:Key="TextColor">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarColor">#8A2BE2</SolidColorBrush>
     <!-- Белый для максимального контраста -->
     <SolidColorBrush x:Key="TextSecondaryColor">#B8B8D8</SolidColorBrush>
     <!-- Светло-фиолетовый для второстепенного текста -->

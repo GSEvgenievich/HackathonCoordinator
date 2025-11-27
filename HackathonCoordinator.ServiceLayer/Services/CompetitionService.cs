@@ -110,5 +110,71 @@ namespace HackathonCoordinator.ServiceLayer.Services
 
             return (true, "Команда успешно удалена");
         }
+
+        public async Task<CompetitionExportDataDto> GetCompetitionExportDataAsync(int competitionId)
+        {
+            SetAuthHeader();
+            var response = await _client.GetAsync($"export/competition-data/{competitionId}");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<CompetitionExportDataDto>(json);
+        }
+    }
+
+    public class CompetitionExportDataDto
+    {
+        public CompetitionDto Competition { get; set; }
+        public List<TeamExportDto> Teams { get; set; }
+        public CompetitionStatsDto Stats { get; set; }
+        public string SuggestedFileName { get; set; }
+    }
+
+    public class TeamExportDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public List<TeamMemberDto> Members { get; set; }
+        public List<TaskExportDto> Tasks { get; set; }
+        public TeamStatsDto TeamStats { get; set; }
+    }
+
+    public class TeamMemberDto
+    {
+        public string Username { get; set; }
+        public string Role { get; set; }
+        public bool IsCaptain { get; set; }
+    }
+
+    public class TaskExportDto
+    {
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Type { get; set; }
+        public string Status { get; set; }
+        public string AssignedTo { get; set; }
+        public DateTime? Deadline { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class TeamStatsDto
+    {
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int InProgressTasks { get; set; }
+        public int PlannedTasks { get; set; }
+        public int CompletionPercentage { get; set; }
+    }
+
+    public class CompetitionStatsDto
+    {
+        public int TotalParticipants { get; set; }
+        public int TotalTasks { get; set; }
+        public int TotalCompletedTasks { get; set; }
+        public int TotalCompletionPercentage { get; set; }
+        public int AverageTeamProgress { get; set; }
     }
 }

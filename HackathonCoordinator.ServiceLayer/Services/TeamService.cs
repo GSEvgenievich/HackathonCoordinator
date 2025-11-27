@@ -142,5 +142,110 @@ namespace HackathonCoordinator.ServiceLayer.Services
 
             return await response.Content.ReadFromJsonAsync<TeamDto>();
         }
+
+        public async Task<List<TaskDto>> GetTeamTasksAsync(int teamId)
+        {
+            SetAuthHeader();
+            var response = await _client.GetAsync($"teams/{teamId}/tasks");
+
+            if (!response.IsSuccessStatusCode)
+                return new List<TaskDto>();
+
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<List<TaskDto>>(json) ?? new List<TaskDto>();
+        }
+
+        public async Task<CompetitionDto> GetCompetitionByTeamIdAsync(int teamId)
+        {
+            SetAuthHeader();
+            var response = await _client.GetAsync($"teams/{teamId}/competition");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<CompetitionDto>();
+        }
+
+        public async Task<(bool Success, string Message, string RepoUrl, string ErrorType)> CreateGitHubRepositoryAsync(
+            int teamId, string repoName, string description, bool isPrivate = true)
+        {
+            SetAuthHeader();
+
+            var json = JsonConvert.SerializeObject(new
+            {
+                RepoName = repoName,
+                Description = description,
+                IsPrivate = isPrivate
+            });
+
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = await _client.PostAsync($"teams/{teamId}/create-github-repo", content);
+                var body = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorType = "unknown";
+                    string errorMessage = "unknown";
+
+                    try
+                    {
+                        var errorResponse = JsonConvert.DeserializeObject<GitHubErrorResponse>(body);
+                        errorType = "unknown";
+                        errorMessage = errorResponse?.Error ?? body;
+
+                        if (errorMessage.Contains("уже существует") || errorMessage.Contains("already exists"))
+                            errorType = "name_already_exists";
+                        else if (errorMessage.Contains("авторизации") || errorMessage.Contains("Bad credentials"))
+                            errorType = "auth_error";
+                        else if (errorMessage.Contains("соединения") || errorMessage.Contains("connection"))
+                            errorType = "network_error";
+                        else if (errorMessage.Contains("лимит") || errorMessage.Contains("rate limit"))
+                            errorType = "rate_limit";
+                    }
+                    catch
+                    {
+                        // Если не удалось распарсить, оставляем unknown
+                    }
+
+                    return (false, errorMessage, null, errorType);
+                }
+
+                var result = JsonConvert.DeserializeObject<GitHubRepoCreationResult>(body);
+                return (true, result?.Message ?? "Репозиторий успешно создан", result?.RepoUrl, null);
+            }
+            catch (System.Net.Http.HttpRequestException ex) when (ex.Message.Contains("NameResolutionFailure") || ex.Message.Contains("ConnectFailure"))
+            {
+                return (false, "Ошибка соединения с GitHub. Проверьте интернет-подключение.", null, "network_error");
+            }
+            catch (TaskCanceledException ex)
+            {
+                return (false, "Превышено время ожидания ответа от GitHub.", null, "timeout");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Неожиданная ошибка: {ex.Message}", null, "unknown");
+            }
+        }
+
+        public class GitHubRepoCreationResult
+        {
+            [JsonProperty("message")]
+            public string Message { get; set; }
+
+            [JsonProperty("repoUrl")]
+            public string RepoUrl { get; set; }
+
+            [JsonProperty("repoName")]
+            public string RepoName { get; set; }
+        }
+
+        public class GitHubErrorResponse
+        {
+            [JsonProperty("error")]
+            public string Error { get; set; }
+        }
     }
 }

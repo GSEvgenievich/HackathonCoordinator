@@ -33,12 +33,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
 
-            // Для организатора возвращаем все соревнования, для остальных - только активные
-            if (user?.RoleId != 3) // 3 = Organizer
-            {
-                competitions = competitions.Where(c => c.IsActive && c.EndDate >= DateTime.Now).ToList();
-            }
-
             return competitions.Select(c => new CompetitionDto
             {
                 Id = c.Id,
@@ -46,7 +40,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 Description = c.Description,
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
-                IsActive = c.IsActive,
                 CreatedAt = c.CreatedAt,
                 CreatedById = c.CreatedById,
                 CreatedByUsername = c.CreatedBy.Username,
@@ -71,7 +64,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 Description = competition.Description,
                 StartDate = competition.StartDate,
                 EndDate = competition.EndDate,
-                IsActive = competition.IsActive,
                 CreatedAt = competition.CreatedAt,
                 CreatedById = competition.CreatedById,
                 CreatedByUsername = competition.CreatedBy.Username,
@@ -82,7 +74,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCompetition([FromBody] CreateCompetitionDto dto)
         {
+
             var userId = GetUserId();
+            var user = await _context.Users.FindAsync(userId);
+            if (user?.RoleId != 3)
+                return Forbid("Только организатор может создавать соревнования");
 
             var competition = new Competition
             {
@@ -90,8 +86,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 Description = dto.Description,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
-                CreatedById = userId,
-                IsActive = true
+                CreatedById = userId
             };
 
             _context.Competitions.Add(competition);
@@ -107,10 +102,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (competition == null)
                 return NotFound("Соревнование не найдено");
 
-            // Проверяем права (только создатель может редактировать)
             var userId = GetUserId();
-            if (competition.CreatedById != userId)
-                return Forbid("Вы не можете редактировать это соревнование");
+            var user = await _context.Users.FindAsync(userId);
+            if (user?.RoleId != 3)
+                return Forbid("Только организатор может редактировать соревнования");
 
             competition.Name = dto.Name;
             competition.Description = dto.Description;
@@ -139,15 +134,35 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (teamExists)
                 return BadRequest("Команда с таким названием уже существует в этом соревновании");
 
+            var teamChat = new Chat
+            {
+                Name = $"Чат команды {dto.Name.Trim()}",
+                TypeId = 1,
+                CreatedAt = DateTime.Now
+            };
+            _context.Chats.Add(teamChat);
+            await _context.SaveChangesAsync();
+
             var team = new Team
             {
                 Name = dto.Name.Trim(),
                 CompetitionId = id,
                 InviteCode = Guid.NewGuid().ToString(),
-                CreatedAt = DateTime.UtcNow
+                ChatId = teamChat.Id,
+                CreatedAt = DateTime.Now
             };
 
             _context.Teams.Add(team);
+            await _context.SaveChangesAsync();
+            
+            var welcomeMessage = new Message
+            {
+                ChatId = teamChat.Id,
+                UserId = userId,
+                Text = $"Команда \"{dto.Name.Trim()}\" создана! Добро пожаловать в общий чат команды.",
+                SentAt = DateTime.Now
+            };
+            _context.Messages.Add(welcomeMessage);
             await _context.SaveChangesAsync();
 
             return Ok("Команда успешно создана");

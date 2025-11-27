@@ -3,16 +3,15 @@ using HackathonCoordinator.ServiceLayer.Storages;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
 using System.Text;
-using TaskStatus = HackathonCoordinator.ServiceLayer.DTOs.TaskStatus;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class ProjectService
+    public class TaskService
     {
         private readonly HttpClient _client;
         private const string BaseUrl = "http://localhost:5046/api/";
 
-        public ProjectService()
+        public TaskService()
         {
             _client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
             SetAuthHeader();
@@ -26,97 +25,28 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 : new AuthenticationHeaderValue("Bearer", token);
         }
 
-        public async Task<List<TaskDto>> GetProjectTasksAsync(int projectId)
-        {
-            SetAuthHeader();
-            var response = await _client.GetAsync($"projects/{projectId}/tasks");
-
-            if (!response.IsSuccessStatusCode)
-                return new List<TaskDto>();
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<TaskDto>>(json) ?? new List<TaskDto>();
-        }
-
-        public async Task<ProjectDto> GetProjectAsync(int projectId)
-        {
-            SetAuthHeader();
-            var response = await _client.GetAsync($"projects/{projectId}");
-
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<ProjectDto>(json);
-        }
-
-        public async Task<(bool Success, string Message)> CreateProjectAsync(int teamId, CreateProjectDto dto)
-        {
-            SetAuthHeader();
-
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PostAsync($"teams/{teamId}/projects", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Проект успешно создан");
-        }
-
-        public async Task<(bool Success, string Message)> UpdateProjectAsync(int projectId, UpdateProjectDto dto)
-        {
-            SetAuthHeader();
-
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PutAsync($"projects/{projectId}", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Проект успешно обновлен");
-        }
-
-        public async Task<(bool Success, string Message)> DeleteProjectAsync(int projectId)
-        {
-            SetAuthHeader();
-
-            var response = await _client.DeleteAsync($"projects/{projectId}");
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Проект успешно удален");
-        }
-
-        public async Task<List<TaskType>> GetTaskTypesAsync()
+        public async Task<List<TaskTypeDto>> GetTaskTypesAsync()
         {
             SetAuthHeader();
             var response = await _client.GetAsync("tasks/types");
 
             if (!response.IsSuccessStatusCode)
-                return new List<TaskType>();
+                return new List<TaskTypeDto>();
 
             var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<TaskType>>(json) ?? new List<TaskType>();
+            return JsonConvert.DeserializeObject<List<TaskTypeDto>>(json) ?? new List<TaskTypeDto>();
         }
 
-        public async Task<List<TaskStatus>> GetTaskStatusesAsync()
+        public async Task<List<TaskStatusDTO>> GetTaskStatusesAsync()
         {
             SetAuthHeader();
             var response = await _client.GetAsync("tasks/statuses");
 
             if (!response.IsSuccessStatusCode)
-                return new List<TaskStatus>();
+                return new List<TaskStatusDTO>();
 
             var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<TaskStatus>>(json) ?? new List<TaskStatus>();
+            return JsonConvert.DeserializeObject<List<TaskStatusDTO>>(json) ?? new List<TaskStatusDTO>();
         }
 
         public async Task<TaskDetailsDto> GetTaskDetailsAsync(int taskId)
@@ -131,20 +61,36 @@ namespace HackathonCoordinator.ServiceLayer.Services
             return JsonConvert.DeserializeObject<TaskDetailsDto>(json);
         }
 
-        public async Task<(bool Success, string Message)> CreateTaskAsync(int projectId, CreateTaskDto dto)
+        public async Task<(bool Success, string Message)> CreateTaskAsync(int teamId, CreateTaskDto dto)
         {
             SetAuthHeader();
 
             var json = JsonConvert.SerializeObject(dto);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _client.PostAsync($"projects/{projectId}/tasks", content);
+            var response = await _client.PostAsync($"teams/{teamId}/tasks", content);
             var body = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
                 return (false, $"Ошибка: {body}");
 
-            return (true, "Задача успешно создана");
+            try
+            {
+                var result = JsonConvert.DeserializeObject<dynamic>(body);
+                var message = result?.message?.ToString() ?? "Задача успешно создана";
+                var warning = result?.warning?.ToString();
+
+                if (!string.IsNullOrEmpty(warning))
+                {
+                    message += $"\n\n⚠️ {warning}";
+                }
+
+                return (true, message);
+            }
+            catch
+            {
+                return (true, "Задача успешно создана");
+            }
         }
 
         public async Task<(bool Success, string Message)> UpdateTaskAsync(int taskId, CreateTaskDto dto)
@@ -160,7 +106,23 @@ namespace HackathonCoordinator.ServiceLayer.Services
             if (!response.IsSuccessStatusCode)
                 return (false, $"Ошибка: {body}");
 
-            return (true, "Задача успешно обновлена");
+            try
+            {
+                var result = JsonConvert.DeserializeObject<dynamic>(body);
+                var message = result?.message?.ToString() ?? "Задача успешно обновлена";
+                var warning = result?.warning?.ToString();
+
+                if (!string.IsNullOrEmpty(warning))
+                {
+                    message += $"\n\n⚠️ {warning}";
+                }
+
+                return (true, message);
+            }
+            catch
+            {
+                return (true, "Задача успешно обновлена");
+            }
         }
 
         public async Task<(bool Success, string Message)> AssignTaskAsync(int taskId, int userId)

@@ -2,7 +2,6 @@
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
-using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -13,8 +12,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     public class EditTaskViewModel : INotifyPropertyChanged
     {
         private readonly NavigationService _navigationService;
-        private readonly ProjectService _projectService;
         private readonly TeamService _teamService;
+        private readonly TaskService _taskService;
 
         public event PropertyChangedEventHandler PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string name = null) =>
@@ -34,15 +33,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _description = value; OnPropertyChanged(); }
         }
 
-        private TaskType _selectedType;
-        public TaskType SelectedType
+        private TaskTypeDto _selectedType;
+        public TaskTypeDto SelectedType
         {
             get => _selectedType;
             set
             {
                 _selectedType = value;
                 OnPropertyChanged();
-                UpdateGitHubBranchHint(); // Только меняем подсказку
+                UpdateGitHubBranchHint();
             }
         }
 
@@ -61,7 +60,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         }
 
         private string _githubBranchName = "";
-        public string GithubBranchName
+        public string GitHubBranchName
         {
             get => _githubBranchName;
             set { _githubBranchName = value; OnPropertyChanged(); }
@@ -82,27 +81,77 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         }
 
         public bool HasErrorMessage => !string.IsNullOrEmpty(ErrorMessage);
-        public bool IsEditMode { get; private set; }
+
+        private bool _isEditMode = false;
+        public bool IsEditMode
+        {
+            get => _isEditMode;
+            set { _isEditMode = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageTitle)); OnPropertyChanged(nameof(SaveButtonText)); }
+        }
+
+        private bool _hasGitHubRepo = false;
+        public bool HasGitHubRepo
+        {
+            get => _hasGitHubRepo;
+            set
+            {
+                _hasGitHubRepo = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShowGitHubSection));
+            }
+        }
+
+        private bool _isBranchReadOnly = false;
+        public bool IsBranchReadOnly
+        {
+            get => _isBranchReadOnly;
+            set { _isBranchReadOnly = value; OnPropertyChanged(); }
+        }
+
+        private string _branchToolTip = "";
+        public string BranchToolTip
+        {
+            get => _branchToolTip;
+            set { _branchToolTip = value; OnPropertyChanged(); }
+        }
+
+        private bool _hasExistingBranch = false;
+        public bool HasExistingBranch
+        {
+            get => _hasExistingBranch;
+            set
+            {
+                _hasExistingBranch = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShowBranchWarning));
+                OnPropertyChanged(nameof(ShowBranchInfo));
+                UpdateBranchReadOnlyState();
+            }
+        }
+
+        // Свойства для управления видимостью элементов UI
+        public bool ShowGitHubSection => HasGitHubRepo;
+        public bool ShowBranchWarning => HasExistingBranch && IsEditMode;
+        public bool ShowBranchInfo => !HasExistingBranch && !string.IsNullOrEmpty(GitHubBranchName) && HasGitHubRepo;
+
         public int TaskId { get; private set; }
         public int ProjectId { get; private set; }
 
-        public ObservableCollection<TaskType> TaskTypes { get; set; } = new();
+        public ObservableCollection<TaskTypeDto> TaskTypes { get; set; } = new();
         public ObservableCollection<MemberDto> TeamMembers { get; set; } = new();
-        public ObservableCollection<MemberDto> AvailableAssignees { get; set; } = new();
 
         public string PageTitle => IsEditMode ? "Редактирование задачи" : "Создание задачи";
+        public string PageSubtitle => IsEditMode ? "Редактирование существующей задачи" : "Создание новой задачи для команды";
         public string SaveButtonText => IsEditMode ? "Сохранить изменения" : "Создать задачу";
 
         public RelayCommand SaveCommand { get; }
         public RelayCommand CancelCommand { get; }
 
-        private bool _isEditMode = false;
-
         public EditTaskViewModel()
         {
             _navigationService = App.NavigationService;
-            _projectService = new ProjectService();
             _teamService = new TeamService();
+            _taskService = new TaskService();
 
             SaveCommand = new RelayCommand(async () => await SaveTaskAsync());
             CancelCommand = new RelayCommand(() => Cancel());
@@ -111,8 +160,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public async void InitializeForCreate(int projectId)
         {
             ProjectId = projectId;
-            _isEditMode = false;
+            IsEditMode = false;
 
+            await LoadTeamDataAsync();
             await LoadTaskTypesAsync();
             await LoadTeamMembersAsync();
 
@@ -120,21 +170,35 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             Deadline = DateTime.Today.AddDays(7);
             if (TaskTypes.Any())
                 SelectedType = TaskTypes.First();
+
+            // Для новой задачи ветка всегда редактируема
+            IsBranchReadOnly = false;
+            BranchToolTip = "Введите название для новой ветки GitHub";
         }
 
         public async void InitializeForEdit(int taskId)
         {
             TaskId = taskId;
-            _isEditMode = true;
+            IsEditMode = true;
 
+            await LoadTeamDataAsync();
             await LoadTaskTypesAsync();
             await LoadTeamMembersAsync();
             await LoadTaskDataAsync(taskId);
         }
 
+        private async Task LoadTeamDataAsync()
+        {
+            var team = await _teamService.GetCurrentTeamAsync();
+            if (team != null)
+            {
+                HasGitHubRepo = !string.IsNullOrEmpty(team.GitHubUrl) && team.GitHubUrl != "Не указан";
+            }
+        }
+
         private async Task LoadTaskTypesAsync()
         {
-            var types = await _projectService.GetTaskTypesAsync();
+            var types = await _taskService.GetTaskTypesAsync();
             TaskTypes.Clear();
             foreach (var type in types)
             {
@@ -148,20 +212,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (team != null)
             {
                 TeamMembers.Clear();
-                AvailableAssignees.Clear();
 
                 foreach (var member in team.Members)
                 {
                     TeamMembers.Add(member);
-                    // В доступные исполнители добавляем всех, кроме капитана
-                    if (!member.IsCaptain)
-                    {
-                        AvailableAssignees.Add(member);
-                    }
                 }
 
-                // Если нет доступных исполнителей, показываем сообщение
-                if (!AvailableAssignees.Any())
+                if (!TeamMembers.Any())
                 {
                     ErrorMessage = "В команде нет участников, которым можно назначить задачу";
                 }
@@ -170,7 +227,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task LoadTaskDataAsync(int taskId)
         {
-            var task = await _projectService.GetTaskDetailsAsync(taskId);
+            var task = await _taskService.GetTaskDetailsAsync(taskId);
             if (task != null)
             {
                 Title = task.Title;
@@ -178,10 +235,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 SelectedType = TaskTypes.FirstOrDefault(t => t.Id == task.TypeId);
                 SelectedAssignee = TeamMembers.FirstOrDefault(m => m.Id == task.AssignedToId);
                 Deadline = task.Deadline;
-                GithubBranchName = task.GithubBranchName ?? "";
+                GitHubBranchName = task.GitHubBranchName ?? "";
 
-                // Обновляем подсказку для существующей задачи
+                // Определяем, есть ли уже ветка в GitHub
+                HasExistingBranch = !string.IsNullOrEmpty(task.GitHubBranchName);
+
+                // Обновляем подсказку и состояние поля
                 UpdateGitHubBranchHint();
+                UpdateBranchReadOnlyState();
             }
         }
 
@@ -208,6 +269,25 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
+        private void UpdateBranchReadOnlyState()
+        {
+            if (IsEditMode && HasExistingBranch)
+            {
+                IsBranchReadOnly = true;
+                BranchToolTip = "Ветка уже создана в GitHub. Изменить название нельзя.";
+            }
+            else if (HasGitHubRepo)
+            {
+                IsBranchReadOnly = false;
+                BranchToolTip = "Введите название для новой ветки GitHub";
+            }
+            else
+            {
+                IsBranchReadOnly = true;
+                BranchToolTip = "Для создания ветки необходимо подключить GitHub репозиторий к команде";
+            }
+        }
+
         private async Task SaveTaskAsync()
         {
             if (!ValidateForm())
@@ -222,25 +302,59 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     TypeId = SelectedType?.Id ?? 1,
                     AssignedToId = SelectedAssignee?.Id,
                     Deadline = Deadline,
-                    GithubBranchName = GithubBranchName?.Trim()
+                    // Передаем название ветки только если оно указано И команда имеет GitHub репозиторий
+                    GitHubBranchName = HasGitHubRepo && !string.IsNullOrWhiteSpace(GitHubBranchName)
+                        ? GitHubBranchName.Trim()
+                        : null
                 };
 
-                if (_isEditMode)
+                if (IsEditMode)
                 {
-                    var result = await _projectService.UpdateTaskAsync(TaskId, dto);
-                    MessageBox.Show(result.Message);
+                    var result = await _taskService.UpdateTaskAsync(TaskId, dto);
+
                     if (result.Success)
                     {
+                        var message = result.Message;
+
+                        if (!string.IsNullOrWhiteSpace(dto.GitHubBranchName) && !HasExistingBranch)
+                        {
+                            if (!message.Contains("ветк"))
+                            {
+                                message += $"\n\n✅ Ветка '{GitHubBranchName}' создана в GitHub репозитории";
+                            }
+                        }
+
+                        MessageBox.Show(message);
                         _navigationService.GoBack();
                     }
+                    else
+                    {
+                        MessageBox.Show(result.Message);
+                    }
+
                 }
                 else
                 {
-                    var result = await _projectService.CreateTaskAsync(ProjectId, dto);
-                    MessageBox.Show(result.Message);
+                    var result = await _taskService.CreateTaskAsync(ProjectId, dto);
+
                     if (result.Success)
                     {
+                        var message = result.Message;
+
+                        if (!string.IsNullOrWhiteSpace(dto.GitHubBranchName))
+                        {
+                            if (!message.Contains("ветк"))
+                            {
+                                message += $"\n\nВетка '{GitHubBranchName}' создана в GitHub репозитории команды";
+                            }
+                        }
+
+                        MessageBox.Show(message);
                         _navigationService.GoBack();
+                    }
+                    else
+                    {
+                        MessageBox.Show(result.Message);
                     }
                 }
             }
@@ -283,12 +397,19 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 return false;
             }
 
-            // Валидация названия GitHub ветки
-            if (!string.IsNullOrWhiteSpace(GithubBranchName))
+            // Валидация названия GitHub ветки только если она указана и команда имеет репозиторий
+            if (HasGitHubRepo && !string.IsNullOrWhiteSpace(GitHubBranchName))
             {
-                if (!IsValidBranchName(GithubBranchName))
+                if (!IsValidBranchName(GitHubBranchName))
                 {
                     ErrorMessage = "Название ветки может содержать только буквы, цифры, дефисы, подчеркивания и слеши";
+                    return false;
+                }
+
+                // Проверяем, что ветка не начинается или не заканчивается слешем
+                if (GitHubBranchName.StartsWith("/") || GitHubBranchName.EndsWith("/"))
+                {
+                    ErrorMessage = "Название ветки не может начинаться или заканчиваться слешем";
                     return false;
                 }
             }

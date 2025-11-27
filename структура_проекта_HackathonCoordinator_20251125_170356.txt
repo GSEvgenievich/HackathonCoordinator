@@ -1,5 +1,5 @@
 ﻿Анализ структуры проекта: C:\Users\geras\OneDrive\Рабочий стол\HackathonCoordinator
-Дата анализа: 04.11.2025 17:06:40
+Дата анализа: 25.11.2025 17:03:55
 ================================================================================
 
 АНАЛИЗ РЕШЕНИЙ И ПРОЕКТОВ:
@@ -25,19 +25,20 @@ HackathonCoordinator.ServiceLayer/
         ApiResultDto.cs
         CompetitionDto.cs
         CreateCompetitionDto.cs
-        CreateProjectDto.cs
+        CreateTaskDto.cs
         IconDto.cs
         MemberDto.cs
-        ProjectDto.cs
+        TaskDetailsDto.cs
         TaskDto.cs
+        TaskStatusDTO.cs
+        TaskTypeDto.cs
         TeamDto.cs
-        UpdateProjectDto.cs
         UserProfileDto.cs
         Services/
         AuthService.cs
         CompetitionService.cs
         GitHubOAuthService.cs
-        ProjectService.cs
+        TaskService.cs
         TeamService.cs
         UserService.cs
         Storages/
@@ -53,16 +54,18 @@ HackathonCoordinator.WebAPI/
         CompetitionsController.cs
         IconsController.cs
         OAuthController.cs
-        ProjectsController.cs
+        TasksController.cs
         TeamController.cs
         UserController.cs
         Data/
         HackathonCoordinatorContext.cs
         DTOs/
         AssignCaptainDto.cs
+        AssignTaskDto.cs
         CompetitionDto.cs
         CreateCompetitionDto.cs
-        CreateProjectDto.cs
+        CreateGitHubRepoDto.cs
+        CreateTaskDto.cs
         CreateTeamInCompetitionDto.cs
         GitHubUserInfoDto.cs
         IconDto.cs
@@ -70,29 +73,23 @@ HackathonCoordinator.WebAPI/
         LinkGitHubDto.cs
         LoginDto.cs
         MemberDto.cs
-        ProjectDto.cs
         RegisterDto.cs
+        TaskDetailsDto.cs
         TaskDto.cs
         TeamDto.cs
         TransferLeadershipDto.cs
         UpdateProfileDto.cs
-        UpdateProjectDto.cs
-        UserProfileDto.cs
+        UserDto.cs
         VerifyEmailDto.cs
         Models/
         Chat.cs
-        ChatMember.cs
         ChatType.cs
         Competition.cs
-        Document.cs
-        File.cs
-        FileCategory.cs
         Message.cs
         Notification.cs
         NotificationType.cs
         PendingRegistration.cs
         ProfileIcon.cs
-        Project.cs
         Role.cs
         Task.cs
         TaskStatus.cs
@@ -111,10 +108,11 @@ HackathonCoordinator.WPFClient/
     App.xaml.cs
     AssemblyInfo.cs
     MainWindow.xaml.cs
-    HackathonCoordinator.WPFClient.csproj (3,94 KB)
+    HackathonCoordinator.WPFClient.csproj (3,66 KB)
     App.xaml
     MainWindow.xaml
         Assets/
+                Fonts/
                 Images/
                         Profile/
                 boy1.png (64,83 KB)
@@ -124,22 +122,29 @@ HackathonCoordinator.WPFClient/
                 robot1.png (66,7 KB)
                 robot2.png (63,75 KB)
                         Themes/
-                autumn_accent.png (1,2 MB)
-                autumn_bg.png (1,55 MB)
+                autumn_accent.png (1,23 MB)
+                autumn_bg.png (1,44 MB)
                 dark_accent.png (107,91 KB)
                 dark_bg.png (817,05 KB)
-                light_accent.png (404,51 KB)
-                light_bg.png (530,69 KB)
-                spring_accent.png (1,74 MB)
+                light_accent.png (530,69 KB)
+                light_bg.png (5,26 KB)
+                spring_accent.png (1,68 MB)
                 spring_bg.png (1,8 MB)
-                summer_accent.png (1,13 MB)
+                summer_accent.png (1,25 MB)
                 summer_bg.png (1,64 MB)
                 winter_accent.png (1,56 MB)
                 winter_bg.png (1,73 MB)
+        Behaviors/
+        TextBoxGitInputBehavior.cs
         Converters/
         BoolToArrowConverter.cs
         BoolToBrushConverter.cs
         BoolToVisibilityConverter.cs
+        CompetitionStatusToBrushConverter.cs
+        CompetitionStatusToIconConverter.cs
+        GitHubRepoNameValidator.cs
+        LoadingButtonConverter.cs
+        MyTaskBorderConverter.cs
         Helpers/
         AsyncRelayCommand.cs
         RelayCommand.cs
@@ -160,43 +165,43 @@ HackathonCoordinator.WPFClient/
         CompetitionDetailsViewModel.cs
         CompetitionsViewModel.cs
         EditCompetitionPageViewModel.cs
-        EditProjectViewModel.cs
+        EditTaskViewModel.cs
         GitHubAuthViewModel.cs
         MainWindowViewModel.cs
         NoTeamViewModel.cs
         ProfileViewModel.cs
-        ProjectViewModel.cs
         RegistrationViewModel.cs
+        TaskDetailsViewModel.cs
         TeamViewModel.cs
         Views/
         AuthorizationPage.xaml.cs
         CompetitionDetailsPage.xaml.cs
         CompetitionsPage.xaml.cs
         EditCompetitionPage.xaml.cs
-        EditProjectPage.xaml.cs
+        EditTaskPage.xaml.cs
         GitHubAuthPage.xaml.cs
         NoTeamPage.xaml.cs
         ProfilePage.xaml.cs
-        ProjectPage.xaml.cs
         RegistrationPage.xaml.cs
+        TaskDetailsPage.xaml.cs
         TeamPage.xaml.cs
         AuthorizationPage.xaml
         CompetitionDetailsPage.xaml
         CompetitionsPage.xaml
         EditCompetitionPage.xaml
-        EditProjectPage.xaml
+        EditTaskPage.xaml
         GitHubAuthPage.xaml
         NoTeamPage.xaml
         ProfilePage.xaml
-        ProjectPage.xaml
         RegistrationPage.xaml
+        TaskDetailsPage.xaml
         TeamPage.xaml
 
 ================================================================================
 ИТОГОВАЯ СТАТИСТИКА:
 • Решений: 1
 • Проектов: 3
-• Папок: 24
-• Файлов: 150
-• Время анализа: 0,11 сек
-• Общий размер: 212,79 MB
+• Папок: 26
+• Файлов: 153
+• Время анализа: 0,19 сек
+• Общий размер: 218,02 MB

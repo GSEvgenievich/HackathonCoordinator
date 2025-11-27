@@ -14,7 +14,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly UserService _userService;
         private readonly AuthService _authService;
 
-        private readonly string[] _themes = { "Light", "Dark", "Summer", "Winter", "Autumn", "Spring" };
+        private readonly string[] _themes = { "Light", "Dark", "Summer", "Spring", "Winter", "Autumn" };
         private int _currentThemeIndex = 0;
 
         private string _username;

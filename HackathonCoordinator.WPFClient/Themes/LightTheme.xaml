@@ -36,6 +36,7 @@
     <SolidColorBrush x:Key="ControlBackground">#F7FBFF</SolidColorBrush>
     <!-- Едва заметный голубой для контролов -->
     <SolidColorBrush x:Key="TextColor">#2C3E50</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarColor">#3498DB</SolidColorBrush>
     <!-- Темно-синий для текста -->
     <SolidColorBrush x:Key="TextSecondaryColor">#5D6D7E</SolidColorBrush>
     <!-- Серо-синий для второстепенного -->
