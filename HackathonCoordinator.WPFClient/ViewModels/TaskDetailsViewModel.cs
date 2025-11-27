@@ -3,6 +3,7 @@ using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -12,8 +13,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     public class TaskDetailsViewModel : INotifyPropertyChanged
     {
         private readonly NavigationService _navigationService;
-        private readonly ProjectService _projectService;
         private readonly UserService _userService;
+        private readonly TaskService _taskService;
+        private readonly TeamService _teamService;
 
         public event PropertyChangedEventHandler PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string name = null) =>
@@ -23,10 +25,38 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public TaskDetailsDto Task
         {
             get => _task;
-            set { _task = value; OnPropertyChanged(); }
+            set
+            {
+                _task = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayAssignedTo));
+                OnPropertyChanged(nameof(DisplayGitHubBranch));
+            }
         }
 
         private int _currentUserId;
+        private bool _showAssignmentDialog;
+        private MemberDto _selectedAssignee;
+
+        public bool ShowAssignmentDialog
+        {
+            get => _showAssignmentDialog;
+            set { _showAssignmentDialog = value; OnPropertyChanged(); }
+        }
+
+        public MemberDto SelectedAssignee
+        {
+            get => _selectedAssignee;
+            set { _selectedAssignee = value; OnPropertyChanged(); }
+        }
+
+        public string DisplayAssignedTo =>
+            string.IsNullOrEmpty(Task?.AssignedToUsername) ? "Не назначен" : Task.AssignedToUsername;
+
+        public string DisplayGitHubBranch =>
+            string.IsNullOrEmpty(Task?.GitHubBranchName) ? "Не указана" : Task.GitHubBranchName;
+
+        public ObservableCollection<MemberDto> AvailableAssignees { get; } = new();
 
         public bool IsMyTask => Task?.AssignedToId == _currentUserId;
         public bool CanAssignTask => Task?.CanAssign ?? false;
@@ -37,7 +67,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public RelayCommand BackCommand { get; }
         public RelayCommand EditTaskCommand { get; }
+        public RelayCommand OpenAssignmentDialogCommand { get; }
         public RelayCommand AssignTaskCommand { get; }
+        public RelayCommand CancelAssignmentCommand { get; }
+        public RelayCommand OpenVotingCommand { get; }
         public RelayCommand CompleteTaskCommand { get; }
         public RelayCommand CancelTaskCommand { get; }
         public RelayCommand OpenTaskChatCommand { get; }
@@ -45,17 +78,29 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public TaskDetailsViewModel()
         {
             _navigationService = App.NavigationService;
-            _projectService = new ProjectService();
             _userService = new UserService();
+            _taskService = new TaskService();
+            _teamService = new TeamService();
 
-            BackCommand = new RelayCommand(() => _navigationService.GoBack());
+            BackCommand = new RelayCommand(BackToTeam);
             EditTaskCommand = new RelayCommand(EditTask);
+            OpenAssignmentDialogCommand = new RelayCommand(OpenAssignmentDialog);
             AssignTaskCommand = new RelayCommand(async () => await AssignTaskAsync());
+            CancelAssignmentCommand = new RelayCommand(CancelAssignment);
+            OpenVotingCommand = new RelayCommand(OpenVotingDialog);
             CompleteTaskCommand = new RelayCommand(async () => await CompleteTaskAsync());
             CancelTaskCommand = new RelayCommand(async () => await CancelTaskAsync());
             OpenTaskChatCommand = new RelayCommand(OpenTaskChat);
 
             LoadCurrentUser();
+        }
+
+        private void BackToTeam()
+        {
+            if (_currentUserId == 1)
+                _navigationService.NavigateTo(new TeamPage());
+            else
+                _navigationService.NavigateTo(new TeamPage(Task.TeamId));
         }
 
         private async void LoadCurrentUser()
@@ -66,11 +111,29 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public async void LoadTaskData(int taskId)
         {
-            var task = await _projectService.GetTaskDetailsAsync(taskId);
+            var task = await _taskService.GetTaskDetailsAsync(taskId);
             if (task != null)
             {
                 Task = task;
+                await LoadAvailableAssignees();
                 UpdatePermissions();
+            }
+        }
+
+        private async Task LoadAvailableAssignees()
+        {
+            if (Task?.TeamId == null) return;
+
+            var team = await _teamService.GetCurrentTeamAsync();
+            if (team?.Members != null)
+            {
+                AvailableAssignees.Clear();
+                foreach (var member in team.Members)
+                {
+                    AvailableAssignees.Add(member);
+                }
+
+                SelectedAssignee = AvailableAssignees.FirstOrDefault();
             }
         }
 
@@ -92,20 +155,39 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
+        private void OpenAssignmentDialog()
+        {
+            ShowAssignmentDialog = true;
+        }
+
+        private void CancelAssignment()
+        {
+            ShowAssignmentDialog = false;
+            SelectedAssignee = null;
+        }
+
         private async Task AssignTaskAsync()
         {
-            if (Task == null) return;
+            if (Task == null || SelectedAssignee == null)
+            {
+                MessageBox.Show("Выберите исполнителя для задачи");
+                return;
+            }
 
-            // Здесь можно реализовать диалог выбора исполнителя
-            // Пока просто назначаем на текущего пользователя
-            var result = await _projectService.AssignTaskAsync(Task.Id, _currentUserId);
+            var result = await _taskService.AssignTaskAsync(Task.Id, SelectedAssignee.Id);
             MessageBox.Show(result.Message);
 
             if (result.Success)
             {
+                ShowAssignmentDialog = false;
                 // Обновляем данные задачи
                 LoadTaskData(Task.Id);
             }
+        }
+
+        private void OpenVotingDialog()
+        {
+            MessageBox.Show("Функция голосования будет реализована в следующей версии");
         }
 
         private async Task CompleteTaskAsync()
@@ -120,7 +202,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                var completionResult = await _projectService.RequestCompletionAsync(Task.Id);
+                var completionResult = await _taskService.RequestCompletionAsync(Task.Id);
                 MessageBox.Show(completionResult.Message);
 
                 if (completionResult.Success)
@@ -142,7 +224,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                var cancellationResult = await _projectService.RequestCancellationAsync(Task.Id);
+                var cancellationResult = await _taskService.RequestCancellationAsync(Task.Id);
                 MessageBox.Show(cancellationResult.Message);
 
                 if (cancellationResult.Success)

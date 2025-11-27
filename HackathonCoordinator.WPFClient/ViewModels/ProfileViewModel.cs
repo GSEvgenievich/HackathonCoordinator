@@ -61,7 +61,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public string GitHubUsername
         {
             get => _gitHubUsername;
-            set { _gitHubUsername = value; OnPropertyChanged(); OnPropertyChanged(nameof(GitHubStatus)); }
+            set 
+            {
+                _gitHubUsername = value; 
+                OnPropertyChanged(); 
+                OnPropertyChanged(nameof(GitHubStatus));
+                OnPropertyChanged(nameof(GitHubStatusColor));
+                OnPropertyChanged(nameof(GitHubButtonText));
+            }
         }
 
         public string GitHubStatus => string.IsNullOrEmpty(GitHubUsername)

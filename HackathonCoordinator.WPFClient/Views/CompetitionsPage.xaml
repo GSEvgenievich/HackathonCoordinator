@@ -7,97 +7,220 @@
 
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:CompetitionStatusToBrushConverter x:Key="StatusToBrushConverter"/>
+
     </Page.Resources>
 
     <Page.DataContext>
         <vm:CompetitionsViewModel/>
     </Page.DataContext>
 
-    <Grid Margin="30">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Заголовок и кнопка добавления -->
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,20">
-            <TextBlock Text="Соревнования" 
-                       FontSize="26" 
-                       FontWeight="Bold"
-                       Foreground="{DynamicResource TextColor}"/>
+        <!-- Заголовок и управление -->
+        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,15">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Заголовок с иконкой -->
+                <StackPanel>
+                    <TextBlock Text="🏆 Соревнования" 
+                               FontSize="28" 
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextColor}"/>
+                    <TextBlock Text="Выберите соревнование для участия или управления"
+                               Style="{StaticResource BodyTextStyle}"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
 
-            <Button Content="＋ Добавить соревнование"
-                    Command="{Binding AddCompetitionCommand}"
-                    Style="{StaticResource PrimaryButton}"
-                    Margin="20,0,0,0"
-                    Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"/>
-        </StackPanel>
+                <!-- Кнопка добавления -->
+                <Button Content="＋ Создать соревнование"
+                        Command="{Binding AddCompetitionCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Margin="30,0,0,0"
+                        Height="45"
+                        Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Фильтрация -->
+        <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,15">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Фильтр по статусу:"
+                           Style="{StaticResource BodyTextStyle}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"/>
+
+                <ComboBox ItemsSource="{Binding StatusFilters}"
+                          SelectedItem="{Binding SelectedStatusFilter}"
+                          DisplayMemberPath="Name"
+                          Style="{StaticResource ModernComboBox}"
+                          Width="200"
+                          VerticalAlignment="Center"/>
+
+                <!-- Счетчик отфильтрованных соревнований -->
+                <TextBlock Text="{Binding FilteredCompetitionsCount, StringFormat='Показано: {0} соревнований'}"
+                           Style="{StaticResource BodyTextStyle}"
+                           VerticalAlignment="Center"
+                           Margin="15,0,0,0"
+                           Foreground="{DynamicResource TextSecondaryColor}"/>
+            </StackPanel>
+        </Border>
 
         <!-- Список соревнований -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Competitions}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource InteractiveCardStyle}" 
-                                Margin="0,0,0,15">
-                            <Border.InputBindings>
-                                <MouseBinding Gesture="LeftClick"
-                                              Command="{Binding DataContext.SelectCompetitionCommand, 
-                                                                RelativeSource={RelativeSource AncestorType=Page}}"
-                                              CommandParameter="{Binding}" />
-                            </Border.InputBindings>
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding FilteredCompetitions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource InteractiveCardStyle}" 
+                                    Margin="0,0,0,20">
+                                <Border.InputBindings>
+                                    <MouseBinding Gesture="LeftClick"
+                                                  Command="{Binding DataContext.SelectCompetitionCommand, 
+                                                                    RelativeSource={RelativeSource AncestorType=Page}}"
+                                                  CommandParameter="{Binding}" />
+                                </Border.InputBindings>
 
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- Информация о соревновании -->
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Name}" 
-                                               FontSize="18" 
-                                               FontWeight="Bold"
-                                               Foreground="{DynamicResource TextColor}"
-                                               Margin="0,0,0,5"/>
+                                    <!-- Иконка статуса -->
+                                    <Border Width="60" 
+                                            Height="60" 
+                                            CornerRadius="12"
+                                            Background="{Binding StatusColor, Converter={StaticResource StatusToBrushConverter}}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding StatusIcon}"
+                                                   FontSize="24"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
 
-                                    <TextBlock Text="{Binding Description}"
-                                               Style="{StaticResource BodyTextStyle}"
-                                               TextWrapping="Wrap"
-                                               Margin="0,0,0,10"/>
+                                    <!-- Основная информация -->
+                                    <StackPanel Grid.Column="1" Margin="20 0">
+                                        <!-- Заголовок и статус -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontSize="20" 
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextColor}"
+                                                       VerticalAlignment="Center"/>
 
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding StartDate, StringFormat='Начало: {0:dd.MM.yyyy HH:mm}'}"
+                                            <Border Background="{Binding StatusColor, Converter={StaticResource StatusToBrushConverter}}"
+                                                    CornerRadius="10"
+                                                    Padding="8,3"
+                                                    Margin="15,0,0,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="White"/>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <!-- Описание -->
+                                        <TextBlock Text="{Binding Description}"
                                                    Style="{StaticResource BodyTextStyle}"
-                                                   Margin="0,0,15,0"/>
-                                        <TextBlock Text="{Binding EndDate, StringFormat='Окончание: {0:dd.MM.yyyy HH:mm}'}"
-                                                   Style="{StaticResource BodyTextStyle}"/>
+                                                   TextWrapping="Wrap"
+                                                   MaxHeight="40"
+                                                   Margin="0,0,0,12"/>
+
+                                        <!-- Детали сроков -->
+                                        <Border Background="{DynamicResource ControlBackground}"
+                                                CornerRadius="8"
+                                                Padding="12"
+                                                BorderBrush="{DynamicResource BorderColor}"
+                                                BorderThickness="1">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="📅"
+                                                               FontSize="14"
+                                                               Margin="0,0,8,0"/>
+                                                    <TextBlock Text="{Binding DateTimeRangeText}"
+                                                               Style="{StaticResource BodyTextStyle}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
 
-                                    <TextBlock Text="{Binding Teams.Count, StringFormat='Команд: {0}'}"
-                                               Style="{StaticResource BodyTextStyle}"
-                                               Margin="0,5,0,0"/>
-                                </StackPanel>
+                                    <!-- Кнопки управления -->
+                                    <StackPanel Grid.Column="2" 
+                                                Orientation="Vertical"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding DataContext.IsOrganizer, 
+                                                                    Converter={StaticResource BoolToVisibilityConverter},
+                                                                    RelativeSource={RelativeSource AncestorType=Page}}">
+                                        <Button Content="✏️"
+                                                Command="{Binding DataContext.EditCompetitionCommand, 
+                                                                 RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource RoundIconButton}"
+                                                ToolTip="Редактировать"
+                                                Width="40" Height="40"/>
 
-                                <!-- Кнопки управления для организатора -->
-                                <StackPanel Grid.Column="1" 
-                                            Orientation="Horizontal"
-                                            Visibility="{Binding DataContext.IsOrganizer, 
-                                                                Converter={StaticResource BoolToVisibilityConverter},
-                                                                RelativeSource={RelativeSource AncestorType=Page}}">
-                                    <Button Content="✏️"
-                                            Command="{Binding DataContext.EditCompetitionCommand, 
-                                                             RelativeSource={RelativeSource AncestorType=Page}}"
-                                            CommandParameter="{Binding}"
-                                            Style="{StaticResource RoundIconButton}"
-                                            Margin="0,0,5,0"
-                                            ToolTip="Редактировать"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                                        <Button Content="👁️"
+                                                Command="{Binding DataContext.SelectCompetitionCommand, 
+                                                                 RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource RoundIconButton}"
+                                                Margin="0,4,0,4"
+                                                ToolTip="Просмотр"
+                                                Width="40" Height="40"/>
+                                        <Button Content="📤"
+                                                Command="{Binding DataContext.ExportCompetitionCommand, 
+                                                                 RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource RoundIconButton}"
+                                                ToolTip="Экспортировать данные соревнования и данные всех команд"
+                                                Width="40" Height="40"
+                                                Background="{DynamicResource SuccessBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Сообщение когда нет соревнований -->
+                <TextBlock Text="🎯 Нет доступных соревнований"
+                           Style="{StaticResource BodyTextStyle}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="0,50,0,0"
+                           FontSize="16"
+                           Visibility="{Binding HasNoCompetitions, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Сообщение когда нет соревнований после фильтрации -->
+                <Border Style="{StaticResource CardStyle}"
+                        Margin="0,20,0,0"
+                        Visibility="{Binding HasNoFilteredCompetitions, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="🔍"
+                                   FontSize="24"
+                                   Margin="0,0,15,0"/>
+                        <StackPanel>
+                            <TextBlock Text="Соревнования не найдены"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="Попробуйте изменить фильтр или создать новое соревнование"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       Foreground="{DynamicResource TextSecondaryColor}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 </Page>

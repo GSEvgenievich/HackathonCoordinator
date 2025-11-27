@@ -11,11 +11,11 @@ public partial class Team
 
     public string Name { get; set; } = null!;
 
-    public string? InviteCode { get; set; }
+    public string InviteCode { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public string? GitHubUrl { get; set; }
+    public string? GitRepoName { get; set; }
 
     public int? ChatId { get; set; }
 
@@ -23,7 +23,7 @@ public partial class Team
 
     public virtual Competition Competition { get; set; } = null!;
 
-    public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
+    public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

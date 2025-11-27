@@ -1,6 +1,8 @@
 ﻿using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WPFClient.ViewModels;
+using System.Text.RegularExpressions;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.Views
 {
@@ -30,6 +32,19 @@ namespace HackathonCoordinator.WPFClient.Views
             if (DataContext is TeamViewModel viewModel)
             {
                 await viewModel.LoadTeamDataAsync(TeamId);
+            }
+        }
+
+        private void TextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var regex = new Regex(@"^[a-zA-Z0-9._-]*$");
+            var textBox = (TextBox)sender;
+            var newText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+
+            if (!regex.IsMatch(newText))
+            {
+                e.Handled = true;
+                System.Media.SystemSounds.Beep.Play();
             }
         }
     }

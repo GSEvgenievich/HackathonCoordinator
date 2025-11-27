@@ -11,11 +11,11 @@ public partial class Notification
 
     public int NotificationTypeId { get; set; }
 
-    public string? Message { get; set; }
+    public string Message { get; set; } = null!;
 
-    public bool? IsRead { get; set; }
+    public bool IsRead { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual NotificationType NotificationType { get; set; } = null!;
 

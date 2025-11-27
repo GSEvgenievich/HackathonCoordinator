@@ -1,11 +1,11 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Models;
+using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Task = HackathonCoordinator.WebAPI.Models.Task;
 using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
 
 [Route("api/[controller]")]
@@ -14,10 +14,14 @@ using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
 public class TasksController : ControllerBase
 {
     private readonly HackathonCoordinatorContext _context;
+    private readonly IEncryptionService _encryptionService;
+    private readonly IGitHubService _gitHubService;
 
-    public TasksController(HackathonCoordinatorContext context)
+    public TasksController(HackathonCoordinatorContext context, IEncryptionService encryptionService, IGitHubService gitHubService)
     {
         _context = context;
+        _encryptionService = encryptionService;
+        _gitHubService = gitHubService;
     }
 
     [HttpGet("types")]
@@ -37,8 +41,7 @@ public class TasksController : ControllerBase
     {
         var userId = GetUserId();
         var task = await _context.Tasks
-            .Include(t => t.Project)
-            .ThenInclude(p => p.Team)
+            .Include(t => t.Team)
             .ThenInclude(t => t.Users)
             .Include(t => t.Type)
             .Include(t => t.Status)
@@ -55,7 +58,7 @@ public class TasksController : ControllerBase
         var dto = new TaskDetailsDto
         {
             Id = task.Id,
-            ProjectId = task.ProjectId,
+            TeamId = task.TeamId,
             Title = task.Title,
             Description = task.Description,
             TypeId = task.TypeId,
@@ -65,8 +68,8 @@ public class TasksController : ControllerBase
             AssignedToId = task.AssignedToId,
             AssignedToUsername = task.AssignedTo?.Username,
             Deadline = task.Deadline,
-            GithubBranchName = task.GithubBranchName,
-            CreatedAt = task.CreatedAt ?? DateTime.UtcNow,
+            GitHubBranchName = task.GithubBranchName,
+            CreatedAt = task.CreatedAt,
 
             // Права доступа
             CanEdit = isCaptain,
@@ -80,46 +83,6 @@ public class TasksController : ControllerBase
         return Ok(dto);
     }
 
-    [HttpPost("projects/{projectId}/tasks")]
-    public async Task<IActionResult> CreateTask(int projectId, [FromBody] CreateTaskDto dto)
-    {
-        var userId = GetUserId();
-        var user = await _context.Users.FindAsync(userId);
-
-        if (user == null)
-            return Unauthorized("Пользователь не найден");
-
-        var project = await _context.Projects
-            .Include(p => p.Team)
-            .ThenInclude(t => t.Users)
-            .FirstOrDefaultAsync(p => p.Id == projectId);
-
-        if (project == null)
-            return NotFound("Проект не найден");
-
-        // Проверяем права: только капитан может создавать задачи
-        if (user.RoleId != 1 && !project.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
-            return Forbid("Только капитан команды может создавать задачи");
-
-        var task = new Task
-        {
-            ProjectId = projectId,
-            Title = dto.Title.Trim(),
-            Description = dto.Description?.Trim(),
-            TypeId = dto.TypeId,
-            StatusId = 1, // В планах
-            AssignedToId = dto.AssignedToId,
-            Deadline = dto.Deadline,
-            GithubBranchName = dto.GithubBranchName?.Trim(),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Tasks.Add(task);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = "Задача успешно создана", taskId = task.Id });
-    }
-
     [HttpPut("{taskId}")]
     public async Task<IActionResult> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
     {
@@ -130,8 +93,7 @@ public class TasksController : ControllerBase
             return Unauthorized("Пользователь не найден");
 
         var task = await _context.Tasks
-            .Include(t => t.Project)
-            .ThenInclude(p => p.Team)
+            .Include(t => t.Team)
             .ThenInclude(t => t.Users)
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
@@ -139,17 +101,68 @@ public class TasksController : ControllerBase
             return NotFound("Задача не найдена");
 
         // Проверяем права: только капитан может редактировать задачи
-        if (user.RoleId != 1 && !task.Project.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
+        if (user.RoleId != 1 && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
             return Forbid("Только капитан команды может редактировать задачи");
+
+        var oldBranchName = task.GithubBranchName;
+        var hasExistingBranch = !string.IsNullOrEmpty(oldBranchName);
 
         task.Title = dto.Title.Trim();
         task.Description = dto.Description?.Trim();
         task.TypeId = dto.TypeId;
         task.AssignedToId = dto.AssignedToId;
         task.Deadline = dto.Deadline;
-        task.GithubBranchName = dto.GithubBranchName?.Trim();
 
         await _context.SaveChangesAsync();
+
+        if (
+        !string.IsNullOrEmpty(dto.GitHubBranchName) &&
+        !string.IsNullOrEmpty(task.Team.GitRepoName) &&
+        !hasExistingBranch) // Ключевое условие - не было ветки до этого
+        {
+            try
+            {
+                var captain = await _context.Users
+                       .FirstOrDefaultAsync(u => u.TeamId == task.Team.Id && u.RoleId == 1);
+
+                GitHubBranchResult? branchResult = null;
+
+                if (captain == null || string.IsNullOrEmpty(captain.GitHubAccessToken))
+                {
+                    branchResult = new GitHubBranchResult { Success = false, ErrorMessage = "Капитан не найден" };
+                }
+                else
+                {
+                    var decryptedToken = _encryptionService.Decrypt(captain.GitHubAccessToken);
+                    branchResult = await _gitHubService.CreateBranchAsync(decryptedToken, captain.GitHubUsername, task.Team.GitRepoName, dto.GitHubBranchName);
+                }
+
+                if (!branchResult.Success)
+                {
+                    Console.WriteLine($"Ошибка создания ветки GitHub при редактировании: {branchResult.ErrorMessage}");
+                    // Можно вернуть предупреждение, но не ошибку
+                    return Ok(new
+                    {
+                        message = "Задача обновлена, но не удалось создать ветку GitHub",
+                        warning = branchResult.ErrorMessage
+                    });
+                }
+
+                task.GithubBranchName = dto.GitHubBranchName?.Trim();
+
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Исключение при создании ветки GitHub при редактировании: {ex.Message}");
+                // Задача все равно обновлена
+                return Ok(new
+                {
+                    message = "Задача обновлена, но произошла ошибка при создании ветки GitHub",
+                    warning = ex.Message
+                });
+            }
+        }
 
         return Ok("Задача успешно обновлена");
     }
@@ -164,8 +177,7 @@ public class TasksController : ControllerBase
             return Unauthorized("Пользователь не найден");
 
         var task = await _context.Tasks
-            .Include(t => t.Project)
-            .ThenInclude(p => p.Team)
+            .Include(p => p.Team)
             .ThenInclude(t => t.Users)
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
@@ -173,11 +185,11 @@ public class TasksController : ControllerBase
             return NotFound("Задача не найдена");
 
         // Проверяем права: только капитан может назначать задачи
-        if (user.RoleId != 1 && !task.Project.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
+        if (user.RoleId != 1 && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
             return Forbid("Только капитан команды может назначать задачи");
 
         // Проверяем что пользователь состоит в команде
-        var assignee = task.Project.Team.Users.FirstOrDefault(u => u.Id == dto.UserId);
+        var assignee = task.Team.Users.FirstOrDefault(u => u.Id == dto.UserId);
         if (assignee == null)
             return BadRequest("Пользователь не состоит в команде");
 
@@ -251,8 +263,7 @@ public class TasksController : ControllerBase
             return Unauthorized("Пользователь не найден");
 
         var task = await _context.Tasks
-            .Include(t => t.Project)
-            .ThenInclude(p => p.Team)
+            .Include(t => t.Team)
             .ThenInclude(t => t.Users)
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
@@ -260,11 +271,21 @@ public class TasksController : ControllerBase
             return NotFound("Задача не найдена");
 
         // Проверяем права: только капитан может удалять задачи
-        if (user.RoleId != 1 && !task.Project.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
+        if (user.RoleId != 1 && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
             return Forbid("Только капитан команды может удалять задачи");
+
+        var chatId = task.ChatId;
 
         _context.Tasks.Remove(task);
         await _context.SaveChangesAsync();
+
+        var chat = await _context.Chats.FindAsync(chatId);
+
+        if (chat != null)
+        {
+            _context.Chats.Remove(chat);
+            await _context.SaveChangesAsync();
+        }
 
         return Ok("Задача успешно удалена");
     }

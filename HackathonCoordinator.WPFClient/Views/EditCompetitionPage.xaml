@@ -2,7 +2,12 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
       Title="Редактирование соревнования">
+
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Page.Resources>
 
     <Page.DataContext>
         <vm:EditCompetitionViewModel/>
@@ -10,115 +15,139 @@
 
     <Grid Margin="30">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Width="600" HorizontalAlignment="Left">
+            <StackPanel>
 
-                <!-- Заголовок -->
-                <TextBlock Text="{Binding PageTitle}" 
-                           FontSize="26" 
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource TextColor}"
-                           Margin="0,0,0,20"/>
+                <!-- Заголовок страницы -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="← Назад к соревнованиям" 
+                                Command="{Binding CancelCommand}"
+                                Style="{StaticResource NavigationButton}"
+                                Margin="0,0,20,0"/>
+
+                        <StackPanel>
+                            <TextBlock Text="{Binding PageTitle}" 
+                                   Style="{StaticResource PageHeaderStyle}"/>
+                            <TextBlock Text="{Binding PageSubtitle}"
+                                   Style="{StaticResource PageSubtitleStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- Форма редактирования -->
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel>
                         <!-- Название -->
-                        <TextBlock Text="Название соревнования *"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextColor}"
-                                   Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="🏷️ Название соревнования"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   Margin="0,0,0,8"/>
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource ModernTextBox}"
-                                 Margin="0,0,0,15"/>
+                                 Tag="Введите название соревнования:"/>
+                            <TextBlock Text="* Обязательное поле"
+                                   Style="{StaticResource CaptionSecondaryStyle}"
+                                   Margin="0,5,0,0"/>
+                        </StackPanel>
 
                         <!-- Описание -->
-                        <TextBlock Text="Описание"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextColor}"
-                                   Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                        <StackPanel Margin="0,0,0 12">
+                            <TextBlock Text="📝 Описание"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   Margin="0,0,0,8"/>
+                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource ModernTextBox}"
-                                 Height="80"
+                                 Height="70"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto"
-                                 Margin="0,0,0,15"/>
+                                 Tag="Опишите соревнование:"/>
+                        </StackPanel>
 
                         <!-- Даты проведения -->
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="📅 Даты проведения"
+                                   Style="{StaticResource SectionTitleStyle}"
+                                   Margin="0,0,0,8"/>
 
-                            <!-- Дата начала -->
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Дата начала *"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <DatePicker SelectedDate="{Binding StartDate}"
-                                            Style="{StaticResource ModernDatePicker}"/>
-                                <TextBlock Text="Время начала *"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,10,0,5"/>
-                                <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="HH:mm"
-                                         Style="{StaticResource ModernTextBox}"/>
-                            </StackPanel>
+                            <Border Style="{StaticResource StatsContainerStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                            <!-- Пустой разделитель -->
-                            <Rectangle Grid.Column="1" Fill="Transparent"/>
+                                    <!-- Дата начала -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Дата начала *"
+                                               Style="{StaticResource StatsHeaderStyle}"
+                                               Margin="0,0,0,8"/>
+                                        <DatePicker SelectedDate="{Binding StartDate}"
+                                                Style="{StaticResource ModernDatePicker}"
+                                                Margin="0,0,0,15"/>
+                                        <TextBlock Text="Время начала *"
+                                               Style="{StaticResource StatsHeaderStyle}"
+                                               Margin="0,0,0,8"/>
+                                        <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Tag="HH:mm (например: 09:00)"/>
+                                    </StackPanel>
 
-                            <!-- Дата окончания -->
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Дата окончания *"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <DatePicker SelectedDate="{Binding EndDate}"
-                                            Style="{StaticResource ModernDatePicker}"/>
-                                <TextBlock Text="Время окончания *"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,10,0,5"/>
-                                <TextBox Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="HH:mm"
-                                         Style="{StaticResource ModernTextBox}"/>
-                            </StackPanel>
-                        </Grid>
+                                    <!-- Разделитель -->
+                                    <Rectangle Grid.Column="1" Style="{StaticResource VerticalDividerStyle}"/>
 
-                        <!-- Статус (только для редактирования) -->
-                        <CheckBox IsChecked="{Binding IsActive}"
-                                  Content="Соревнование активно"
-                                  FontWeight="SemiBold"
-                                  Foreground="{DynamicResource TextColor}"
-                                  Margin="0,0,0,20"
-                                  Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <!-- Дата окончания -->
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Дата окончания *"
+                                               Style="{StaticResource StatsHeaderStyle}"
+                                               Margin="0,0,0,8"/>
+                                        <DatePicker SelectedDate="{Binding EndDate}"
+                                                Style="{StaticResource ModernDatePicker}"
+                                                Margin="0,0,0,15"/>
+                                        <TextBlock Text="Время окончания *"
+                                               Style="{StaticResource StatsHeaderStyle}"
+                                               Margin="0,0,0,8"/>
+                                        <TextBox Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Tag="HH:mm (например: 18:00)"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <!-- Кнопки действий -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Отмена"
+                        <Border Style="{StaticResource StatsContainerStyle}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Отмена"
                                     Command="{Binding CancelCommand}"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,10,0"/>
+                                    Style="{StaticResource ModalSecondaryButton}"
+                                    Margin="0,0,12,0"/>
 
-                            <Button Content="{Binding SaveButtonText}"
+                                <Button Content="{Binding SaveButtonText}"
                                     Command="{Binding SaveCommand}"
-                                    Style="{StaticResource PrimaryButton}"/>
-                        </StackPanel>
+                                    Style="{StaticResource ModalPrimaryButton}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
 
                 <!-- Сообщения об ошибках -->
-                <TextBlock Text="{Binding ErrorMessage}"
-                           Foreground="{DynamicResource DangerBrush}"
-                           FontWeight="SemiBold"
-                           TextWrapping="Wrap"
-                           Margin="0,10,0,0"
-                           Visibility="{Binding HasErrorMessage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <Border Style="{StaticResource StatsContainerStyle}"
+                        Background="{DynamicResource DangerBrush}"
+                        Visibility="{Binding HasErrorMessage, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⚠️"
+                               Style="{StaticResource BodyLargeStyle}"
+                               Foreground="White"
+                               Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding ErrorMessage}"
+                               Style="{StaticResource BodyTextStyle}"
+                               Foreground="White"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

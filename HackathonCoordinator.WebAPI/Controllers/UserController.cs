@@ -35,13 +35,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 .Where(u => u.Id == int.Parse(userId))
                 .Include(u => u.Team)
                 .Include(u => u.ProfileIcon)
-                .Select(u => new UserProfileDto
+                .Select(u => new UserDto
                 {
                     Id = u.Id,
                     Username = u.Username,
                     Email = u.Email,
                     RoleId = u.RoleId,
                     GitHubUsername = u.GitHubUsername,
+                    GitHubAccessToken = u.GitHubAccessToken,
                     TeamId = u.TeamId,
                     TeamName = u.Team != null ? u.Team.Name : null,
                     IconId = u.ProfileIconId,

@@ -1,6 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System.Text.Json.Serialization;
-using System.Web;
+﻿using HackathonCoordinator.WebAPI.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HackathonCoordinator.WebAPI.Controllers
 {
@@ -8,217 +7,339 @@ namespace HackathonCoordinator.WebAPI.Controllers
     [Route("api/[controller]")]
     public class OAuthController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+        private readonly IGitHubService _gitHubService;
 
-        public OAuthController(IConfiguration configuration)
+        public OAuthController(IGitHubService gitHubService)
         {
-            _configuration = configuration;
+            _gitHubService = gitHubService;
         }
 
         [HttpGet("github-auth-url")]
         public IActionResult GetGitHubAuthUrl([FromQuery] string state)
         {
-            var clientId = _configuration["GitHubOAuth:ClientId"];
-            var redirectUri = _configuration["GitHubOAuth:RedirectUri"];
-            var scope = "user:email,public_repo,write:repo_hook";
-
-            var authUrl = $"https://github.com/login/oauth/authorize?" +
-                         $"client_id={clientId}&" +
-                         $"redirect_uri={HttpUtility.UrlEncode(redirectUri)}&" +
-                         $"scope={scope}&state={state}";
-
+            var authUrl = _gitHubService.GetAuthorizationUrl(state);
             return Ok(new { authUrl });
+        }
+
+        [HttpPost("github-exchange-code")]
+        public async Task<IActionResult> ExchangeGitHubCode([FromBody] ExchangeCodeRequest request)
+        {
+            var result = await _gitHubService.ExchangeCodeAsync(request.Code);
+
+            if (!result.Success)
+                return BadRequest(new { error = result.ErrorMessage });
+
+            return Ok(new
+            {
+                accessToken = result.AccessToken,
+                userInfo = result.UserInfo
+            });
         }
 
         [HttpGet("github-callback")]
         public IActionResult GitHubCallbackPage([FromQuery] string code, [FromQuery] string state)
         {
             var html = $@"
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>GitHub Authorization - HackathonCoordinator</title>
-        <style>
-            body {{ 
-                font-family: 'Segoe UI', Arial, sans-serif; 
-                text-align: center; 
-                padding: 50px; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }}
+<!DOCTYPE html>
+<html lang='ru'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>GitHub Authorization - HackathonCoordinator</title>
+    <style>
+        :root {{
+            --primary-color: #2E86AB;
+            --primary-dark: #1B6B93;
+            --success-color: #27AE60;
+            --text-color: #2C3E50;
+            --text-secondary: #5D6D7E;
+            --background: #F0F9FF;
+            --card-bg: #FFFFFF;
+            --control-bg: #F7FBFF;
+            --border-color: #D6EAF8;
+            --shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }}
+
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: var(--background);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }}
+
+        .container {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }}
+
+        .header {{
+            margin-bottom: 30px;
+        }}
+
+        .logo {{
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }}
+
+        .status-icon {{
+            font-size: 48px;
+            margin-bottom: 20px;
+        }}
+
+        .success {{
+            color: var(--success-color);
+        }}
+
+        .title {{
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--text-color);
+        }}
+
+        .subtitle {{
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            font-size: 16px;
+        }}
+
+        .code-container {{
+            background: var(--control-bg);
+            border: 2px dashed var(--primary-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            position: relative;
+        }}
+
+        .code-label {{
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .code {{
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+            word-break: break-all;
+            user-select: all;
+            cursor: text;
+        }}
+
+        .instructions {{
+            background: var(--control-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+        }}
+
+        .instructions-title {{
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: var(--text-color);
+        }}
+
+        .step {{
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }}
+
+        .step-number {{
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }}
+
+        .step-text {{
+            color: var(--text-secondary);
+            font-size: 14px;
+        }}
+
+        .actions {{
+            margin-top: 25px;
+        }}
+
+        .btn {{
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin: 0 5px;
+        }}
+
+        .btn:hover {{
+            background: var(--primary-dark);
+        }}
+
+        .btn-secondary {{
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }}
+
+        .btn-secondary:hover {{
+            background: var(--control-bg);
+        }}
+
+        .security-note {{
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 20px;
+            font-style: italic;
+        }}
+
+        @media (max-width: 480px) {{
             .container {{
-                background: white;
-                color: #333;
-                padding: 40px;
-                border-radius: 10px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                max-width: 500px;
-                margin: 0 auto;
+                padding: 25px;
             }}
-            .code {{ 
-                font-size: 28px; 
-                font-weight: bold; 
-                color: #0366d6; 
-                margin: 20px;
-                padding: 15px;
-                background: #f6f8fa;
-                border: 2px dashed #0366d6;
-                border-radius: 5px;
+            
+            .title {{
+                font-size: 20px;
             }}
-            .instruction {{ 
-                margin: 20px; 
-                color: #666;
+            
+            .code {{
                 font-size: 16px;
             }}
-            .success {{ color: #28a745; font-size: 24px; }}
-        </style>
-    </head>
-    <body>
-        <div class='container'>
-            <div class='success'>✅ Authorization Successful!</div>
-            <div class='instruction'>Copy this code and return to your application:</div>
-            <div class='code'>{code}</div>
-            <div class='instruction'>
-                <strong>Steps:</strong><br/>
-                1. Copy the code above<br/>
-                2. Return to HackathonCoordinator app<br/>
-                3. Paste the code in the input field<br/>
-                4. Click 'Confirm Code'
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <div class='logo'>HackathonCoordinator</div>
+            <div class='status-icon success'>✅</div>
+            <h1 class='title'>Авторизация успешна!</h1>
+            <p class='subtitle'>GitHub аккаунт успешно подключен к приложению</p>
+        </div>
+
+        <div class='code-container'>
+            <div class='code-label'>Код авторизации</div>
+            <div class='code' id='authCode'>{code}</div>
+        </div>
+
+        <div class='instructions'>
+            <div class='instructions-title'>Дальнейшие действия:</div>
+            
+            <div class='step'>
+                <div class='step-number'>1</div>
+                <div class='step-text'>Скопируйте код авторизации выше</div>
+            </div>
+            
+            <div class='step'>
+                <div class='step-number'>2</div>
+                <div class='step-text'>Вернитесь в приложение HackathonCoordinator</div>
+            </div>
+            
+            <div class='step'>
+                <div class='step-number'>3</div>
+                <div class='step-text'>Вставьте код в поле ввода на странице привязки GitHub</div>
+            </div>
+            
+            <div class='step'>
+                <div class='step-number'>4</div>
+                <div class='step-text'>Нажмите кнопку 'Подтвердить код' для завершения привязки</div>
             </div>
         </div>
-    </body>
-    </html>";
+
+        <div class='actions'>
+            <button class='btn' onclick='copyCode()'>📋 Скопировать код</button>
+            <button class='btn btn-secondary' onclick='closeWindow()'>✕ Закрыть</button>
+        </div>
+
+        <div class='security-note'>
+            🔒 Этот код действителен только один раз и будет автоматически удален после использования
+        </div>
+    </div>
+
+    <script>
+        function copyCode() {{
+            const codeElement = document.getElementById('authCode');
+            const textArea = document.createElement('textarea');
+            textArea.value = codeElement.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            // Визуальное подтверждение копирования
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Скопировано!';
+            btn.style.background = '#27AE60';
+            
+            setTimeout(() => {{
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }}, 2000);
+        }}
+
+        function closeWindow() {{
+            window.close();
+        }}
+
+        document.getElementById('authCode').addEventListener('click', function() {{
+            const range = document.createRange();
+            range.selectNodeContents(this);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }});
+
+        window.addEventListener('beforeunload', function(e) {{
+            if (!navigator.userActivation.hasBeenActive) {{
+                return;
+            }}
+            e.returnValue = 'Убедитесь, что вы скопировали код авторизации перед закрытием страницы.';
+        }});
+    </script>
+</body>
+</html>";
 
             return Content(html, "text/html");
-        }
-
-        [HttpPost("github-exchange-code")]
-        public async Task<IActionResult> ExchangeGitHubCode([FromBody] ExchangeCodeRequest request)
-        {
-            var clientId = _configuration["GitHubOAuth:ClientId"];
-            var clientSecret = _configuration["GitHubOAuth:ClientSecret"];
-            var redirectUri = _configuration["GitHubOAuth:RedirectUri"];
-
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("User-Agent", "HackathonCoordinator/1.0");
-            httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-
-            var exchangeRequest = new
-            {
-                client_id = clientId,
-                client_secret = clientSecret,
-                code = request.Code,
-                redirect_uri = redirectUri
-            };
-
-            var json = System.Text.Json.JsonSerializer.Serialize(exchangeRequest);
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-            var response = await httpClient.PostAsync("https://github.com/login/oauth/access_token", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return BadRequest(new { error = "Failed to exchange code for token" });
-            }
-
-            // ИСПРАВЛЕНИЕ: GitHub теперь возвращает JSON, а не form-urlencoded!
-            try
-            {
-                // Парсим JSON ответ
-                var tokenResponse = System.Text.Json.JsonSerializer.Deserialize<GitHubTokenResponse>(responseContent);
-
-                if (string.IsNullOrEmpty(tokenResponse.AccessToken))
-                {
-                    return BadRequest(new { error = "Access token not received" });
-                }
-
-                var accessToken = tokenResponse.AccessToken;
-
-                // Получаем информацию о пользователе
-                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-
-                var userResponse = await httpClient.GetAsync("https://api.github.com/user");
-                if (!userResponse.IsSuccessStatusCode)
-                {
-                    return BadRequest(new { error = "Failed to get user info" });
-                }
-
-                var userJson = await userResponse.Content.ReadAsStringAsync();
-                var userInfo = System.Text.Json.JsonSerializer.Deserialize<GitHubUserInfo>(userJson);
-
-                // Получаем email
-                var emailsResponse = await httpClient.GetAsync("https://api.github.com/user/emails");
-                if (emailsResponse.IsSuccessStatusCode)
-                {
-                    var emailsJson = await emailsResponse.Content.ReadAsStringAsync();
-                    var emails = System.Text.Json.JsonSerializer.Deserialize<List<GitHubEmail>>(emailsJson);
-                    userInfo.Email = emails?.FirstOrDefault(e => e.Primary)?.Email ?? userInfo.Email;
-                }
-
-                return Ok(new
-                {
-                    accessToken,
-                    userInfo = new
-                    {
-                        userInfo.Login,
-                        userInfo.Name,
-                        userInfo.Email,
-                        userInfo.AvatarUrl
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = $"Failed to parse token response: {ex.Message}" });
-            }
         }
     }
 
     public class ExchangeCodeRequest
     {
         public string Code { get; set; }
-    }
-
-    public class GitHubUserInfo
-    {
-        [JsonPropertyName("login")]
-        public string Login { get; set; }
-
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
-
-        [JsonPropertyName("email")]
-        public string Email { get; set; }
-
-        [JsonPropertyName("avatar_url")]
-        public string AvatarUrl { get; set; }
-    }
-
-    public class GitHubEmail
-    {
-        [JsonPropertyName("email")]
-        public string Email { get; set; }
-
-        [JsonPropertyName("primary")]
-        public bool Primary { get; set; }
-
-        [JsonPropertyName("verified")]
-        public bool Verified { get; set; }
-
-        [JsonPropertyName("visibility")]
-        public string Visibility { get; set; }
-    }
-
-    public class GitHubTokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string AccessToken { get; set; }
-
-        [JsonPropertyName("token_type")]
-        public string TokenType { get; set; }
-
-        [JsonPropertyName("scope")]
-        public string Scope { get; set; }
     }
 }

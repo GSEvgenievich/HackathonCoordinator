@@ -57,10 +57,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _isSuccess = value; OnPropertyChanged(); }
         }
 
+        private string _currentGitHubAccount;
+        public string CurrentGitHubAccount
+        {
+            get => _currentGitHubAccount;
+            set { _currentGitHubAccount = value; OnPropertyChanged(); }
+        }
+
         public ICommand StartOAuthCommand { get; }
         public ICommand ConfirmCodeCommand { get; }
         public ICommand GoBackCommand { get; }
         public ICommand GoToProfileCommand { get; }
+        public ICommand ChangeAccountCommand { get; }
 
         public GitHubAuthViewModel()
         {
@@ -70,10 +78,33 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             StartOAuthCommand = new RelayCommand(async () => await StartOAuthFlowAsync());
             ConfirmCodeCommand = new RelayCommand(async () => await ConfirmAuthorizationCodeAsync());
-            GoBackCommand = new RelayCommand(() => _navigationService.NavigateTo(new ProfilePage()));
             GoToProfileCommand = new RelayCommand(() => _navigationService.NavigateTo(new ProfilePage()));
+            ChangeAccountCommand = new RelayCommand(async () => await ChangeGitHubAccountAsync());
 
-            StatusMessage = "Нажмите 'Начать привязку', чтобы запустить процесс OAuth авторизации GitHub.";
+            LoadCurrentGitHubInfo();
+        }
+
+        private async void LoadCurrentGitHubInfo()
+        {
+            try
+            {
+                var user = await _userService.GetCurrentUserAsync();
+                if (!string.IsNullOrEmpty(user?.GitHubUsername))
+                {
+                    CurrentGitHubAccount = user.GitHubUsername;
+                    StatusMessage = $"✅ Ваш аккаунт GitHub уже привязан: {user.GitHubUsername}";
+                    ShowCodeInput = false;
+                }
+                else
+                {
+                    StatusMessage = "Нажмите 'Начать привязку', чтобы подключить GitHub аккаунт к вашему профилю.";
+                    ShowCodeInput = false;
+                }
+            }
+            catch
+            {
+                StatusMessage = "Нажмите 'Начать привязку', чтобы подключить GitHub аккаунт к вашему профилю.";
+            }
         }
 
         private async Task StartOAuthFlowAsync()
@@ -81,26 +112,37 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 IsLoading = true;
-                StatusMessage = "Получение ссылки авторизации...";
+                StatusMessage = "🔗 Подготовка OAuth авторизации GitHub...";
 
                 var state = Guid.NewGuid().ToString();
                 SecureTokenStorage.SaveTempState(state);
 
                 var authUrl = await _gitHubService.GetGitHubAuthUrlAsync(state);
 
+                // Открываем браузер с инструкциями
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = authUrl,
                     UseShellExecute = true
                 });
 
-                StatusMessage = "Браузер открыт. После авторизации GitHub перенаправит вас на страницу с кодом. Скопируйте код и вставьте его в поле ниже.";
+                StatusMessage = @"🌐 Браузер открыт! 
+
+📋 Инструкция:
+1. Войдите в нужный аккаунт GitHub (или создайте новый)
+2. Предоставьте права доступа приложению
+3. Скопируйте код авторизации со страницы подтверждения
+4. Вставьте код в поле ниже
+
+💡 Совет: Если хотите привязать другой аккаунт, просто войдите в него в браузере";
+
                 ShowCodeInput = true;
+                IsSuccess = false;
 
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Ошибка: {ex.Message}";
+                StatusMessage = $"❌ Ошибка: {ex.Message}";
             }
             finally
             {
@@ -108,24 +150,60 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
+        private async Task ChangeGitHubAccountAsync()
+        {
+            var result = MessageBox.Show(
+                "Вы уверены, что хотите отвязать текущий GitHub аккаунт и привязать новый?",
+                "Смена GitHub аккаунта",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    IsLoading = true;
+                    var unlinkResult = await _userService.UnlinkGitHubAsync();
+
+                    if (unlinkResult.IsSuccess)
+                    {
+                        CurrentGitHubAccount = null;
+                        StatusMessage = "✅ Текущий GitHub аккаунт отвязан. Теперь вы можете привязать новый аккаунт.";
+                        ShowCodeInput = false;
+                        await StartOAuthFlowAsync();
+                    }
+                    else
+                    {
+                        StatusMessage = $"❌ Ошибка отвязки: {unlinkResult.Message}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    StatusMessage = $"❌ Ошибка: {ex.Message}";
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
+            }
+        }
+
         private async Task ConfirmAuthorizationCodeAsync()
         {
             if (string.IsNullOrWhiteSpace(AuthorizationCode))
             {
-                MessageBox.Show("Введите код авторизации");
+                MessageBox.Show("Введите код авторизации из браузера");
                 return;
             }
 
             try
             {
                 IsLoading = true;
-                StatusMessage = "Обмен кода на токен...";
-
-                var savedState = SecureTokenStorage.GetTempState();
+                StatusMessage = "🔄 Обмен кода на токен доступа...";
 
                 var result = await _gitHubService.ExchangeCodeAsync(AuthorizationCode);
 
-                StatusMessage = "Привязка аккаунта к вашему профилю...";
+                StatusMessage = "🔗 Привязка аккаунта к вашему профилю...";
 
                 var linkResult = await _userService.LinkGitHubAccountAsync(
                     result.AccessToken,
@@ -134,17 +212,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 if (linkResult.IsSuccess)
                 {
-                    StatusMessage = "GitHub аккаунт успешно привязан!";
+                    StatusMessage = $"✅ GitHub аккаунт успешно привязан!\n\n👤 Имя пользователя: {result.UserInfo.Login}\n📧 Email: {result.UserInfo.Email ?? "Не указан"}";
+                    CurrentGitHubAccount = result.UserInfo.Login;
                     IsSuccess = true;
+                    ShowCodeInput = false;
+
+                    // Очищаем поле ввода
+                    AuthorizationCode = string.Empty;
                 }
                 else
                 {
-                    StatusMessage = $"Ошибка привязки: {linkResult.Message}";
+                    StatusMessage = $"❌ Ошибка привязки: {linkResult.Message}";
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Ошибка: {ex.Message}";
+                StatusMessage = $"❌ Ошибка: {ex.Message}\n\n💡 Возможные причины:\n• Неверный код авторизации\n• Код уже использован\n• Проблемы с подключением к GitHub";
             }
             finally
             {

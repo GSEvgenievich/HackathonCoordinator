@@ -7,6 +7,7 @@
 
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:CompetitionStatusToBrushConverter x:Key="StatusToBrushConverter"/>
     </Page.Resources>
 
     <Page.DataContext>
@@ -16,131 +17,257 @@
     <Grid Margin="30">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Заголовок и кнопка возврата -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                    <Button Content="← Назад к соревнованиям" 
-                            Command="{Binding BackCommand}"
-                            Style="{StaticResource SecondaryButton}"
-                            Margin="0,0,20,0"/>
-
-                    <TextBlock Text="{Binding Competition.Name}" 
-                               FontSize="26" 
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource TextColor}"
-                               VerticalAlignment="Center"
-                               TextWrapping="Wrap"/>
-                </StackPanel>
-
-                <!-- Описание -->
-                <TextBlock Text="{Binding Competition.Description}"
-                           Style="{StaticResource BodyTextStyle}"
-                           TextWrapping="Wrap"
-                           Margin="0,0,0,15"/>
-
-                <!-- Даты проведения -->
+                <!-- Основная карточка с информацией о соревновании -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock Text="Даты проведения:"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextColor}"
-                                   Margin="0,0,0,5"/>
-                        <TextBlock Text="{Binding Competition.StartDate, StringFormat='Начало: {0:dd.MM.yyyy HH:mm}'}"
-                                   Style="{StaticResource BodyTextStyle}"/>
-                        <TextBlock Text="{Binding Competition.EndDate, StringFormat='Окончание: {0:dd.MM.yyyy HH:mm}'}"
-                                   Style="{StaticResource BodyTextStyle}"/>
+                        <!-- Заголовок и кнопка возврата -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <Button Content="← Назад к соревнованиям" 
+                                    Command="{Binding BackCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Margin="0,0,20,0"/>
+
+                            <StackPanel>
+                                <TextBlock Text="{Binding Competition.Name}" 
+                                       FontSize="26" 
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextColor}"
+                                       TextWrapping="Wrap"/>
+
+                                <!-- Статус соревнования -->
+                                <Border Background="{Binding Competition.StatusColor, Converter={StaticResource StatusToBrushConverter}}"
+                                        CornerRadius="12"
+                                        Padding="6,2"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,5,0,0">
+                                    <TextBlock Text="{Binding Competition.StatusText}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Описание -->
+                        <TextBlock Text="{Binding Competition.Description}"
+                               Style="{StaticResource BodyTextStyle}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,15"/>
+
+                        <!-- Детали соревнования в компактном виде -->
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Даты -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="📅 ДАТЫ ПРОВЕДЕНИЯ"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                       FontSize="12"
+                                       Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding Competition.DateTimeRangeText}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                            <!-- Организатор -->
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="👤 ОРГАНИЗАТОР"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                       FontSize="12"
+                                       Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding Competition.CreatedByUsername}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                            <!-- Команды -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="👥 КОМАНДЫ"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                       FontSize="12"
+                                       Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding Competition.TeamsCountText}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Действия -->
-                <Border Style="{StaticResource CardStyle}">
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock Text="Участие в соревновании"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextColor}"
-                                   Margin="0,0,0,10"/>
+                        <TextBlock Text="🚀 Участие в соревновании"
+                               FontWeight="SemiBold"
+                               FontSize="18"
+                               Foreground="{DynamicResource TextColor}"
+                               Margin="0,0,0,15"/>
 
                         <!-- Для организатора - создать команду -->
-                        <Button Content="Создать команду"
-                                Command="{Binding CreateTeamCommand}"
-                                Style="{StaticResource PrimaryButton}"
-                                Height="50"
-                                Margin="0,0,0,10"
-                                Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <StackPanel Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="Создание команды"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       Margin="0,0,0,8"/>
+                            <Button Content="＋ Создать команду"
+                                    Command="{Binding CreateTeamCommand}"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Height="45"
+                                    Margin="0,0,0,10"/>
+                            <Button Content="📤 Экспортировать данные"
+                                    Command="{Binding ExportCompetitionCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Height="45"
+                                    ToolTip="Экспортировать данные соревнования и данные всех команд"/>
+                        </StackPanel>
 
                         <!-- Для обычного пользователя - присоединиться -->
                         <StackPanel Visibility="{Binding IsRegularUser, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Button Content="Присоединиться к команде"
-                                    Command="{Binding JoinTeamCommand}"
-                                    Style="{StaticResource PrimaryButton}"
-                                    Height="50"
-                                    Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Код приглашения:"
+                            <!-- Состояние: пользователь уже в команде -->
+                            <Border Style="{StaticResource CardStyle}"
+                                    Background="{DynamicResource ControlBackground}"
+                                    BorderBrush="{DynamicResource PrimaryBrush}"
+                                    Visibility="{Binding IsAlreadyInTeam, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="✅ Вы уже состоите в команде"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextColor}"
+                                               FontSize="14"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock Text="Вы уже состоите в команде одного из соревнований. Нажмите на кнопку 'Главная' для возврата к странице команды."
+                                               Style="{StaticResource BodyTextStyle}"
+                                               TextWrapping="Wrap"/>
+                                    <Button Content="🏠 Перейти на главную"
+                                            Command="{Binding GoToMainCommand}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Margin="0,10,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Состояние: пользователь может присоединиться -->
+                            <StackPanel Visibility="{Binding CanJoinTeam, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="Присоединиться к команде"
+                                           Style="{StaticResource BodyTextStyle}"
+                                           Margin="0,0,0,8"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox Text="{Binding InviteCode, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource ModernTextBox}"
+                                         Tag="Введите код приглашения..."
+                                         Margin="0,0,10,0"/>
+
+                                    <Button Content="Присоединиться"
+                                        Command="{Binding JoinTeamCommand}"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Height="45"
+                                        Grid.Column="1"
+                                        MinWidth="120"/>
+                                </Grid>
+
+                                <TextBlock Text="Попросите код приглашения у капитана команды"
                                        Style="{StaticResource BodyTextStyle}"
-                                       Margin="0,0,0,5"/>
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                       Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
-                            <TextBox Text="{Binding InviteCode, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource ModernTextBox}"
-                                     Width="300"/>
+                <!-- Список команд (только для организатора) -->
+                <Border Style="{StaticResource CardStyle}"
+                    Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <TextBlock Text="👥 Управление командами"
+                                   FontWeight="SemiBold"
+                                   FontSize="18"
+                                   Foreground="{DynamicResource TextColor}"/>
+
+                            <TextBlock Text="{Binding Competition.Teams.Count, StringFormat='({0})'}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryColor}"
+                                   FontSize="18"
+                                   Margin="8,0,0,0"/>
                         </StackPanel>
 
-                        <!-- Список команд (только для организатора) -->
-                        <StackPanel Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"
-                                    Margin="0,20,0,0">
-                            <TextBlock Text="Команды соревнования:"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextColor}"
-                                       Margin="0,0,0,10"/>
+                        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Competition.Teams}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" 
+                                            Background="{DynamicResource ControlBackground}" 
+                                            Margin="2"
+                                            Padding="12"
+                                            BorderBrush="{DynamicResource BorderColor}"
+                                            BorderThickness="1">
+                                            <Border.InputBindings>
+                                                <MouseBinding Gesture="LeftClick"
+                                                          Command="{Binding DataContext.ManageTeamCommand, 
+                                                                            RelativeSource={RelativeSource AncestorType=Page}}"
+                                                          CommandParameter="{Binding}"/>
+                                            </Border.InputBindings>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
 
-                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Competition.Teams}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border CornerRadius="8" 
-                                                    Background="{DynamicResource ControlBackground}" 
-                                                    Margin="2"
-                                                    Padding="10">
-                                                <Border.InputBindings>
-                                                    <MouseBinding Gesture="LeftClick"
-                                                                  Command="{Binding DataContext.ManageTeamCommand, 
-                                                                                    RelativeSource={RelativeSource AncestorType=Page}}"
-                                                                  CommandParameter="{Binding}"/>
-                                                </Border.InputBindings>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <!-- Название команды -->
+                                                <!-- Информация о команде -->
+                                                <StackPanel>
                                                     <TextBlock Text="{Binding Name}" 
-                                                               Style="{StaticResource BodyTextStyle}"
-                                                               VerticalAlignment="Center"
-                                                               Cursor="Hand"/>
+                                                           Style="{StaticResource BodyTextStyle}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="14"
+                                                           Cursor="Hand"/>
+                                                </StackPanel>
 
-                                                    <!-- Кнопка удаления -->
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                        <Button Content="🗑️"
-                                                                Command="{Binding DataContext.DeleteTeamCommand, 
-                                                                                  RelativeSource={RelativeSource AncestorType=Page}}"
-                                                                CommandParameter="{Binding}"
-                                                                Style="{StaticResource RoundIconButton}"
-                                                                ToolTip="Удалить команду"
-                                                                Background="{DynamicResource DangerBrush}"
-                                                                Margin="5,0,0,0"/>
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                            <TextBlock Text="В соревновании пока нет команд"
-                                       Style="{StaticResource BodyTextStyle}"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,10,0,0"
-                                       Visibility="{Binding Competition.Teams.Count, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=true}"/>
-                        </StackPanel>
+                                                <!-- Кнопки управления -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <Button Content="👁️"
+                                                        Command="{Binding DataContext.ManageTeamCommand, 
+                                                                          RelativeSource={RelativeSource AncestorType=Page}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource RoundIconButton}"
+                                                        ToolTip="Просмотр команды"
+                                                        Margin="0,0,5,0"/>
+
+                                                    <Button Content="🗑️"
+                                                        Command="{Binding DataContext.DeleteTeamCommand, 
+                                                                          RelativeSource={RelativeSource AncestorType=Page}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource RoundIconButton}"
+                                                        ToolTip="Удалить команду"
+                                                        Background="{DynamicResource DangerBrush}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <TextBlock Text="🎯 В соревновании пока нет команд"
+                               Style="{StaticResource BodyTextStyle}"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,0"
+                               Visibility="{Binding Competition.HasNoTeams, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

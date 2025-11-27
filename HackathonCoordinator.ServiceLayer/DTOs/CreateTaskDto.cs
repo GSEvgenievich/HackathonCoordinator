@@ -7,6 +7,6 @@
         public int TypeId { get; set; }
         public int? AssignedToId { get; set; }
         public DateTime? Deadline { get; set; }
-        public string? GithubBranchName { get; set; }
+        public string? GitHubBranchName { get; set; }
     }
 }

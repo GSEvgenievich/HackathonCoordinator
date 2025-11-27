@@ -5,8 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
         mc:Ignorable="d"
+        Icon="/Assets/Images/Icon.ico"
         Title="Hackathon Coordinator" Height="600" Width="1000"
-        MinHeight="680" MinWidth="550"
+        MinHeight="680" MinWidth="880"
         WindowStartupLocation="CenterScreen">
 
     <Window.DataContext>

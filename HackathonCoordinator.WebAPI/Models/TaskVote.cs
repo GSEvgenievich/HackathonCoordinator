@@ -9,11 +9,11 @@ public partial class TaskVote
 
     public int TaskId { get; set; }
 
-    public bool? IsResultsVisible { get; set; }
+    public bool IsResultsVisible { get; set; }
 
-    public bool? IsClosed { get; set; }
+    public bool IsClosed { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public DateTime? ClosedAt { get; set; }
 

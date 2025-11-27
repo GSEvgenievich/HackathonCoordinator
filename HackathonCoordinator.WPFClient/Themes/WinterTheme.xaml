@@ -6,7 +6,7 @@
     <Color x:Key="PrimaryDarkColor">#3A80D2</Color>
     <Color x:Key="SuccessColor">#4CAF50</Color>
     <Color x:Key="WarningColor">#FF9800</Color>
-    <Color x:Key="DangerColor">#F44336</Color>
+    <Color x:Key="DangerColor">#E74C3C</Color>
     <Color x:Key="InfoColor">#00BCD4</Color>
     <Color x:Key="ShadowColor">#20000000</Color>
     <Color x:Key="HoverShadowColor">#40000000</Color>
@@ -36,6 +36,7 @@
     <SolidColorBrush x:Key="BorderColor">#D6EAF8</SolidColorBrush>
     <SolidColorBrush x:Key="HoverColor">#E8F4FF</SolidColorBrush>
     <SolidColorBrush x:Key="SidebarBackground">#ACCDE2</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarColor">#00BCD4</SolidColorBrush>
     <!-- Используем accent цвет -->
     <SolidColorBrush x:Key="SidebarTextColor">#2C3E50</SolidColorBrush>
     <SolidColorBrush x:Key="SidebarHoverColor">#9CBDD2</SolidColorBrush>

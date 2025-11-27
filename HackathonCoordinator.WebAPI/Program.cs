@@ -1,5 +1,4 @@
 using HackathonCoordinator.WebAPI.Data;
-using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -40,8 +39,17 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+builder.Services.AddHttpClient("GitHub", client =>
+{
+    client.BaseAddress = new Uri("https://api.github.com/");
+    client.DefaultRequestHeaders.Add("User-Agent", "HackathonCoordinator/1.0");
+    client.DefaultRequestHeaders.Add("Accept", "application/vnd.github.v3+json");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 builder.Services.AddDbContext<HackathonCoordinatorContext>();
-builder.Services.AddScoped<SmtpEmailSenderService>();
+builder.Services.AddScoped<IGitHubService, GitHubService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
 

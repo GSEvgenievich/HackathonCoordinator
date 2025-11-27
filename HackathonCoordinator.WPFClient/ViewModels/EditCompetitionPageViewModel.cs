@@ -93,7 +93,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _competitionService = new CompetitionService();
 
             SaveCommand = new RelayCommand(async () => await SaveCompetitionAsync());
-            CancelCommand = new RelayCommand(() => _navigationService.NavigateTo(new CompetitionsPage()));
+            CancelCommand = new RelayCommand(() => _navigationService.GoBack());
         }
 
         public void LoadCompetitionData(CompetitionDto competition)

@@ -1,6 +1,6 @@
 ﻿namespace HackathonCoordinator.ServiceLayer.DTOs
 {
-    public partial class TaskStatus
+    public partial class TaskStatusDTO
     {
         public int Id { get; set; }
 

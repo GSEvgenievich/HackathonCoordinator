@@ -18,13 +18,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
         private readonly IConfiguration _config;
-        private readonly SmtpEmailSenderService _emailSender;
 
-        public AuthController(HackathonCoordinatorContext context, IConfiguration config, SmtpEmailSenderService emailSender)
+        public AuthController(HackathonCoordinatorContext context, IConfiguration config)
         {
             _context = context;
             _config = config;
-            _emailSender = emailSender;
         }
 
         // --- Регистрация ---
@@ -84,7 +82,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_config["Jwt:ExpireMinutes"])),
+                expires: DateTime.Now.AddMinutes(Convert.ToDouble(_config["Jwt:ExpireMinutes"])),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

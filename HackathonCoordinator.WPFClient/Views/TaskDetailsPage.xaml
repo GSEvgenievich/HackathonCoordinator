@@ -16,139 +16,152 @@
     <Grid Margin="30">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Заголовок и кнопка возврата -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                    <Button Content="← Назад к проекту" 
-                            Command="{Binding BackCommand}"
-                            Style="{StaticResource SecondaryButton}"
-                            Margin="0,0,20,0"/>
 
-                    <TextBlock Text="{Binding Task.Title}" 
-                               FontSize="26" 
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource TextColor}"
-                               VerticalAlignment="Center"
-                               TextWrapping="Wrap"/>
-                </StackPanel>
+                <!-- Заголовок страницы -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="← Назад к проекту" 
+                                Command="{Binding BackCommand}"
+                                Style="{StaticResource NavigationButton}"
+                                Margin="0,0,20,0"/>
 
-                <!-- Информация о задаче -->
-                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Task.Title}" 
+                                   Style="{StaticResource PageHeaderStyle}"
+                                   TextWrapping="Wrap"/>
+                            <TextBlock Text="Просмотр и управление задачей"
+                                   Style="{StaticResource PageSubtitleStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Основная информация о задаче -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                     <StackPanel>
+
                         <!-- Заголовок и действия -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <TextBlock Text="Информация о задаче"
-                                       FontWeight="SemiBold"
-                                       FontSize="18"
-                                       Foreground="{DynamicResource TextColor}"/>
+                            <TextBlock Text="📋 Информация о задаче"
+                                   Style="{StaticResource SectionHeaderStyle}"/>
 
                             <!-- Кнопки действий -->
                             <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
                                 <!-- Редактировать (только для капитана) -->
                                 <Button Content="✏️ Редактировать"
                                         Command="{Binding EditTaskCommand}"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Padding="10,6"
+                                        Style="{StaticResource ActionButton}"
                                         Margin="0,0,10,0"
                                         Visibility="{Binding CanEditTask, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                 <!-- Назначить задачу (капитан, нет исполнителя) -->
                                 <Button Content="🎯 Назначить"
-                                        Command="{Binding AssignTaskCommand}"
+                                        Command="{Binding OpenAssignmentDialogCommand}"
                                         Style="{StaticResource PrimaryButton}"
-                                        Padding="10,6"
                                         Margin="0,0,10,0"
                                         Visibility="{Binding CanAssignTask, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                 <!-- Чат задачи -->
                                 <Button Content="💬 Чат задачи"
                                         Command="{Binding OpenTaskChatCommand}"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Padding="10,6"
-                                        Margin="0,0,10,0"
+                                        Style="{StaticResource ActionButton}"
                                         Visibility="{Binding HasChat, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </StackPanel>
                         </StackPanel>
 
                         <!-- Описание задачи -->
-                        <TextBlock Text="{Binding Task.Description}"
-                                   Style="{StaticResource BodyTextStyle}"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,15"/>
+                        <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="📄 Описание"
+                                       Style="{StaticResource StatsHeaderStyle}"
+                                       Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding Task.Description}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
 
                         <!-- Детали задачи -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                        <Border Style="{StaticResource StatsContainerStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                            <!-- Статус -->
-                            <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,30,15">
-                                <TextBlock Text="Статус:"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Task.StatusName}"
-                                           Style="{StaticResource BodyTextStyle}"
-                                           FontWeight="SemiBold"/>
-                            </StackPanel>
+                                <!-- Статус -->
+                                <StackPanel Grid.Column="0" Grid.Row="0">
+                                    <TextBlock Text="📊 Статус"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding Task.StatusName}"
+                                           Style="{StaticResource StatsValueStyle}"/>
+                                </StackPanel>
 
-                            <!-- Тип -->
-                            <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,30,15">
-                                <TextBlock Text="Тип:"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Task.TypeName}"
-                                           Style="{StaticResource BodyTextStyle}"/>
-                            </StackPanel>
+                                <!-- Разделитель -->
+                                <Rectangle Grid.Column="1" Grid.Row="0" Style="{StaticResource VerticalDividerStyle}"/>
 
-                            <!-- Исполнитель -->
-                            <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,30,15">
-                                <TextBlock Text="Исполнитель:"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Task.AssignedToUsername, FallbackValue='Не назначен'}"
-                                           Style="{StaticResource BodyTextStyle}"/>
-                            </StackPanel>
+                                <!-- Тип -->
+                                <StackPanel Grid.Column="2" Grid.Row="0">
+                                    <TextBlock Text="🎯 Тип"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding Task.TypeName}"
+                                           Style="{StaticResource StatsValueStyle}"/>
+                                </StackPanel>
 
-                            <!-- Дедлайн -->
-                            <StackPanel Grid.Column="3" Grid.Row="0" Margin="0,0,0,15">
-                                <TextBlock Text="Дедлайн:"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Task.Deadline, StringFormat='{}{0:dd.MM.yyyy}'}"
-                                           Style="{StaticResource BodyTextStyle}"/>
-                            </StackPanel>
+                                <!-- Разделитель -->
+                                <Rectangle Grid.Column="3" Grid.Row="0" Style="{StaticResource VerticalDividerStyle}"/>
 
-                            <!-- GitHub ветка -->
-                            <StackPanel Grid.Column="0" Grid.Row="1" Margin="0,0,30,0">
-                                <TextBlock Text="GitHub ветка:"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Task.GithubBranchName, FallbackValue='Не указана'}"
-                                           Style="{StaticResource BodyTextStyle}"/>
-                            </StackPanel>
+                                <!-- Исполнитель -->
+                                <StackPanel Grid.Column="4" Grid.Row="0">
+                                    <TextBlock Text="👤 Исполнитель"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding DisplayAssignedTo, FallbackValue='Не назначен'}"
+                                           Style="{StaticResource StatsValueStyle}"/>
+                                </StackPanel>
 
-                            <!-- Дата создания -->
-                            <StackPanel Grid.Column="1" Grid.Row="1" Margin="0,0,30,0">
-                                <TextBlock Text="Создана:"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextColor}"
-                                           Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Task.CreatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}"
-                                           Style="{StaticResource BodyTextStyle}"/>
-                            </StackPanel>
-                        </Grid>
+                                <!-- Дедлайн -->
+                                <StackPanel Grid.Column="0" Grid.Row="1" Margin="0,15,0,0">
+                                    <TextBlock Text="⏰ Дедлайн"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding Task.Deadline, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                           Style="{StaticResource StatsValueStyle}"/>
+                                </StackPanel>
+
+                                <!-- Разделитель -->
+                                <Rectangle Grid.Column="1" Grid.Row="1" Style="{StaticResource VerticalDividerStyle}"/>
+
+                                <!-- GitHub ветка -->
+                                <StackPanel Grid.Column="2" Grid.Row="1" Margin="0,15,0,0">
+                                    <TextBlock Text="🔗 GitHub ветка"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding DisplayGitHubBranch, FallbackValue='Не указана'}"
+                                           Style="{StaticResource StatsValueStyle}"/>
+                                </StackPanel>
+
+                                <!-- Разделитель -->
+                                <Rectangle Grid.Column="3" Grid.Row="1" Style="{StaticResource VerticalDividerStyle}"/>
+
+                                <!-- Дата создания -->
+                                <StackPanel Grid.Column="4" Grid.Row="1" Margin="0,15,0,0">
+                                    <TextBlock Text="📅 Создана"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding Task.CreatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}"
+                                           Style="{StaticResource StatsValueStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
 
@@ -156,11 +169,9 @@
                 <Border Style="{StaticResource CardStyle}" 
                         Visibility="{Binding IsMyTask, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock Text="Мои действия"
-                                   FontWeight="SemiBold"
-                                   FontSize="18"
-                                   Foreground="{DynamicResource TextColor}"
-                                   Margin="0,0,0,15"/>
+                        <TextBlock Text="🚀 Мои действия"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,0,0,15"/>
 
                         <StackPanel Orientation="Horizontal">
                             <!-- Запрос завершения -->
@@ -173,18 +184,76 @@
                             <!-- Запрос отмены -->
                             <Button Content="❌ Отменить задачу"
                                     Command="{Binding CancelTaskCommand}"
-                                    Style="{StaticResource SecondaryButton}"
+                                    Style="{StaticResource ActionButton}"
                                     Background="{DynamicResource DangerBrush}"
                                     Visibility="{Binding CanCancelTask, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         </StackPanel>
 
                         <TextBlock Text="Для завершения или отмены задачи требуется подтверждение капитана"
-                                   Style="{StaticResource BodyTextStyle}"
-                                   FontSize="12"
-                                   Margin="0,10,0,0"/>
+                               Style="{StaticResource CaptionSecondaryStyle}"
+                               Margin="0,10,0,0"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
         </ScrollViewer>
+
+        <!-- Модальное окно назначения задачи -->
+        <Border Style="{StaticResource ModalOverlayStyle}"
+                Visibility="{Binding ShowAssignmentDialog, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Style="{StaticResource ModalDialogStyle}" Width="450">
+                <StackPanel>
+                    <!-- Заголовок с иконкой -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="🎯"
+                                   FontSize="20"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock Text="Назначение задачи"
+                               Style="{StaticResource ModalTitleStyle}"/>
+                    </StackPanel>
+
+                    <!-- Информация о задаче -->
+                    <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,15">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Task.Title}"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"/>
+                            <TextBlock Text="Выберите исполнителя для этой задачи"
+                                   Style="{StaticResource CaptionSecondaryStyle}"
+                                   Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Выбор исполнителя -->
+                    <StackPanel Margin="0,0,0,20">
+                        <TextBlock Text="Исполнитель *"
+                               Style="{StaticResource StatsHeaderStyle}"
+                               Margin="0,0,0,8"/>
+                        <ComboBox ItemsSource="{Binding AvailableAssignees}"
+                              SelectedItem="{Binding SelectedAssignee}"
+                              DisplayMemberPath="Username"
+                              Style="{StaticResource ModernComboBox}"/>
+                    </StackPanel>
+
+                    <!-- Кнопки действий -->
+                    <DockPanel>
+                        <Button Content="Отмена"
+                                Command="{Binding CancelAssignmentCommand}"
+                                Style="{StaticResource ModalSecondaryButton}"/>
+
+                        <Button Content="Голосование"
+                                DockPanel.Dock="Right"
+                                Command="{Binding OpenVotingCommand}"
+                                Style="{StaticResource ModalPrimaryButton}"/>
+                        
+                        <Button Content="Назначить"
+                                Command="{Binding AssignTaskCommand}"
+                                Style="{StaticResource ModalPrimaryButton}"
+                                Background="{DynamicResource InfoBrush}"
+                                Margin="10,0,10,0"/>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Page>
