@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.Services;
+using HackathonCoordinator.WPFClient.ViewModels;
 using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
 using System.Windows.Media.Animation;
@@ -28,9 +29,9 @@ namespace HackathonCoordinator.WPFClient
 
             try
             {
-                bool isValid = await _authService.ValidateTokenAsync();
+                var validation = await _authService.ValidateTokenAsync();
 
-                if (!isValid)
+                if (!validation.Success)
                 {
                     App.NavigationService.NavigateTo(new AuthorizationPage());
                     return;
@@ -38,13 +39,19 @@ namespace HackathonCoordinator.WPFClient
 
                 var user = await _userService.GetCurrentUserAsync();
 
-                if (user == null)
+                if (!user.Success)
                 {
                     App.NavigationService.NavigateTo(new AuthorizationPage());
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(user.TeamName))
+                if (DataContext is MainWindowViewModel viewModel)
+                {
+                    viewModel.CheckUserRole();
+                    viewModel.GetUsername();
+                }
+
+                if (!string.IsNullOrEmpty(user.Data.TeamName))
                 {
                     App.NavigationService.NavigateTo(new TeamPage());
                 }
@@ -93,6 +100,7 @@ namespace HackathonCoordinator.WPFClient
         {
             ProfileText.Visibility = visibility;
             MainText.Visibility = visibility;
+            UsersManagementText.Visibility = visibility;
             NotificationsText.Visibility = visibility;
             ChatsText.Visibility = visibility;
             ThemeText.Visibility = visibility;

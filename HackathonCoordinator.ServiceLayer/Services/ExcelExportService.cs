@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using HackathonCoordinator.ServiceLayer.DTOs;
 using System.Windows;
 
 namespace HackathonCoordinator.ServiceLayer.Services

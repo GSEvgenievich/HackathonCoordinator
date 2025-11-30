@@ -348,6 +348,12 @@
         </Setter>
     </Style>
 
+    <Style x:Key="ModalDangerButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    
     <!-- Карточки -->
     <Style x:Key="CardStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
@@ -386,10 +392,10 @@
 
     <!-- Комбо-бокс -->
     <Style x:Key="ModernComboBox" TargetType="ComboBox">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
+        <Setter Property="Background" Value="{DynamicResource BackgroundColor}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="Padding" Value="12,8"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
@@ -496,15 +502,15 @@
     </Style>
 
     <Style x:Key="AvatarStyle" TargetType="Border">
-        <Setter Property="Width" Value="44"/>
-        <Setter Property="Height" Value="44"/>
-        <Setter Property="CornerRadius" Value="22"/>
+        <Setter Property="Width" Value="50"/>
+        <Setter Property="Height" Value="50"/>
+        <Setter Property="CornerRadius" Value="25"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
         <Setter Property="BorderThickness" Value="2"/>
         <Setter Property="Margin" Value="0,0,15,0"/>
         <Setter Property="Clip">
             <Setter.Value>
-                <EllipseGeometry RadiusX="22" RadiusY="22" Center="22,22"/>
+                <EllipseGeometry RadiusX="25" RadiusY="25" Center="25,25"/>
             </Setter.Value>
         </Setter>
     </Style>
@@ -528,14 +534,9 @@
     </Style>
 
     <!-- Задачи -->
-    <Style x:Key="TaskCardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
+    <Style x:Key="TaskCardStyle" TargetType="Border" BasedOn="{StaticResource InteractiveCardStyle}">
         <Setter Property="Margin" Value="0,0,0,8"/>
         <Setter Property="Padding" Value="16"/>
-        <Setter Property="Cursor" Value="Hand"/>
     </Style>
 
     <Style x:Key="TaskTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyLargeStyle}">
@@ -547,7 +548,36 @@
         <Setter Property="MaxHeight" Value="40"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
+    
+    <!-- Стиль для сообщений -->
+    <Style x:Key="MyMessageContainerStyle" TargetType="StackPanel">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,10,0"/>
+    </Style>
 
+    <Style x:Key="OtherMessageContainerStyle" TargetType="StackPanel">
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Margin" Value="0,0,20,0"/>
+    </Style>
+
+    <Style x:Key="MyMessageStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10 5"/>
+    </Style>
+
+    <Style x:Key="OtherMessageStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10 5"/>
+    </Style>
+
+    <Style x:Key="CaptionTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+    
     <!-- Бейджи и мета-информация -->
     <Style x:Key="CounterBadgeStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
@@ -665,7 +695,6 @@
     <!-- Стиль для карточки моей задачи -->
     <Style x:Key="MyTaskCardStyle" TargetType="Border" BasedOn="{StaticResource TaskCardStyle}">
         <Setter Property="BorderBrush" Value="#4CAF50"/>
-        <Setter Property="BorderThickness" Value="2"/>
         <Setter Property="Background" Value="#F8FFF8"/>
     </Style>
 
@@ -777,6 +806,7 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Вертикальный ScrollBar (ваш существующий) -->
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
         <Setter Property="Margin" Value="3 0"/>
@@ -785,7 +815,7 @@
                 <ControlTemplate TargetType="ScrollBar">
                     <Grid Width="10">
                         <Border Background="{TemplateBinding Background}" 
-                             CornerRadius="5"/>
+                            CornerRadius="5"/>
                         <Track x:Name="PART_Track" IsDirectionReversed="True">
                             <Track.Thumb>
                                 <Thumb>
@@ -797,8 +827,53 @@
                                                 <Setter.Value>
                                                     <ControlTemplate TargetType="Thumb">
                                                         <Border CornerRadius="4" 
-                                                             Background="{TemplateBinding Background}"
-                                                             Margin="1,0"/>
+                                                            Background="{TemplateBinding Background}"
+                                                            Margin="1,0"/>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="AliceBlue"/>
+                                                </Trigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter Property="Background" Value="#222222"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Thumb.Style>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Горизонтальный ScrollBar -->
+    <Style x:Key="HorizontalScrollBarStyle" TargetType="ScrollBar">
+        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+        <Setter Property="Margin" Value="0 3"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Height="10">
+                        <Border Background="{TemplateBinding Background}" 
+                            CornerRadius="5"/>
+                        <Track x:Name="PART_Track" IsDirectionReversed="False">
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Style>
+                                        <Style TargetType="Thumb">
+                                            <Setter Property="Background" Value="{DynamicResource ScrollBarColor}"/>
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Border CornerRadius="4" 
+                                                            Background="{TemplateBinding Background}"
+                                                            Margin="0,1"/>
                                                     </ControlTemplate>
                                                 </Setter.Value>
                                             </Setter>

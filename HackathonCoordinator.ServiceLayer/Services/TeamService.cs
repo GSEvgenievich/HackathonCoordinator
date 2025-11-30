@@ -1,251 +1,184 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Storages;
 using Newtonsoft.Json;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class TeamService
+    public class TeamService : BaseService
     {
-        private readonly HttpClient _client;
-        private const string BaseUrl = "http://localhost:5046/api/";
-
-        public TeamService()
-        {
-            _client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            SetAuthHeader();
-        }
-
-        private void SetAuthHeader()
-        {
-            var token = SecureTokenStorage.GetToken();
-            _client.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
-                ? null
-                : new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        public async Task<(bool Success, string Message)> CreateTeamAsync(string name, bool linkToGitHub = false)
+        public async Task<ApiResponse> CreateTeamAsync(string name, bool linkToGitHub = false)
         {
             SetAuthHeader();
-
-            var json = JsonConvert.SerializeObject(new
-            {
-                Name = name,
-                LinkToGitHub = linkToGitHub
-            });
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("teams/create", content);
-
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
 
             try
             {
-                dynamic data = JsonConvert.DeserializeObject(body)!;
-                return (true, data.message.ToString());
+                var content = CreateJsonContent(new { Name = name, LinkToGitHub = linkToGitHub });
+                var response = await _client.PostAsync("teams/create", content);
+                return await HandleResponseAsync(response);
             }
-            catch
+            catch (Exception ex)
             {
-                return (true, "Команда успешно создана");
+                return ApiResponse.Fail($"Ошибка создания команды: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> JoinTeamAsync(string inviteCode)
+        public async Task<ApiResponse> JoinTeamAsync(string inviteCode)
         {
             SetAuthHeader();
-
-            var json = JsonConvert.SerializeObject(new { InviteCode = inviteCode });
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("teams/join", content);
-
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
 
             try
             {
-                dynamic data = JsonConvert.DeserializeObject(body)!;
-                return (true, data.message.ToString());
+                var content = CreateJsonContent(new { InviteCode = inviteCode });
+                var response = await _client.PostAsync("teams/join", content);
+                return await HandleResponseAsync(response);
             }
-            catch
+            catch (Exception ex)
             {
-                return (true, "У вас новая команда!");
+                return ApiResponse.Fail($"Ошибка присоединения к команде: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> AssignCaptainAsync(int teamId, int userId)
+        public async Task<ApiResponse> AssignCaptainAsync(int teamId, int userId)
         {
             SetAuthHeader();
 
-            var json = JsonConvert.SerializeObject(new { UserId = userId });
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync($"teams/{teamId}/assign-captain", content);
-
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Капитан успешно назначен");
+            try
+            {
+                var content = CreateJsonContent(new { UserId = userId });
+                var response = await _client.PostAsync($"teams/{teamId}/assign-captain", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка назначения капитана: {ex.Message}");
+            }
         }
 
-        public async Task<TeamDto?> GetCurrentTeamAsync()
+        public async Task<ApiResponse<TeamDto>> GetCurrentTeamAsync()
         {
             SetAuthHeader();
 
-            var response = await _client.GetAsync("teams/current");
-
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            return await response.Content.ReadFromJsonAsync<TeamDto>();
+            try
+            {
+                var response = await _client.GetAsync("teams/current");
+                return await HandleResponseAsync<TeamDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<TeamDto>.Fail($"Ошибка получения текущей команды: {ex.Message}");
+            }
         }
 
-        public async Task<int?> GetCurrentTeamIdAsync()
+        public async Task<ApiResponse<int>> GetCurrentTeamIdAsync()
         {
             SetAuthHeader();
 
-            var response = await _client.GetAsync("teams/current/id");
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            return await response.Content.ReadFromJsonAsync<int?>();
+            try
+            {
+                var response = await _client.GetAsync("teams/current/id");
+                return await HandleResponseAsync<int>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<int>.Fail($"Ошибка получения ID команды: {ex.Message}");
+            }
         }
 
-        public async Task<(bool Success, string Message)> LeaveTeamAsync()
+        public async Task<ApiResponse> LeaveTeamAsync()
         {
             SetAuthHeader();
 
-            var response = await _client.PostAsync("teams/leave", null);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            dynamic data = JsonConvert.DeserializeObject(body)!;
-            return (true, data.message?.ToString() ?? "Вы покинули команду");
+            try
+            {
+                var response = await _client.PostAsync("teams/leave", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка выхода из команды: {ex.Message}");
+            }
         }
 
-        public async Task<TeamDto?> GetTeamByIdAsync(int? teamId)
+        public async Task<ApiResponse<TeamDto>> GetTeamByIdAsync(int teamId)
         {
             SetAuthHeader();
 
-            var response = await _client.GetAsync($"teams/{teamId}");
-
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            return await response.Content.ReadFromJsonAsync<TeamDto>();
+            try
+            {
+                var response = await _client.GetAsync($"teams/{teamId}");
+                return await HandleResponseAsync<TeamDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<TeamDto>.Fail($"Ошибка получения команды: {ex.Message}");
+            }
         }
 
-        public async Task<List<TaskDto>> GetTeamTasksAsync(int teamId)
+        public async Task<ApiResponse<List<TaskDto>>> GetTeamTasksAsync(int teamId)
         {
             SetAuthHeader();
-            var response = await _client.GetAsync($"teams/{teamId}/tasks");
 
-            if (!response.IsSuccessStatusCode)
-                return new List<TaskDto>();
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<TaskDto>>(json) ?? new List<TaskDto>();
+            try
+            {
+                var response = await _client.GetAsync($"teams/{teamId}/tasks");
+                return await HandleResponseAsync<List<TaskDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<TaskDto>>.Fail($"Ошибка получения задач команды: {ex.Message}");
+            }
         }
 
-        public async Task<CompetitionDto> GetCompetitionByTeamIdAsync(int teamId)
+        public async Task<ApiResponse> KickMemberAsync(int memberId)
         {
             SetAuthHeader();
-            var response = await _client.GetAsync($"teams/{teamId}/competition");
 
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            return await response.Content.ReadFromJsonAsync<CompetitionDto>();
+            try
+            {
+                var response = await _client.DeleteAsync($"teams/members/{memberId}/kick");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка выгона участника: {ex.Message}");
+            }
         }
 
-        public async Task<(bool Success, string Message, string RepoUrl, string ErrorType)> CreateGitHubRepositoryAsync(
+        public async Task<ApiResponse<CompetitionDto>> GetCompetitionByTeamIdAsync(int teamId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"teams/{teamId}/competition");
+                return await HandleResponseAsync<CompetitionDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<CompetitionDto>.Fail($"Ошибка получения соревнования команды: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<GitHubRepoCreationResponseDto>> CreateGitHubRepositoryAsync(
             int teamId, string repoName, string description, bool isPrivate = true)
         {
             SetAuthHeader();
 
-            var json = JsonConvert.SerializeObject(new
-            {
-                RepoName = repoName,
-                Description = description,
-                IsPrivate = isPrivate
-            });
-
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
             try
             {
-                var response = await _client.PostAsync($"teams/{teamId}/create-github-repo", content);
-                var body = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                var content = CreateJsonContent(new
                 {
-                    string errorType = "unknown";
-                    string errorMessage = "unknown";
+                    RepoName = repoName,
+                    Description = description,
+                    IsPrivate = isPrivate
+                });
 
-                    try
-                    {
-                        var errorResponse = JsonConvert.DeserializeObject<GitHubErrorResponse>(body);
-                        errorType = "unknown";
-                        errorMessage = errorResponse?.Error ?? body;
-
-                        if (errorMessage.Contains("уже существует") || errorMessage.Contains("already exists"))
-                            errorType = "name_already_exists";
-                        else if (errorMessage.Contains("авторизации") || errorMessage.Contains("Bad credentials"))
-                            errorType = "auth_error";
-                        else if (errorMessage.Contains("соединения") || errorMessage.Contains("connection"))
-                            errorType = "network_error";
-                        else if (errorMessage.Contains("лимит") || errorMessage.Contains("rate limit"))
-                            errorType = "rate_limit";
-                    }
-                    catch
-                    {
-                        // Если не удалось распарсить, оставляем unknown
-                    }
-
-                    return (false, errorMessage, null, errorType);
-                }
-
-                var result = JsonConvert.DeserializeObject<GitHubRepoCreationResult>(body);
-                return (true, result?.Message ?? "Репозиторий успешно создан", result?.RepoUrl, null);
-            }
-            catch (System.Net.Http.HttpRequestException ex) when (ex.Message.Contains("NameResolutionFailure") || ex.Message.Contains("ConnectFailure"))
-            {
-                return (false, "Ошибка соединения с GitHub. Проверьте интернет-подключение.", null, "network_error");
-            }
-            catch (TaskCanceledException ex)
-            {
-                return (false, "Превышено время ожидания ответа от GitHub.", null, "timeout");
+                var response = await _client.PostAsync($"teams/{teamId}/create-github-repo", content);
+                return await HandleResponseAsync<GitHubRepoCreationResponseDto>(response);
             }
             catch (Exception ex)
             {
-                return (false, $"Неожиданная ошибка: {ex.Message}", null, "unknown");
+                return ApiResponse<GitHubRepoCreationResponseDto>.Fail($"Ошибка создания репозитория: {ex.Message}");
             }
-        }
-
-        public class GitHubRepoCreationResult
-        {
-            [JsonProperty("message")]
-            public string Message { get; set; }
-
-            [JsonProperty("repoUrl")]
-            public string RepoUrl { get; set; }
-
-            [JsonProperty("repoName")]
-            public string RepoName { get; set; }
-        }
-
-        public class GitHubErrorResponse
-        {
-            [JsonProperty("error")]
-            public string Error { get; set; }
         }
     }
 }

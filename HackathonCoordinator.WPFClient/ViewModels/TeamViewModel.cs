@@ -78,7 +78,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool IsGitHubButtonVisible => HasGitHubRepo || IsCaptain;
 
         private bool _showTransferDialog;
-        private UserProfileDto? _currentUser;
+        private UserDto? _currentUser;
         public bool ShowTransferDialog
         {
             get => _showTransferDialog;
@@ -139,6 +139,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand BackCommand { get; }
         public ICommand CreateGitHubRepoCommand { get; }
         public ICommand CancelCreateRepoCommand { get; }
+        public ICommand KickMemberCommand { get; }
 
         public TeamViewModel()
         {
@@ -149,7 +150,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             LeaveTeamCommand = new RelayCommand(async () => await ExecuteLeaveTeamAsync());
             CreateTaskCommand = new RelayCommand(() => ExecuteCreateTask());
-            OpenTeamChatCommand = new RelayCommand(OpenTeamChat);
+            OpenTeamChatCommand = new RelayCommand(async () => await OpenTeamChat());
             EditTaskCommand = new RelayCommand<TaskDto>(task => ExecuteEditTask(task));
             DeleteTaskCommand = new RelayCommand<TaskDto>(task => ExecuteDeleteTask(task));
             OpenTaskCommand = new RelayCommand<TaskDto>(task => ExecuteOpenTask(task));
@@ -162,18 +163,64 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             BackCommand = new RelayCommand(ExecuteBackCommand);
             CreateGitHubRepoCommand = new RelayCommand(async () => await ExecuteCreateGitHubRepoAsync());
             CancelCreateRepoCommand = new RelayCommand(ExecuteCancelCreateRepo);
+            KickMemberCommand = new RelayCommand<MemberDto>(async (member) => await ExecuteKickMemberAsync(member));
         }
 
         private async void ExecuteBackCommand()
         {
-            var competition = await _teamService.GetCompetitionByTeamIdAsync(CurrentTeam.Id);
+            var competition = (await _teamService.GetCompetitionByTeamIdAsync(CurrentTeam.Id)).Data;
             _navigationService.NavigateTo(new CompetitionDetailsPage(competition));
+        }
+
+        private async Task ExecuteKickMemberAsync(MemberDto member)
+        {
+            if (member == null) return;
+
+            if (member.IsCurrentUser)
+            {
+                MessageBox.Show("Нельзя выгнать самого себя");
+                return;
+            }
+
+            if (member.IsCaptain)
+            {
+                MessageBox.Show("Нельзя выгнать капитана команды. Сначала передайте права капитана.");
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Вы уверены, что хотите выгнать участника {member.Username} из команды?",
+                "Подтверждение выгона",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    var kickResult = await _teamService.KickMemberAsync(member.Id);
+                    MessageBox.Show(kickResult.Message);
+
+                    if (kickResult.Success)
+                    {
+                        await LoadTeamDataAsync(CurrentTeam?.Id);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка при выгоне участника: {kickResult.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при выгоне участника: {ex.Message}");
+                }
+            }
         }
 
         private async Task CreateGitHubRepositoryAsync()
         {
             var user = await _userService.GetCurrentUserAsync();
-            if (string.IsNullOrEmpty(user?.GitHubUsername))
+            if (string.IsNullOrEmpty(user.Data.GitHubUsername))
             {
                 MessageBox.Show("Для создания репозитория необходимо сначала привязать GitHub аккаунт в профиле");
                 _navigationService.NavigateTo(new ProfilePage());
@@ -204,43 +251,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (result.Success)
                 {
                     ShowSuccessMessage("Репозиторий создан",
-                        $"{result.Message}\n\nURL репозитория: {result.RepoUrl}");
+                        $"{result.Message}\n\nURL репозитория: {result.Data.RepoUrl}");
                     ShowCreateRepoDialog = false;
 
                     await LoadTeamDataAsync(null);
                 }
                 else
                 {
-                    HandleGitHubError(result.Message, result.ErrorType);
+                    ShowErrorMessage("Ошибка создания репозитория", result.Message);
                 }
             }
             catch (Exception ex)
             {
                 ShowErrorMessage("Ошибка", $"Неожиданная ошибка: {ex.Message}");
             }
-        }
-
-        private void HandleGitHubError(string errorMessage, string errorType)
-        {
-            string title = "Ошибка создания репозитория";
-
-            switch (errorType)
-            {
-                case "name_already_exists":
-                    title = "Репозиторий уже существует";
-                    break;
-                case "auth_error":
-                    title = "Ошибка авторизации";
-                    break;
-                case "network_error":
-                    title = "Ошибка соединения";
-                    break;
-                case "rate_limit":
-                    title = "Превышен лимит запросов";
-                    break;
-            }
-
-            ShowErrorMessage(title, errorMessage);
         }
 
         private void ShowSuccessMessage(string title, string message)
@@ -311,12 +335,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void OpenTeamChat()
+        private async Task OpenTeamChat()
         {
-            if (CurrentTeam.ChatId != null)
+            if (CurrentTeam?.ChatId != null)
             {
-                MessageBox.Show($"Открытие чата команды (ID: {CurrentTeam.ChatId})");
-                // Реализовать переход в чат
+                var chatPage = new ChatPage();
+                var viewModel = chatPage.DataContext as ChatViewModel;
+                if (viewModel != null)
+                {
+                    await viewModel.LoadTeamChatAsync(CurrentTeam.Id);
+                    _navigationService.NavigateTo(chatPage);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Чат команды не найден");
             }
         }
 
@@ -454,11 +487,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (teamId == null)
             {
-                CurrentTeam = await _teamService.GetCurrentTeamAsync();
+                CurrentTeam = (await _teamService.GetCurrentTeamAsync()).Data;
             }
             else
             {
-                CurrentTeam = await _teamService.GetTeamByIdAsync(teamId);
+                CurrentTeam = (await _teamService.GetTeamByIdAsync(teamId.Value)).Data;
             }
 
             if (CurrentTeam == null)
@@ -468,7 +501,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 return;
             }
 
-            _currentUser = await _userService.GetCurrentUserAsync();
+            _currentUser = (await _userService.GetCurrentUserAsync()).Data;
 
             await LoadMembersAsync();
             await LoadTasksAsync();
@@ -494,7 +527,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (CurrentTeam?.Id == null) return;
 
             // Используем задачи из CurrentTeam или загружаем отдельно
-            var tasks = CurrentTeam.Tasks ?? await _teamService.GetTeamTasksAsync(CurrentTeam.Id);
+            var tasks = CurrentTeam.Tasks;
 
             var taskSections = new List<TaskSection>
             {

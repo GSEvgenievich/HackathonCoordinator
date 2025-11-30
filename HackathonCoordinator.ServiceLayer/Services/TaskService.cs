@@ -1,183 +1,160 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Storages;
-using Newtonsoft.Json;
-using System.Net.Http.Headers;
-using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class TaskService
+    public class TaskService : BaseService
     {
-        private readonly HttpClient _client;
-        private const string BaseUrl = "http://localhost:5046/api/";
-
-        public TaskService()
-        {
-            _client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            SetAuthHeader();
-        }
-
-        private void SetAuthHeader()
-        {
-            var token = SecureTokenStorage.GetToken();
-            _client.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
-                ? null
-                : new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        public async Task<List<TaskTypeDto>> GetTaskTypesAsync()
+        public async Task<ApiResponse<List<TaskTypeDto>>> GetTaskTypesAsync()
         {
             SetAuthHeader();
-            var response = await _client.GetAsync("tasks/types");
-
-            if (!response.IsSuccessStatusCode)
-                return new List<TaskTypeDto>();
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<TaskTypeDto>>(json) ?? new List<TaskTypeDto>();
-        }
-
-        public async Task<List<TaskStatusDTO>> GetTaskStatusesAsync()
-        {
-            SetAuthHeader();
-            var response = await _client.GetAsync("tasks/statuses");
-
-            if (!response.IsSuccessStatusCode)
-                return new List<TaskStatusDTO>();
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<TaskStatusDTO>>(json) ?? new List<TaskStatusDTO>();
-        }
-
-        public async Task<TaskDetailsDto> GetTaskDetailsAsync(int taskId)
-        {
-            SetAuthHeader();
-            var response = await _client.GetAsync($"tasks/{taskId}/details");
-
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<TaskDetailsDto>(json);
-        }
-
-        public async Task<(bool Success, string Message)> CreateTaskAsync(int teamId, CreateTaskDto dto)
-        {
-            SetAuthHeader();
-
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PostAsync($"teams/{teamId}/tasks", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
 
             try
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(body);
-                var message = result?.message?.ToString() ?? "Задача успешно создана";
-                var warning = result?.warning?.ToString();
-
-                if (!string.IsNullOrEmpty(warning))
-                {
-                    message += $"\n\n⚠️ {warning}";
-                }
-
-                return (true, message);
+                var response = await _client.GetAsync("tasks/types");
+                return await HandleResponseAsync<List<TaskTypeDto>>(response);
             }
-            catch
+            catch (Exception ex)
             {
-                return (true, "Задача успешно создана");
+                return ApiResponse<List<TaskTypeDto>>.Fail($"Ошибка получения типов задач: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> UpdateTaskAsync(int taskId, CreateTaskDto dto)
+        public async Task<ApiResponse<List<TaskStatusDto>>> GetTaskStatusesAsync()
         {
             SetAuthHeader();
-
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PutAsync($"tasks/{taskId}", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
 
             try
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(body);
-                var message = result?.message?.ToString() ?? "Задача успешно обновлена";
-                var warning = result?.warning?.ToString();
-
-                if (!string.IsNullOrEmpty(warning))
-                {
-                    message += $"\n\n⚠️ {warning}";
-                }
-
-                return (true, message);
+                var response = await _client.GetAsync("tasks/statuses");
+                return await HandleResponseAsync<List<TaskStatusDto>>(response);
             }
-            catch
+            catch (Exception ex)
             {
-                return (true, "Задача успешно обновлена");
+                return ApiResponse<List<TaskStatusDto>>.Fail($"Ошибка получения статусов задач: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> AssignTaskAsync(int taskId, int userId)
+        public async Task<ApiResponse<List<int>>> GetUserTasksIdsAsync()
         {
             SetAuthHeader();
 
-            var json = JsonConvert.SerializeObject(new { UserId = userId });
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PostAsync($"tasks/{taskId}/assign", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Задача успешно назначена");
+            try
+            {
+                var response = await _client.GetAsync("tasks/my/ids");
+                return await HandleResponseAsync<List<int>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<int>>.Fail($"Ошибка получения задач пользователя: {ex.Message}");
+            }
         }
 
-        public async Task<(bool Success, string Message)> RequestCompletionAsync(int taskId)
+        public async Task<ApiResponse<TaskDetailsDto>> GetTaskDetailsAsync(int taskId)
         {
             SetAuthHeader();
 
-            var response = await _client.PostAsync($"tasks/{taskId}/request-completion", null);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Запрос на завершение отправлен");
+            try
+            {
+                var response = await _client.GetAsync($"tasks/{taskId}/details");
+                return await HandleResponseAsync<TaskDetailsDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<TaskDetailsDto>.Fail($"Ошибка получения деталей задачи: {ex.Message}");
+            }
         }
 
-        public async Task<(bool Success, string Message)> RequestCancellationAsync(int taskId)
+        public async Task<ApiResponse> CreateTaskAsync(int teamId, CreateTaskDto dto)
         {
             SetAuthHeader();
 
-            var response = await _client.PostAsync($"tasks/{taskId}/request-cancellation", null);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Запрос на отмену отправлен");
+            try
+            {
+                var content = CreateJsonContent(dto);
+                var response = await _client.PostAsync($"teams/{teamId}/tasks", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка создания задачи: {ex.Message}");
+            }
         }
 
-        public async Task<(bool Success, string Message)> DeleteTaskAsync(int taskId)
+        public async Task<ApiResponse> UpdateTaskAsync(int taskId, CreateTaskDto dto)
         {
             SetAuthHeader();
 
-            var response = await _client.DeleteAsync($"tasks/{taskId}");
-            var body = await response.Content.ReadAsStringAsync();
+            try
+            {
+                var content = CreateJsonContent(dto);
+                var response = await _client.PutAsync($"tasks/{taskId}", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка обновления задачи: {ex.Message}");
+            }
+        }
 
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
+        public async Task<ApiResponse> AssignTaskAsync(int taskId, int userId)
+        {
+            SetAuthHeader();
 
-            return (true, "Задача успешно удалена");
+            try
+            {
+                var content = CreateJsonContent(new { UserId = userId });
+                var response = await _client.PostAsync($"tasks/{taskId}/assign", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка назначения задачи: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse> RequestCompletionAsync(int taskId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"tasks/{taskId}/request-completion", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка запроса завершения: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse> RequestCancellationAsync(int taskId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"tasks/{taskId}/request-cancellation", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка запроса отмены: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse> DeleteTaskAsync(int taskId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.DeleteAsync($"tasks/{taskId}");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка удаления задачи: {ex.Message}");
+            }
         }
     }
 }

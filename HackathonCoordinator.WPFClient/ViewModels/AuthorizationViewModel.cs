@@ -50,7 +50,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             var resultMessage = await _authService.LoginAsync(Login, Password);
 
-            if (resultMessage == "OK")
+            if (resultMessage.Success)
             {
                 var user = await _userService.GetCurrentUserAsync();
 
@@ -58,18 +58,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
                     {
-                        mainViewModel.Username = user.Username;
+                        mainViewModel.Username = user.Data.Username;
+                        mainViewModel.CheckUserRole();
+                        mainViewModel.GetUsername();
                     }
                 }
 
-                if (user.TeamId == null)
+                if (user.Data.TeamId == null)
                     _navigationService.NavigateTo(new CompetitionsPage());
                 else
                     _navigationService.NavigateTo(new TeamPage());
             }
             else
             {
-                MessageBox.Show(resultMessage);
+                MessageBox.Show(resultMessage.Message);
             }
         }
     }

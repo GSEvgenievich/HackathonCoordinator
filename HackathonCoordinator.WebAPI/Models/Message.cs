@@ -14,6 +14,8 @@ public partial class Message
     public string Text { get; set; } = null!;
 
     public DateTime SentAt { get; set; }
+    public bool IsEdited { get; set; }
+    public DateTime? EditedAt { get; set; }
 
     public virtual Chat Chat { get; set; } = null!;
 

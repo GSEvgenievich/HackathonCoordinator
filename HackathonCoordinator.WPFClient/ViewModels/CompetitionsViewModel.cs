@@ -128,34 +128,32 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async void LoadCompetitionsAsync()
         {
-            var competitions = await _competitionService.GetCompetitionsAsync();
+            try
+            {
+                // Асинхронное получение списка соревнований из сервиса
+                var competitionsResponse = await _competitionService.GetCompetitionsAsync();
 
-            if (competitions == null)
-            {
-                Competitions = new ObservableCollection<CompetitionDto>();
-            }
-            else
-            {
-                if (IsOrganizer)
+                if (!competitionsResponse.Success)
                 {
-                    // Организатор видит все соревнования
-                    Competitions = new ObservableCollection<CompetitionDto>(competitions);
+                    MessageBox.Show($"Ошибка загрузки соревнований: {competitionsResponse.Message}", "Ошибка");
                 }
                 else
                 {
-                    // Обычный пользователь видит только активные
-                    var activeCompetitions = competitions.Where(c => c.IsActive && c.EndDate >= DateTime.Now).ToList();
-                    Competitions = new ObservableCollection<CompetitionDto>(activeCompetitions);
+                    Competitions = new ObservableCollection<CompetitionDto>(competitionsResponse.Data);
                 }
-            }
 
-            ApplyFilter();
+                ApplyFilter();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки соревнований: {ex.Message}", "Ошибка");
+            }
         }
 
         private async void CheckUserRole()
         {
             var user = await _userService.GetCurrentUserAsync();
-            IsOrganizer = user?.RoleId == 3; // 3 = Organizer
+            IsOrganizer = user.Data.RoleId == 3; // 3 = Organizer
             OnPropertyChanged(nameof(IsOrganizer));
         }
 
@@ -186,20 +184,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             try
             {
-                var exportData = await _competitionService.GetCompetitionExportDataAsync(competition.Id);
+                var exportDataResponce = await _competitionService.GetCompetitionExportDataAsync(competition.Id);
 
-                if (exportData != null)
+                if (exportDataResponce.Success)
                 {
                     var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                     {
-                        FileName = exportData.SuggestedFileName,
+                        FileName = exportDataResponce.Data.SuggestedFileName,
                         Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
                         DefaultExt = ".xlsx"
                     };
 
                     if (saveFileDialog.ShowDialog() == true)
                     {
-                        var success = await _excelExportService.ExportCompetitionToExcelAsync(exportData, saveFileDialog.FileName);
+                        var success = await _excelExportService.ExportCompetitionToExcelAsync(exportDataResponce.Data, saveFileDialog.FileName);
 
                         if (success)
                         {
@@ -237,3 +235,4 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         Upcoming
     }
 }
+

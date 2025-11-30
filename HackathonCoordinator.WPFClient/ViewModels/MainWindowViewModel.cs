@@ -17,6 +17,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly string[] _themes = { "Light", "Dark", "Summer", "Spring", "Winter", "Autumn" };
         private int _currentThemeIndex = 0;
 
+        private bool _isOrganizer = false;
+        public bool IsOrganizer
+        {
+            get => _isOrganizer;
+            set => SetProperty(ref _isOrganizer, value);
+        }
+
         private string _username;
         public string Username
         {
@@ -30,6 +37,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand OpenMainPageCommand { get; }
         public ICommand ToggleThemeCommand { get; }
         public ICommand LogoutCommand { get; }
+        public ICommand OpenUsersManagementCommand { get; }
+        public ICommand OpenChatsCommand {  get; }
 
         public MainWindowViewModel()
         {
@@ -40,10 +49,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             OpenMainPageCommand = new RelayCommand(OpenMainPage);
+            OpenChatsCommand = new RelayCommand(() => _navigationService.NavigateTo(new ChatsPage()));
             OpenProfileCommand = new RelayCommand(() => _navigationService.NavigateTo(new ProfilePage()));
             LogoutCommand = new RelayCommand(ExecuteLogout);
+            OpenUsersManagementCommand = new RelayCommand(() => ExecuteOpenUsersManagement());
+        }
 
-            GetUsername();
+        public async void CheckUserRole()
+        {
+            var user = await _userService.GetCurrentUserAsync();
+            IsOrganizer = user.Data.RoleId == 3; 
+            OnPropertyChanged(nameof(IsOrganizer));
         }
 
         private void ToggleTheme()
@@ -53,12 +69,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OnPropertyChanged(nameof(CurrentThemeName));
         }
 
-        private async void GetUsername()
+        private void ExecuteOpenUsersManagement()
+        {
+            App.NavigationService.NavigateTo(new UsersManagementPage());
+        }
+
+        public async void GetUsername()
         {
             try
             {
                 var user = await _userService.GetCurrentUserAsync();
-                Username = user?.Username ?? "Гость";
+                Username = user.Data.Username ?? "Гость";
             }
             catch
             {
@@ -70,7 +91,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             var teamId = await _teamService.GetCurrentTeamIdAsync();
 
-            if (teamId == null)
+            if (!teamId.Success)
                 _navigationService.NavigateTo(new CompetitionsPage());
             else
                 _navigationService.NavigateTo(new TeamPage());

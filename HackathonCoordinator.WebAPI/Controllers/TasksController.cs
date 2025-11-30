@@ -1,17 +1,18 @@
-﻿using HackathonCoordinator.WebAPI.Data;
+﻿using HackathonCoordinator.WebAPI;
+using HackathonCoordinator.WebAPI.Controllers;
+using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class TasksController : ControllerBase
+public class TasksController : BaseApiController
 {
     private readonly HackathonCoordinatorContext _context;
     private readonly IEncryptionService _encryptionService;
@@ -24,22 +25,48 @@ public class TasksController : ControllerBase
         _gitHubService = gitHubService;
     }
 
+    /// <summary>
+    /// Получить типы задач
+    /// </summary>
     [HttpGet("types")]
-    public async Task<ActionResult<List<TaskType>>> GetTaskTypes()
+    public async Task<ActionResult<ApiResponse<List<TaskType>>>> GetTaskTypes()
     {
-        return await _context.TaskTypes.ToListAsync();
+        var types = await _context.TaskTypes.ToListAsync();
+        return HandleResult(types);
     }
 
+    /// <summary>
+    /// Получить статусы задач
+    /// </summary>
     [HttpGet("statuses")]
-    public async Task<ActionResult<List<TaskStatus>>> GetTaskStatuses()
+    public async Task<ActionResult<ApiResponse<List<TaskStatus>>>> GetTaskStatuses()
     {
-        return await _context.TaskStatuses.ToListAsync();
+        var statuses = await _context.TaskStatuses.ToListAsync();
+        return HandleResult(statuses);
     }
 
-    [HttpGet("{taskId}/details")]
-    public async Task<ActionResult<TaskDetailsDto>> GetTaskDetails(int taskId)
+    /// <summary>
+    /// Получить список своих задач
+    /// </summary>
+    [HttpGet("my/ids")]
+    public async Task<ActionResult<ApiResponse<List<int>>>> GetUserTasksIds()
     {
         var userId = GetUserId();
+
+        var tasksIds = await _context.Tasks
+            .Where(t => t.AssignedToId == userId)
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        return HandleResult(tasksIds);
+    }
+
+    /// <summary>
+    /// Получить детальную информацию о задаче
+    /// </summary>
+    [HttpGet("{taskId}/details")]
+    public async Task<ActionResult<ApiResponse<TaskDetailsDto>>> GetTaskDetails(int taskId)
+    {
         var task = await _context.Tasks
             .Include(t => t.Team)
             .ThenInclude(t => t.Users)
@@ -49,8 +76,9 @@ public class TasksController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
-            return NotFound("Задача не найдена");
+            return HandleNotFound<TaskDetailsDto>("Задача не найдена");
 
+        var userId = GetUserId();
         var user = await _context.Users.FindAsync(userId);
         var isCaptain = user?.RoleId == 1;
         var isMyTask = task.AssignedToId == userId;
@@ -70,27 +98,28 @@ public class TasksController : ControllerBase
             Deadline = task.Deadline,
             GitHubBranchName = task.GithubBranchName,
             CreatedAt = task.CreatedAt,
-
-            // Права доступа
             CanEdit = isCaptain,
             CanAssign = isCaptain && task.AssignedToId == null,
-            CanComplete = isMyTask && task.StatusId == 2, // В процессе
-            CanCancel = isMyTask && task.StatusId != 5, // Не отменена
+            CanComplete = isMyTask && task.StatusId == 2,
+            CanCancel = isMyTask && task.StatusId != 5,
             HasChat = task.ChatId != null,
             TaskChatId = task.ChatId
         };
 
-        return Ok(dto);
+        return HandleResult(dto);
     }
 
+    /// <summary>
+    /// Обновить задачу
+    /// </summary>
     [HttpPut("{taskId}")]
-    public async Task<IActionResult> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
+    public async Task<ActionResult<ApiResponse>> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
     {
         var userId = GetUserId();
         var user = await _context.Users.FindAsync(userId);
 
         if (user == null)
-            return Unauthorized("Пользователь не найден");
+            return HandleUnauthorized("Пользователь не найден");
 
         var task = await _context.Tasks
             .Include(t => t.Team)
@@ -98,11 +127,10 @@ public class TasksController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
-            return NotFound("Задача не найдена");
+            return HandleNotFound("Задача не найдена");
 
-        // Проверяем права: только капитан может редактировать задачи
         if (user.RoleId != 1 && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
-            return Forbid("Только капитан команды может редактировать задачи");
+            return HandleForbidden("Только капитан команды может редактировать задачи");
 
         var oldBranchName = task.GithubBranchName;
         var hasExistingBranch = !string.IsNullOrEmpty(oldBranchName);
@@ -115,17 +143,18 @@ public class TasksController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        if (
-        !string.IsNullOrEmpty(dto.GitHubBranchName) &&
-        !string.IsNullOrEmpty(task.Team.GitRepoName) &&
-        !hasExistingBranch) // Ключевое условие - не было ветки до этого
+        string warning = null;
+
+        if (!string.IsNullOrEmpty(dto.GitHubBranchName) &&
+            !string.IsNullOrEmpty(task.Team.GitRepoName) &&
+            !hasExistingBranch)
         {
             try
             {
                 var captain = await _context.Users
-                       .FirstOrDefaultAsync(u => u.TeamId == task.Team.Id && u.RoleId == 1);
+                    .FirstOrDefaultAsync(u => u.TeamId == task.Team.Id && u.RoleId == 1);
 
-                GitHubBranchResult? branchResult = null;
+                GitHubBranchResult branchResult = null;
 
                 if (captain == null || string.IsNullOrEmpty(captain.GitHubAccessToken))
                 {
@@ -139,42 +168,40 @@ public class TasksController : ControllerBase
 
                 if (!branchResult.Success)
                 {
-                    Console.WriteLine($"Ошибка создания ветки GitHub при редактировании: {branchResult.ErrorMessage}");
-                    // Можно вернуть предупреждение, но не ошибку
-                    return Ok(new
-                    {
-                        message = "Задача обновлена, но не удалось создать ветку GitHub",
-                        warning = branchResult.ErrorMessage
-                    });
+                    warning = branchResult.ErrorMessage;
                 }
-
-                task.GithubBranchName = dto.GitHubBranchName?.Trim();
-
-                await _context.SaveChangesAsync();
+                else
+                {
+                    task.GithubBranchName = dto.GitHubBranchName?.Trim();
+                    await _context.SaveChangesAsync();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Исключение при создании ветки GitHub при редактировании: {ex.Message}");
-                // Задача все равно обновлена
-                return Ok(new
-                {
-                    message = "Задача обновлена, но произошла ошибка при создании ветки GitHub",
-                    warning = ex.Message
-                });
+                warning = ex.Message;
             }
         }
 
-        return Ok("Задача успешно обновлена");
+        var message = "Задача успешно обновлена";
+        if (!string.IsNullOrEmpty(warning))
+        {
+            message += $". Предупреждение: {warning}";
+        }
+
+        return HandleSuccess(message);
     }
 
+    /// <summary>
+    /// Назначить задачу пользователю
+    /// </summary>
     [HttpPost("{taskId}/assign")]
-    public async Task<IActionResult> AssignTask(int taskId, [FromBody] AssignTaskDto dto)
+    public async Task<ActionResult<ApiResponse>> AssignTask(int taskId, [FromBody] AssignTaskDto dto)
     {
         var userId = GetUserId();
         var user = await _context.Users.FindAsync(userId);
 
         if (user == null)
-            return Unauthorized("Пользователь не найден");
+            return HandleUnauthorized("Пользователь не найден");
 
         var task = await _context.Tasks
             .Include(p => p.Team)
@@ -182,27 +209,28 @@ public class TasksController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
-            return NotFound("Задача не найдена");
+            return HandleNotFound("Задача не найдена");
 
-        // Проверяем права: только капитан может назначать задачи
         if (user.RoleId != 1 && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
-            return Forbid("Только капитан команды может назначать задачи");
+            return HandleForbidden("Только капитан команды может назначать задачи");
 
-        // Проверяем что пользователь состоит в команде
         var assignee = task.Team.Users.FirstOrDefault(u => u.Id == dto.UserId);
         if (assignee == null)
-            return BadRequest("Пользователь не состоит в команде");
+            return HandleError("Пользователь не состоит в команде");
 
         task.AssignedToId = dto.UserId;
-        task.StatusId = 2; // Переводим в "В процессе"
+        task.StatusId = 2;
 
         await _context.SaveChangesAsync();
 
-        return Ok("Задача успешно назначена");
+        return HandleSuccess("Задача успешно назначена");
     }
 
+    /// <summary>
+    /// Запросить завершение задачи
+    /// </summary>
     [HttpPost("{taskId}/request-completion")]
-    public async Task<IActionResult> RequestCompletion(int taskId)
+    public async Task<ActionResult<ApiResponse>> RequestCompletion(int taskId)
     {
         var userId = GetUserId();
         var task = await _context.Tasks
@@ -210,25 +238,25 @@ public class TasksController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
-            return NotFound("Задача не найдена");
+            return HandleNotFound("Задача не найдена");
 
-        // Проверяем что пользователь - исполнитель задачи
         if (task.AssignedToId != userId)
-            return Forbid("Только исполнитель задачи может запрашивать завершение");
+            return HandleForbidden("Только исполнитель задачи может запрашивать завершение");
 
-        // Проверяем что задача в процессе
         if (task.StatusId != 2)
-            return BadRequest("Задача должна быть в статусе 'В процессе'");
+            return HandleError("Задача должна быть в статусе 'В процессе'");
 
-        task.StatusId = 3; // Переводим в "На проверке"
-
+        task.StatusId = 3;
         await _context.SaveChangesAsync();
 
-        return Ok("Запрос на завершение отправлен капитану");
+        return HandleSuccess("Запрос на завершение отправлен капитану");
     }
 
+    /// <summary>
+    /// Запросить отмену задачи
+    /// </summary>
     [HttpPost("{taskId}/request-cancellation")]
-    public async Task<IActionResult> RequestCancellation(int taskId)
+    public async Task<ActionResult<ApiResponse>> RequestCancellation(int taskId)
     {
         var userId = GetUserId();
         var task = await _context.Tasks
@@ -236,31 +264,31 @@ public class TasksController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
-            return NotFound("Задача не найдена");
+            return HandleNotFound("Задача не найдена");
 
-        // Проверяем что пользователь - исполнитель задачи
         if (task.AssignedToId != userId)
-            return Forbid("Только исполнитель задачи может запрашивать отмену");
+            return HandleForbidden("Только исполнитель задачи может запрашивать отмену");
 
-        // Нельзя отменить уже отмененную задачу
         if (task.StatusId == 5)
-            return BadRequest("Задача уже отменена");
+            return HandleError("Задача уже отменена");
 
-        task.StatusId = 5; // Переводим в "Отменена"
-
+        task.StatusId = 5;
         await _context.SaveChangesAsync();
 
-        return Ok("Задача отменена");
+        return HandleSuccess("Задача отменена");
     }
 
+    /// <summary>
+    /// Удалить задачу
+    /// </summary>
     [HttpDelete("{taskId}")]
-    public async Task<IActionResult> DeleteTask(int taskId)
+    public async Task<ActionResult<ApiResponse>> DeleteTask(int taskId)
     {
         var userId = GetUserId();
         var user = await _context.Users.FindAsync(userId);
 
         if (user == null)
-            return Unauthorized("Пользователь не найден");
+            return HandleUnauthorized("Пользователь не найден");
 
         var task = await _context.Tasks
             .Include(t => t.Team)
@@ -268,31 +296,37 @@ public class TasksController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
-            return NotFound("Задача не найдена");
+            return HandleNotFound("Задача не найдена");
 
-        // Проверяем права: только капитан может удалять задачи
         if (user.RoleId != 1 && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1))
-            return Forbid("Только капитан команды может удалять задачи");
+            return HandleForbidden("Только капитан команды может удалять задачи");
 
-        var chatId = task.ChatId;
+        using var transaction = await _context.Database.BeginTransactionAsync();
 
-        _context.Tasks.Remove(task);
-        await _context.SaveChangesAsync();
-
-        var chat = await _context.Chats.FindAsync(chatId);
-
-        if (chat != null)
+        try
         {
-            _context.Chats.Remove(chat);
+            var chatId = task.ChatId;
+
+            _context.Tasks.Remove(task);
             await _context.SaveChangesAsync();
+
+            if (chatId != null)
+            {
+                var chat = await _context.Chats.FindAsync(chatId);
+                if (chat != null)
+                {
+                    _context.Chats.Remove(chat);
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            await transaction.CommitAsync();
+            return HandleSuccess("Задача успешно удалена");
         }
-
-        return Ok("Задача успешно удалена");
-    }
-
-    private int GetUserId()
-    {
-        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(idClaim, out var userId) ? userId : 0;
+        catch
+        {
+            await transaction.RollbackAsync();
+            return HandleError("Ошибка при удалении задачи");
+        }
     }
 }

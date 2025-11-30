@@ -70,8 +70,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async void CheckUserStatus()
         {
             var user = await _userService.GetCurrentUserAsync();
-            IsOrganizer = user?.RoleId == 3;
-            IsAlreadyInTeam = user?.TeamId != null;
+            IsOrganizer = user.Data.RoleId == 3;
+            IsAlreadyInTeam = user.Data.TeamId != null;
             OnPropertyChanged(nameof(IsOrganizer));
             OnPropertyChanged(nameof(IsRegularUser));
             OnPropertyChanged(nameof(IsAlreadyInTeam));
@@ -91,9 +91,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async void LoadCompetitionAsync(int competitionId)
         {
             var competition = await _competitionService.GetCompetitionAsync(competitionId);
-            if (competition != null)
+            if (competition.Success)
             {
-                Competition = competition;
+                Competition = competition.Data;
             }
             else
             {
@@ -176,18 +176,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var exportData = await _competitionService.GetCompetitionExportDataAsync(Competition.Id);
 
-                if (exportData != null)
+                if (exportData.Success)
                 {
                     var saveFileDialog = new Microsoft.Win32.SaveFileDialog
                     {
-                        FileName = exportData.SuggestedFileName, 
+                        FileName = exportData.Data.SuggestedFileName, 
                         Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
                         DefaultExt = ".xlsx"
                     };
 
                     if (saveFileDialog.ShowDialog() == true)
                     {
-                        var success = await _excelExportService.ExportCompetitionToExcelAsync(exportData, saveFileDialog.FileName);
+                        var success = await _excelExportService.ExportCompetitionToExcelAsync(exportData.Data, saveFileDialog.FileName);
 
                         if (success)
                         {

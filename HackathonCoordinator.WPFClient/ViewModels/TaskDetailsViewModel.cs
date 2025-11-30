@@ -34,7 +34,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private int _currentUserId;
+        private UserDto _currentUser;
+        public UserDto CurrentUser
+        {
+            get => _currentUser;
+            set
+            {
+                _currentUser = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsMyTask));
+            }
+        }
         private bool _showAssignmentDialog;
         private MemberDto _selectedAssignee;
 
@@ -58,7 +68,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public ObservableCollection<MemberDto> AvailableAssignees { get; } = new();
 
-        public bool IsMyTask => Task?.AssignedToId == _currentUserId;
+        public bool IsMyTask => Task?.AssignedToId == CurrentUser?.Id;
         public bool CanAssignTask => Task?.CanAssign ?? false;
         public bool CanEditTask => Task?.CanEdit ?? false;
         public bool CanCompleteTask => Task?.CanComplete ?? false;
@@ -90,14 +100,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OpenVotingCommand = new RelayCommand(OpenVotingDialog);
             CompleteTaskCommand = new RelayCommand(async () => await CompleteTaskAsync());
             CancelTaskCommand = new RelayCommand(async () => await CancelTaskAsync());
-            OpenTaskChatCommand = new RelayCommand(OpenTaskChat);
+            OpenTaskChatCommand = new RelayCommand(async () => await OpenTaskChat());
 
             LoadCurrentUser();
         }
 
         private void BackToTeam()
         {
-            if (_currentUserId == 1)
+            if (CurrentUser.RoleId != 3)
                 _navigationService.NavigateTo(new TeamPage());
             else
                 _navigationService.NavigateTo(new TeamPage(Task.TeamId));
@@ -106,15 +116,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async void LoadCurrentUser()
         {
             var user = await _userService.GetCurrentUserAsync();
-            _currentUserId = user?.Id ?? 0;
+            CurrentUser = user.Data;
         }
 
         public async void LoadTaskData(int taskId)
         {
             var task = await _taskService.GetTaskDetailsAsync(taskId);
-            if (task != null)
+            if (task.Success)
             {
-                Task = task;
+                Task = task.Data;
                 await LoadAvailableAssignees();
                 UpdatePermissions();
             }
@@ -125,15 +135,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (Task?.TeamId == null) return;
 
             var team = await _teamService.GetCurrentTeamAsync();
-            if (team?.Members != null)
+            if (team.Success)
             {
-                AvailableAssignees.Clear();
-                foreach (var member in team.Members)
+                if (team.Data.Members != null)
                 {
-                    AvailableAssignees.Add(member);
-                }
+                    AvailableAssignees.Clear();
+                    foreach (var member in team.Data.Members)
+                    {
+                        AvailableAssignees.Add(member);
+                    }
 
-                SelectedAssignee = AvailableAssignees.FirstOrDefault();
+                    SelectedAssignee = AvailableAssignees.FirstOrDefault();
+                }
             }
         }
 
@@ -234,12 +247,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void OpenTaskChat()
+        private async Task OpenTaskChat()
         {
             if (Task?.TaskChatId != null)
             {
-                MessageBox.Show($"Открытие чата задачи (ID: {Task.TaskChatId})");
-                // Реализовать переход в чат
+                var chatPage = new ChatPage();
+                var viewModel = chatPage.DataContext as ChatViewModel;
+                if (viewModel != null)
+                {
+                    await viewModel.LoadTaskChatAsync(Task.Id);
+                    _navigationService.NavigateTo(chatPage);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Чат задачи не найден");
             }
         }
     }

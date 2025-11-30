@@ -1,11 +1,12 @@
-﻿using HackathonCoordinator.WebAPI.Services;
+﻿using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HackathonCoordinator.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OAuthController : ControllerBase
+    public class OAuthController : BaseApiController
     {
         private readonly IGitHubService _gitHubService;
 
@@ -14,28 +15,37 @@ namespace HackathonCoordinator.WebAPI.Controllers
             _gitHubService = gitHubService;
         }
 
+        /// <summary>
+        /// Получить URL для авторизации через GitHub
+        /// </summary>
         [HttpGet("github-auth-url")]
-        public IActionResult GetGitHubAuthUrl([FromQuery] string state)
+        public ActionResult<ApiResponse<GitHubAuthUrlResponseDto>> GetGitHubAuthUrl([FromQuery] string state)
         {
             var authUrl = _gitHubService.GetAuthorizationUrl(state);
-            return Ok(new { authUrl });
+            return HandleResult(new GitHubAuthUrlResponseDto { AuthUrl = authUrl });
         }
 
+        /// <summary>
+        /// Обмен кода авторизации на access token
+        /// </summary>
         [HttpPost("github-exchange-code")]
-        public async Task<IActionResult> ExchangeGitHubCode([FromBody] ExchangeCodeRequest request)
+        public async Task<ActionResult<ApiResponse<GitHubAuthResultDto>>> ExchangeGitHubCode([FromBody] ExchangeCodeRequestDto request)
         {
             var result = await _gitHubService.ExchangeCodeAsync(request.Code);
 
             if (!result.Success)
-                return BadRequest(new { error = result.ErrorMessage });
+                return HandleError<GitHubAuthResultDto>(result.ErrorMessage);
 
-            return Ok(new
+            return HandleResult(new GitHubAuthResultDto
             {
-                accessToken = result.AccessToken,
-                userInfo = result.UserInfo
+                AccessToken = result.AccessToken,
+                UserInfo = result.UserInfo
             });
         }
 
+        /// <summary>
+        /// Страница обратного вызова от GitHub OAuth
+        /// </summary>
         [HttpGet("github-callback")]
         public IActionResult GitHubCallbackPage([FromQuery] string code, [FromQuery] string state)
         {
@@ -336,10 +346,5 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             return Content(html, "text/html");
         }
-    }
-
-    public class ExchangeCodeRequest
-    {
-        public string Code { get; set; }
     }
 }

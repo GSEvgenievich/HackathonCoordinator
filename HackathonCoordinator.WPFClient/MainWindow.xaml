@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Icon="/Assets/Images/Icon.ico"
         Title="Hackathon Coordinator" Height="600" Width="1000"
-        MinHeight="680" MinWidth="880"
+        MinHeight="680" MinWidth="900"
         WindowStartupLocation="CenterScreen">
 
     <Window.DataContext>
@@ -77,6 +77,22 @@
                     </StackPanel>
                 </Button>
 
+                <Button Command="{Binding OpenUsersManagementCommand}" 
+                        Style="{StaticResource SidebarButtonStyle}" 
+                        Tag="UsersManagementPage"
+                        ToolTip="Управление участниками"
+                        Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBlock Text="👥" FontSize="18" Margin="10,0,0,0"/>
+                        <TextBlock Text="Участники" 
+                                   x:Name="UsersManagementText" 
+                                   Margin="10,0,0,0" 
+                                   Visibility="Collapsed"
+                                   Foreground="{DynamicResource SidebarTextColor}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                
                 <Button Style="{StaticResource SidebarButtonStyle}" 
                         Tag="NotificationsPage"
                         ToolTip="Уведомления">
@@ -90,8 +106,8 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-
-                <Button Style="{StaticResource SidebarButtonStyle}" 
+                <Button Command="{Binding OpenChatsCommand}" 
+                        Style="{StaticResource SidebarButtonStyle}" 
                         Tag="ChatsPage"
                         ToolTip="Чаты">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
