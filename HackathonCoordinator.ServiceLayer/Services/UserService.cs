@@ -1,156 +1,132 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Storages;
-using Newtonsoft.Json;
-using System.Net.Http.Headers;
-using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class UserService
+    public class UserService : BaseService
     {
-        private readonly HttpClient _client;
-        private const string BaseUrl = "http://localhost:5046/api/";
-
-        public UserService()
-        {
-            _client = new HttpClient() { BaseAddress = new Uri(BaseUrl) };
-            SetAuthHeader();
-        }
-
-        private void SetAuthHeader()
-        {
-            var token = SecureTokenStorage.GetToken();
-            _client.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
-                ? null
-                : new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        public async Task<List<IconDto>> GetAllIconsAsync()
+        public async Task<ApiResponse<List<IconDto>>> GetAllIconsAsync()
         {
             try
             {
                 var response = await _client.GetAsync("icons");
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<List<IconDto>>(json) ?? new List<IconDto>();
+                return await HandleResponseAsync<List<IconDto>>(response);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка GetAllIconsAsync: {ex.Message}");
-                return new List<IconDto>();
+                return ApiResponse<List<IconDto>>.Fail($"Ошибка получения иконок: {ex.Message}");
             }
         }
 
-        public async Task<UserProfileDto?> GetCurrentUserAsync()
+        public async Task<ApiResponse<UserDto>> GetCurrentUserAsync()
         {
             SetAuthHeader();
 
             try
             {
                 var response = await _client.GetAsync("users/me");
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"Ошибка при получении пользователя: {response.Content.ReadAsStringAsync()}");
-                    return null;
-                }
-
-                var json = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<UserProfileDto>(json);
+                return await HandleResponseAsync<UserDto>(response);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка: GetCurrentUserAsync {ex.Message}");
-                return null;
+                return ApiResponse<UserDto>.Fail($"Ошибка получения пользователя: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> UpdateProfileAsync(string username, int? iconId)
+        public async Task<ApiResponse<List<UserDto>>> GetAllUsersAsync()
         {
             SetAuthHeader();
 
             try
             {
-                var json = JsonConvert.SerializeObject(new
-                {
-                    Username = username,
-                    IconId = iconId
-                });
-
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await _client.PutAsync("users/me/update", content);
-                var body = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                    return (false, $"Ошибка: {body}");
-
-                return (true, body);
+                var response = await _client.GetAsync("users/all");
+                return await HandleResponseAsync<List<UserDto>>(response);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка UpdateProfileAsync: {ex.Message}");
-                return (false, "Ошибка соединения с сервером.");
+                return ApiResponse<List<UserDto>>.Fail($"Ошибка получения пользователей: {ex.Message}");
             }
         }
 
-        public async Task<ApiResultDto> LinkGitHubAccountAsync(string accessToken, string username, string avatarUrl)
+        public async Task<ApiResponse> DeleteUserAsync(int userId)
         {
+            SetAuthHeader();
+
             try
             {
-                SetAuthHeader();
+                var response = await _client.DeleteAsync($"users/{userId}");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка удаления пользователя: {ex.Message}");
+            }
+        }
 
-                var linkData = new
+        public async Task<ApiResponse> UpdateProfileAsync(string username, int? iconId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var content = CreateJsonContent(new { Username = username, IconId = iconId });
+                var response = await _client.PutAsync("users/me/update", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка обновления профиля: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse> LinkGitHubAccountAsync(string accessToken, string username, string avatarUrl)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var content = CreateJsonContent(new
                 {
                     GitHubAccessToken = accessToken,
                     GitHubUsername = username,
                     GitHubAvatarUrl = avatarUrl
-                };
+                });
 
-                var json = JsonConvert.SerializeObject(linkData);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                // Обновленный endpoint
                 var response = await _client.PostAsync("users/me/github/link", content);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return ApiResultDto.Success();
-                }
-                else
-                {
-                    var errorMessage = await response.Content.ReadAsStringAsync();
-                    return ApiResultDto.Failure(errorMessage);
-                }
+                return await HandleResponseAsync(response);
             }
             catch (Exception ex)
             {
-                return ApiResultDto.Failure($"Ошибка привязки GitHub: {ex.Message}");
+                return ApiResponse.Fail($"Ошибка привязки GitHub: {ex.Message}");
             }
         }
 
-        // Отвязка GitHub аккаунта
-        public async Task<ApiResultDto> UnlinkGitHubAsync()
+        public async Task<ApiResponse> UnlinkGitHubAsync()
         {
+            SetAuthHeader();
+
             try
             {
-                SetAuthHeader();
-                // Обновленный endpoint
                 var response = await _client.PostAsync("users/me/github/unlink", null);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return ApiResultDto.Success();
-                }
-                else
-                {
-                    var errorMessage = await response.Content.ReadAsStringAsync();
-                    return ApiResultDto.Failure(errorMessage);
-                }
+                return await HandleResponseAsync(response);
             }
             catch (Exception ex)
             {
-                return ApiResultDto.Failure($"Ошибка отвязки GitHub: {ex.Message}");
+                return ApiResponse.Fail($"Ошибка отвязки GitHub: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<GitHubTokenResponseDto>> GetGitHubTokenAsync()
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync("users/me/github/token");
+                return await HandleResponseAsync<GitHubTokenResponseDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<GitHubTokenResponseDto>.Fail($"Ошибка получения GitHub токена: {ex.Message}");
             }
         }
     }

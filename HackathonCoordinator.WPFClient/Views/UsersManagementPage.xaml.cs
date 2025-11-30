@@ -16,11 +16,11 @@ using System.Windows.Shapes;
 namespace HackathonCoordinator.WPFClient.Views
 {
     /// <summary>
-    /// Логика взаимодействия для NoTeamPage.xaml
+    /// Логика взаимодействия для UsersManagementPage.xaml
     /// </summary>
-    public partial class NoTeamPage : Page
+    public partial class UsersManagementPage : Page
     {
-        public NoTeamPage()
+        public UsersManagementPage()
         {
             InitializeComponent();
         }

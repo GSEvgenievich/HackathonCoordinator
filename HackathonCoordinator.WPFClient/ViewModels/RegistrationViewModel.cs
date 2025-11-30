@@ -75,10 +75,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 return;
             }
 
-            var (success, message) = await _authService.RegisterAsync(Username, Login, Email, Password);
-            MessageBox.Show(message);
+            var registration = await _authService.RegisterAsync(Username, Login, Email, Password);
+            MessageBox.Show(registration.Message);
 
-            if (success)
+            if (registration.Success)
                 _navigationService.NavigateTo(new AuthorizationPage());
         }
     }

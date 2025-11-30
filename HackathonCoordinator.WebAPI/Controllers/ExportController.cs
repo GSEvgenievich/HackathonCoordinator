@@ -1,17 +1,17 @@
-﻿using HackathonCoordinator.WebAPI.Data;
+﻿// Controllers/ExportController.cs
+using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace HackathonCoordinator.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ExportController : ControllerBase
+    public class ExportController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
 
@@ -20,16 +20,19 @@ namespace HackathonCoordinator.WebAPI.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Получить данные для экспорта соревнования
+        /// </summary>
         [HttpGet("competition-data/{competitionId}")]
-        public async Task<ActionResult<CompetitionExportDataDto>> GetCompetitionExportData(int competitionId)
+        public async Task<ActionResult<ApiResponse<CompetitionExportDataDto>>> GetCompetitionExportData(int competitionId)
         {
             try
             {
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != 3) // 3 = Organizer
-                    return Forbid("Только организатор может экспортировать данные");
+                if (user?.RoleId != 3)
+                    return HandleForbidden<CompetitionExportDataDto>("Только организатор может экспортировать данные");
 
                 var competition = await _context.Competitions
                     .Include(c => c.CreatedBy)
@@ -47,7 +50,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .FirstOrDefaultAsync(c => c.Id == competitionId);
 
                 if (competition == null)
-                    return NotFound("Соревнование не найдено");
+                    return HandleNotFound<CompetitionExportDataDto>("Соревнование не найдено");
 
                 var exportData = new CompetitionExportDataDto
                 {
@@ -88,11 +91,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     SuggestedFileName = GenerateFileName(competition.Name)
                 };
 
-                return Ok(exportData);
+                return HandleResult(exportData);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = $"Ошибка получения данных: {ex.Message}" });
+                return HandleError<CompetitionExportDataDto>($"Ошибка получения данных: {ex.Message}");
             }
         }
 
@@ -101,7 +104,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (string.IsNullOrWhiteSpace(competitionName))
                 return $"competition_export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
-            // Создаем безопасное имя файла
             var invalidChars = Path.GetInvalidFileNameChars();
             var safeName = new string(competitionName.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
             safeName = safeName.Trim().Replace("  ", " ");
@@ -151,65 +153,5 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     : 0
             };
         }
-
-        private int GetUserId()
-        {
-            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return int.TryParse(idClaim, out var userId) ? userId : 0;
-        }
-    }
-
-    public class CompetitionExportDataDto
-    {
-        public CompetitionDto Competition { get; set; }
-        public List<TeamExportDto> Teams { get; set; }
-        public CompetitionStatsDto Stats { get; set; }
-        public string SuggestedFileName { get; set; }
-    }
-
-    public class TeamExportDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public List<TeamMemberDto> Members { get; set; }
-        public List<TaskExportDto> Tasks { get; set; }
-        public TeamStatsDto TeamStats { get; set; }
-    }
-
-    public class TeamMemberDto
-    {
-        public string Username { get; set; }
-        public string Role { get; set; }
-        public bool IsCaptain { get; set; }
-    }
-
-    public class TaskExportDto
-    {
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public string Type { get; set; }
-        public string Status { get; set; }
-        public string AssignedTo { get; set; }
-        public DateTime? Deadline { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
-
-    public class TeamStatsDto
-    {
-        public int TotalTasks { get; set; }
-        public int CompletedTasks { get; set; }
-        public int InProgressTasks { get; set; }
-        public int PlannedTasks { get; set; }
-        public int CompletionPercentage { get; set; }
-    }
-
-    public class CompetitionStatsDto
-    {
-        public int TotalParticipants { get; set; }
-        public int TotalTasks { get; set; }
-        public int TotalCompletedTasks { get; set; }
-        public int TotalCompletionPercentage { get; set; }
-        public int AverageTeamProgress { get; set; }
     }
 }

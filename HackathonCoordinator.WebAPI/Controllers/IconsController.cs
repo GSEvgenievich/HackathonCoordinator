@@ -7,7 +7,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class IconsController : ControllerBase
+    public class IconsController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
 
@@ -16,9 +16,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
             _context = context;
         }
 
-        // GET: api/icons
+        /// <summary>
+        /// Получить список доступных иконок профиля
+        /// </summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<IconDto>>> GetIcons()
+        public async Task<ActionResult<ApiResponse<List<IconDto>>>> GetIcons()
         {
             var icons = await _context.ProfileIcons
                 .Select(i => new IconDto
@@ -28,7 +30,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(icons);
+            return HandleResult(icons);
         }
     }
 }

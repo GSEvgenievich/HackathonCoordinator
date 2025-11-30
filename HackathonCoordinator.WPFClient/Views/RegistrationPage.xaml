@@ -13,6 +13,7 @@
 
     <Grid>
         <Border Style="{StaticResource CardStyle}"
+                Background="{DynamicResource AccentBackgroundBrush}"
                 Width="400"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center"
@@ -21,7 +22,7 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <TextBlock Text="Регистрация" 
-                              Style="{StaticResource PageTitleStyle}"/>
+                               Style="{StaticResource PageTitleStyle}"/>
 
                     <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                              Tag="Имя пользователя"
@@ -47,19 +48,25 @@
                                  Tag="Подтвердите пароль"
                                  Style="{StaticResource ModernPasswordBox}"
                                  Margin="0,0,0,25"/>
-
-                    <Button Content="Зарегистрироваться" 
-                            Command="{Binding RegisterCommand}"
-                            Style="{StaticResource PrimaryButton}"
-                            Margin="0,0,0,20"/>
-
-                    <TextBlock Text="Уже есть аккаунт?" 
-                              Style="{StaticResource BodyTextStyle}"
-                              Margin="0,0,0,10"/>
-
-                    <Button Content="Войти" 
-                            Command="{Binding NavigateToAuthorizationCommand}"
-                            Style="{StaticResource SecondaryButton}"/>
+                    <Border Style="{StaticResource CardStyle}"
+                            Background="{DynamicResource ControlBackground}">
+                        <StackPanel>
+                            <Button Content="Зарегистрироваться" 
+                                Command="{Binding RegisterCommand}"
+                                Style="{StaticResource PrimaryButton}"
+                                Margin="0,0,0,20"/>
+                            <StackPanel Orientation="Horizontal" 
+                                        HorizontalAlignment="Center">
+                                <TextBlock Text="Уже есть аккаунт?" 
+                                           Style="{StaticResource BodyTextStyle}"
+                                           VerticalAlignment="Center"/>
+                                <Button Content="Войти" 
+                                        Command="{Binding NavigateToAuthorizationCommand}"
+                                        Style="{StaticResource SecondaryButton}"
+                                         Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Border>

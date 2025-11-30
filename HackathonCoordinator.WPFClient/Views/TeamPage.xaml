@@ -160,28 +160,47 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource MemberCardStyle}">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <!-- Аватар -->
-                                                <Border Style="{StaticResource AvatarStyle}">
-                                                    <Image Source="{Binding IconPath}" Stretch="UniformToFill"/>
-                                                </Border>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
 
-                                                <!-- Информация -->
-                                                <StackPanel>
-                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Username}"
-                                                               Style="{StaticResource MemberNameStyle}"/>
-                                                        <TextBlock Text=" (Вы)"
-                                                               Style="{StaticResource CurrentUserLabelStyle}"
-                                                               Visibility="{Binding IsCurrentUser, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                        <TextBlock Text=" 👑"
-                                                               Style="{StaticResource CaptainIconStyle}"
-                                                               Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <!-- Аватар -->
+                                                    <Border Style="{StaticResource AvatarStyle}">
+                                                        <Image Source="{Binding IconPath}" Stretch="UniformToFill"/>
+                                                    </Border>
+
+                                                    <!-- Информация -->
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Username}"
+                                                                       Style="{StaticResource MemberNameStyle}"/>
+                                                            <TextBlock Text=" (Вы)"
+                                                                       Style="{StaticResource CurrentUserLabelStyle}"
+                                                                       Visibility="{Binding IsCurrentUser, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            <TextBlock Text=" 👑"
+                                                                       Style="{StaticResource CaptainIconStyle}"
+                                                                       Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding RoleName}"
+                                                                   Style="{StaticResource MemberRoleStyle}"/>
                                                     </StackPanel>
-                                                    <TextBlock Text="{Binding RoleName}"
-                                                           Style="{StaticResource MemberRoleStyle}"/>
                                                 </StackPanel>
-                                            </StackPanel>
+
+                                                <!-- Кнопка выгнать (только для организатора и не для себя) -->
+                                                <Button Grid.Column="1"
+                                                        Content="🚪"
+                                                        Command="{Binding DataContext.KickMemberCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource DangerIconButton}"
+                                                        ToolTip="Выгнать из команды"
+                                                        Margin="10,0,0,0"
+                                                        Visibility="{Binding DataContext.IsOrganizer, 
+                                                                    Converter={StaticResource BoolToVisibilityConverter},
+                                                                    RelativeSource={RelativeSource AncestorType=Page}}"/>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

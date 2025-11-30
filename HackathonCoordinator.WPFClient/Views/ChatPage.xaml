@@ -1,0 +1,231 @@
+﻿<Page x:Class="HackathonCoordinator.WPFClient.Views.ChatPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
+      Title="Чат"
+      Loaded="Page_Loaded"
+      Unloaded="Page_Unloaded">
+
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+
+        <!-- ContextMenu для сообщений -->
+        <ContextMenu x:Key="MessageContextMenu">
+            <MenuItem Header="✏️ Редактировать"
+                  Command="{Binding PlacementTarget.Tag.EditMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding}"/>
+            <MenuItem Header="🗑️ Удалить"
+                  Command="{Binding PlacementTarget.Tag.DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding}"/>
+            <Separator/>
+            <MenuItem Header="📋 Копировать текст"
+                  Click="CopyMessageText_Click"/>
+        </ContextMenu>
+    </Page.Resources>
+
+    <Page.DataContext>
+        <vm:ChatViewModel/>
+    </Page.DataContext>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок чата -->
+        <Border Style="{StaticResource CardStyle}" Grid.Row="0">
+            <DockPanel VerticalAlignment="Center">
+                <Button Content="← Назад" 
+                        Command="{Binding BackCommand}"
+                        Style="{StaticResource NavigationButton}"
+                        Margin="0,10,20,10"/>
+                
+                <!-- Участники -->
+                <StackPanel Orientation="Horizontal" Margin="20,0,0,0" DockPanel.Dock="Right">
+                    <TextBlock Text="👥 Участники:"
+                               Style="{StaticResource BodyTextStyle}"
+                               VerticalAlignment="Center"/>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  MaxWidth="175" 
+                                  Margin="10,0,0,0">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource HorizontalScrollBarStyle}"/>
+                        </ScrollViewer.Resources>
+                        <ItemsControl ItemsSource="{Binding Participants}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="54" Height="54" Margin="2" ToolTip="{Binding UserName}">
+                                        <Ellipse Width="50" Height="50">
+                                            <Ellipse.Fill>
+                                                <ImageBrush ImageSource="{Binding UserIcon}" 
+                                                            Stretch="UniformToFill"/>
+                                            </Ellipse.Fill>
+                                            <Ellipse.Effect>
+                                                <DropShadowEffect ShadowDepth="2"
+                                                                  Opacity="0.5" 
+                                                                  BlurRadius="6"/>
+                                            </Ellipse.Effect>
+                                        </Ellipse>
+                                        <Ellipse Width="51" Height="51"
+                                                 Stroke="{DynamicResource HoverColor}"
+                                                 StrokeThickness="2"
+                                                 Fill="Transparent"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="{Binding ChatTitle}"
+                               Style="{StaticResource PageHeaderStyle}"/>
+                    <TextBlock Text="! Для открытия контекстного меню, кликните ПКМ по сообщению !"
+                               Width="260"
+                               HorizontalAlignment="Left"
+                               Style="{StaticResource BodyTextStyle}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Сообщения -->
+        <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,10,0,0">
+            <Grid>
+                <!-- Индикатор загрузки -->
+                <ProgressBar IsIndeterminate="True" 
+                             Height="4"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                             VerticalAlignment="Top"/>
+
+                <!-- Список сообщений -->
+                <ScrollViewer x:Name="MessagesScrollViewer" 
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="10">
+                    <ItemsControl ItemsSource="{Binding Messages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,2,0,2">
+                                    <!-- Контейнер сообщения -->
+                                    <StackPanel Style="{Binding IsMyMessage, 
+                                                Converter={x:Static converters:BoolToMessageContainerStyleConverter.Instance}}" MaxWidth="380">
+
+                                        <!-- Информация об отправителе (только для чужих сообщений) -->
+                                        <StackPanel Orientation="Horizontal" 
+                                                    Margin="0,0,0,5"
+                                                    Visibility="{Binding IsMyMessage, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                            <!-- Аватар отправителя -->
+                                            <Grid Width="35" Height="35" Margin="0 0 6 0">
+                                                <Ellipse Width="32" Height="32">
+                                                    <Ellipse.Fill>
+                                                        <ImageBrush ImageSource="{Binding UserIcon}" 
+                                                                    Stretch="UniformToFill"/>
+                                                    </Ellipse.Fill>
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect ShadowDepth="2"
+                                                                          Opacity="0.5" 
+                                                                          BlurRadius="6"/>
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                                <Ellipse Width="32" Height="32"
+                                                         Stroke="{DynamicResource HoverColor}"
+                                                         StrokeThickness="1"
+                                                         Fill="Transparent"/>
+                                            </Grid>
+                                            <!-- Имя отправителя -->
+                                            <TextBlock Text="{Binding UserName}"
+                                                       Style="{StaticResource CaptionTextStyle}"
+                                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Сообщение -->
+                                        <Border Style="{Binding IsMyMessage, 
+                                                    Converter={x:Static converters:BoolToMessageStyleConverter.Instance}}"
+                                                ContextMenu="{StaticResource MessageContextMenu}"
+                                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Page}}">
+                                            <StackPanel>
+                                                <!-- Текст сообщения -->
+                                                <TextBlock Text="{Binding Text}" 
+                                                           Foreground="{Binding IsMyMessage, Converter={x:Static converters:BoolToMessageTextColorConverter.Instance}}"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="14"/>
+
+                                                <!-- Время и статус -->
+                                                <StackPanel Orientation="Horizontal" 
+                                                            HorizontalAlignment="Right"
+                                                            Margin="0,5,0,0">
+                                                    <TextBlock Text="{Binding SentAtFormatted}"
+                                                               Foreground="{Binding IsMyMessage, Converter={x:Static converters:BoolToMessageTimeColorConverter.Instance}}"
+                                                               FontSize="10"/>
+                                                    <TextBlock Text=" ✏️"
+                                                               ToolTip="Сообщение было отредактировано"
+                                                               Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                               Foreground="{Binding IsMyMessage, Converter={x:Static converters:BoolToMessageTimeColorConverter.Instance}}"
+                                                               FontSize="10"
+                                                               Margin="5,0,0,0"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Сообщение когда нет сообщений -->
+                <TextBlock Text="💬 Начните общение - отправьте первое сообщение!"
+                           Style="{StaticResource BodyTextStyle}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasNoMessages, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
+        </Border>
+
+        <!-- Панель ввода сообщения -->
+        <Border Style="{StaticResource CardStyle}" Grid.Row="2" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Поле ввода -->
+                <TextBox Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource ModernTextBox}"
+                         Tag="Введите сообщение..."
+                         VerticalContentAlignment="Center"
+                         MinHeight="40"
+                         MaxHeight="70"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" 
+                                    Command="{Binding SendMessageCommand}"
+                                    Modifiers="Ctrl"/>
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <!-- Кнопка отправки -->
+                <Button Content="📤"
+                        Command="{Binding SendMessageCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Grid.Column="1"
+                        Margin="10,0,0,0"
+                        Width="50"
+                        Height="50"
+                        IsEnabled="{Binding CanSendMessage}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

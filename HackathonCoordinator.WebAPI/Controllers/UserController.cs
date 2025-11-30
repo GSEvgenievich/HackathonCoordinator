@@ -4,14 +4,13 @@ using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace HackathonCoordinator.WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class UsersController : ControllerBase
+    public class UsersController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
         private readonly IEncryptionService _encryptionService;
@@ -22,17 +21,18 @@ namespace HackathonCoordinator.WebAPI.Controllers
             _encryptionService = encryptionService;
         }
 
-        // Получить текущего пользователя
+        /// <summary>
+        /// Получить данные текущего пользователя
+        /// </summary>
         [HttpGet("me")]
-        public async Task<IActionResult> GetCurrentUser()
+        public async Task<ActionResult<ApiResponse<UserDto>>> GetCurrentUser()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (userId == null)
-                return Unauthorized("Пользователь не авторизован");
+            var userId = GetUserId();
+            if (userId == 0)
+                return HandleUnauthorized<UserDto>("Пользователь не авторизован");
 
             var user = await _context.Users
-                .Where(u => u.Id == int.Parse(userId))
+                .Where(u => u.Id == userId)
                 .Include(u => u.Team)
                 .Include(u => u.ProfileIcon)
                 .Select(u => new UserDto
@@ -51,24 +51,24 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 .FirstOrDefaultAsync();
 
             if (user == null)
-                return NotFound("Пользователь не найден");
+                return HandleNotFound<UserDto>("Пользователь не найден");
 
-            return Ok(user);
+            return HandleResult(user);
         }
 
-        // Обновить имя или иконку
+        /// <summary>
+        /// Обновить профиль пользователя
+        /// </summary>
         [HttpPut("me/update")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+        public async Task<ActionResult<ApiResponse>> UpdateProfile([FromBody] UpdateProfileDto dto)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = GetUserId();
+            if (userId == 0)
+                return HandleUnauthorized("Пользователь не авторизован");
 
-            if (userId == null)
-                return Unauthorized("Пользователь не авторизован");
-
-            var user = await _context.Users.FindAsync(int.Parse(userId));
-
+            var user = await _context.Users.FindAsync(userId);
             if (user == null)
-                return NotFound("Пользователь не найден");
+                return HandleNotFound("Пользователь не найден");
 
             if (!string.IsNullOrWhiteSpace(dto.Username))
                 user.Username = dto.Username;
@@ -76,79 +76,71 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (dto.IconId.HasValue)
             {
                 var iconExists = await _context.ProfileIcons.AnyAsync(i => i.Id == dto.IconId.Value);
-
                 if (!iconExists)
-                    return BadRequest("Иконка не найдена");
+                    return HandleError("Иконка не найдена");
 
                 user.ProfileIconId = dto.IconId.Value;
             }
 
             await _context.SaveChangesAsync();
-            return Ok("Профиль обновлён");
+            return HandleSuccess("Профиль обновлён");
         }
 
+        /// <summary>
+        /// Привязать GitHub аккаунт
+        /// </summary>
         [HttpPost("me/github/link")]
-        public async Task<IActionResult> LinkGitHubAccount([FromBody] LinkGitHubDto dto)
+        public async Task<ActionResult<ApiResponse>> LinkGitHubAccount([FromBody] LinkGitHubDto dto)
         {
             var userId = GetUserId();
-            if (userId == 0) return Unauthorized();
+            if (userId == 0)
+                return HandleUnauthorized();
 
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound("Пользователь не найден");
+            if (user == null)
+                return HandleNotFound("Пользователь не найден");
 
-            // ШИФРУЕМ токен перед сохранением
             user.GitHubUsername = dto.GitHubUsername;
             user.GitHubAccessToken = _encryptionService.Encrypt(dto.GitHubAccessToken);
             user.GitHubAvatarUrl = dto.GitHubAvatarUrl;
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { success = true, message = "GitHub аккаунт успешно привязан" });
+            return HandleSuccess("GitHub аккаунт успешно привязан");
         }
 
+        /// <summary>
+        /// Отвязать GitHub аккаунт
+        /// </summary>
         [HttpPost("me/github/unlink")]
-        public async Task<IActionResult> UnlinkGitHubAccount()
+        public async Task<ActionResult<ApiResponse>> UnlinkGitHubAccount()
         {
             var userId = GetUserId();
-            if (userId == 0) return Unauthorized();
+            if (userId == 0)
+                return HandleUnauthorized();
 
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound("Пользователь не найден");
+            if (user == null)
+                return HandleNotFound("Пользователь не найден");
 
-            // Очищаем GitHub данные
             user.GitHubUsername = null;
             user.GitHubAccessToken = null;
             user.GitHubAvatarUrl = null;
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { success = true, message = "GitHub аккаунт отвязан" });
+            return HandleSuccess("GitHub аккаунт отвязан");
         }
 
-        [HttpGet("me/github/info")]
-        public async Task<ActionResult<GitHubUserInfoDto>> GetGitHubInfo()
-        {
-            var userId = GetUserId();
-            if (userId == 0) return Unauthorized();
-
-            var user = await _context.Users
-                .Where(u => u.Id == userId)
-                .Select(u => new GitHubUserInfoDto
-                {
-                    GitHubUsername = u.GitHubUsername,
-                    GitHubAvatarUrl = u.GitHubAvatarUrl
-                })
-                .FirstOrDefaultAsync();
-
-            return Ok(user);
-        }
-
-        // Вспомогательный метод для получения зашифрованного токена (для использования в других сервисах)
+        /// <summary>
+        /// Получить GitHub токен (расшифрованный)
+        /// </summary>
         [HttpGet("me/github/token")]
-        public async Task<IActionResult> GetGitHubToken()
+        public async Task<ActionResult<ApiResponse<GitHubTokenResponseDto>>> GetGitHubToken()
         {
             var userId = GetUserId();
-            if (userId == 0) return Unauthorized();
+            if (userId == 0)
+                return HandleUnauthorized<GitHubTokenResponseDto>();
 
             var user = await _context.Users
                 .Where(u => u.Id == userId)
@@ -156,19 +148,88 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 .FirstOrDefaultAsync();
 
             if (user == null || string.IsNullOrEmpty(user.GitHubAccessToken))
-                return NotFound("GitHub токен не найден");
+                return HandleNotFound<GitHubTokenResponseDto>("GitHub токен не найден");
 
-            // Расшифровываем токен только когда он нужен
             var decryptedToken = _encryptionService.Decrypt(user.GitHubAccessToken);
 
-            return Ok(new { accessToken = decryptedToken });
+            return HandleResult(new GitHubTokenResponseDto { AccessToken = decryptedToken });
         }
 
-        private int GetUserId()
+        /// <summary>
+        /// Получить данные всех пользователей
+        /// </summary>
+        [HttpGet("all")]
+        public async Task<ActionResult<ApiResponse<List<UserDto>>>> GetAllUsers()
         {
-            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return int.TryParse(idClaim, out var userId) ? userId : 0;
+            var userId = GetUserId();
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user?.RoleId != 3)
+                return HandleForbidden<List<UserDto>>("Только организатор может просматривать данные всех участников");
+
+            var users = await _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.Team)
+                .Include(u => u.ProfileIcon)
+                .OrderBy(u => u.Username)
+                .ToListAsync();
+
+            var result = users.Select(u => new UserDto
+            {
+                Id = u.Id,
+                Username = u.Username,
+                Email = u.Email,
+                RoleId = u.RoleId,
+                RoleName = u.Role.Name,
+                TeamId = u.TeamId,
+                TeamName = u.Team?.Name,
+                GitHubUsername = u.GitHubUsername,
+                IconName = u.ProfileIcon?.Name
+            }).ToList();
+
+            return HandleResult(result);
+        }
+
+        [HttpDelete("{memberId}")]
+        public async Task<ActionResult<ApiResponse>> DeleteUser(int memberId)
+        {
+            var userId = GetUserId();
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user?.RoleId != 3)
+                return HandleForbidden("Только организатор может удалять участников");
+
+            var member = await _context.Users
+                .Include(u => u.Team)
+                .FirstOrDefaultAsync(u => u.Id == memberId);
+
+            if (member == null)
+                return HandleNotFound("Пользователь не найден");
+
+            if (member.RoleId == 3)
+                return HandleError("Нельзя удалить организатора");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Если пользователь - капитан, снимаем его с этой роли
+                if (member.RoleId == 1 && member.TeamId.HasValue)
+                {
+                    member.Team.GitRepoName = null; // Сбрасываем GitHub репозиторий
+                }
+
+                _context.Users.Remove(member);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return HandleSuccess("Пользователь успешно удален");
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                return HandleError("Ошибка при удалении пользователя");
+            }
         }
     }
-
 }

@@ -1,4 +1,5 @@
 using HackathonCoordinator.WebAPI.Data;
+using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -49,6 +50,7 @@ builder.Services.AddHttpClient("GitHub", client =>
 });
 
 builder.Services.AddDbContext<HackathonCoordinatorContext>();
+builder.Services.AddSignalR();
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -85,12 +87,32 @@ builder.Services.AddAuthentication(options =>
         {
             Console.WriteLine("JWT Token validated successfully!");
             return Task.CompletedTask;
+        },
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
         }
     };
 });
 
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 
 var app = builder.Build();
 
@@ -100,8 +122,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHub<ChatHub>("/chathub");
 
 app.MapControllers();
 

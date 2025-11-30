@@ -1,6 +1,5 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
-using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +13,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
         private readonly IConfiguration _config;
@@ -25,12 +24,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
             _config = config;
         }
 
-        // --- Регистрация ---
+        /// <summary>
+        /// Регистрация нового пользователя
+        /// </summary>
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+        public async Task<ActionResult<ApiResponse>> Register([FromBody] RegisterDto dto)
         {
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email || u.Login == dto.Login))
-                return BadRequest("Пользователь с таким логином или email уже существует.");
+                return HandleError("Пользователь с таким логином или email уже существует");
 
             var user = new User
             {
@@ -44,26 +45,34 @@ namespace HackathonCoordinator.WebAPI.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok("Регистрация успешно завершена!");
+            return HandleSuccess("Регистрация успешно завершена");
         }
 
-        // --- Авторизация ---
+        /// <summary>
+        /// Авторизация пользователя
+        /// </summary>
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        public async Task<ActionResult<ApiResponse<LoginResponseDto>>> Login([FromBody] LoginDto dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Login == dto.Login);
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                return Unauthorized("Неверный email или пароль.");
+                return HandleError<LoginResponseDto>("Неверный логин или пароль");
 
             var token = GenerateJwtToken(user);
-            return Ok(new { token });
+            var response = new LoginResponseDto { Token = token, Username = user.Username };
+
+            return HandleResult(response, "Авторизация успешна");
         }
 
+        /// <summary>
+        /// Валидация JWT токена
+        /// </summary>
         [HttpGet("validate")]
         [Authorize]
-        public IActionResult ValidateToken()
+        public ActionResult<ApiResponse> ValidateToken()
         {
-            return Ok("Token is valid");
+            return HandleSuccess("Token is valid");
         }
 
         private string GenerateJwtToken(User user)

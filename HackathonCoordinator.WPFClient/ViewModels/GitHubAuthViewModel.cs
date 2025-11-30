@@ -89,10 +89,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 var user = await _userService.GetCurrentUserAsync();
-                if (!string.IsNullOrEmpty(user?.GitHubUsername))
+                if (!string.IsNullOrEmpty(user.Data.GitHubUsername))
                 {
-                    CurrentGitHubAccount = user.GitHubUsername;
-                    StatusMessage = $"✅ Ваш аккаунт GitHub уже привязан: {user.GitHubUsername}";
+                    CurrentGitHubAccount = user.Data.GitHubUsername;
+                    StatusMessage = $"✅ Ваш аккаунт GitHub уже привязан: {user.Data.GitHubUsername}";
                     ShowCodeInput = false;
                 }
                 else
@@ -122,7 +122,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 // Открываем браузер с инструкциями
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = authUrl,
+                    FileName = authUrl.Data.AuthUrl,
                     UseShellExecute = true
                 });
 
@@ -165,7 +165,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     IsLoading = true;
                     var unlinkResult = await _userService.UnlinkGitHubAsync();
 
-                    if (unlinkResult.IsSuccess)
+                    if (unlinkResult.Success)
                     {
                         CurrentGitHubAccount = null;
                         StatusMessage = "✅ Текущий GitHub аккаунт отвязан. Теперь вы можете привязать новый аккаунт.";
@@ -206,14 +206,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 StatusMessage = "🔗 Привязка аккаунта к вашему профилю...";
 
                 var linkResult = await _userService.LinkGitHubAccountAsync(
-                    result.AccessToken,
-                    result.UserInfo.Login,
-                    result.UserInfo.AvatarUrl);
+                    result.Data.AccessToken,
+                    result.Data.UserInfo.Login,
+                    result.Data.UserInfo.AvatarUrl);
 
-                if (linkResult.IsSuccess)
+                if (linkResult.Success)
                 {
-                    StatusMessage = $"✅ GitHub аккаунт успешно привязан!\n\n👤 Имя пользователя: {result.UserInfo.Login}\n📧 Email: {result.UserInfo.Email ?? "Не указан"}";
-                    CurrentGitHubAccount = result.UserInfo.Login;
+                    StatusMessage = $"✅ GitHub аккаунт успешно привязан!\n\n👤 Имя пользователя: {result.Data.UserInfo.Login}\n📧 Email: {result.Data.UserInfo.Email ?? "Не указан"}";
+                    CurrentGitHubAccount = result.Data.UserInfo.Login;
                     IsSuccess = true;
                     ShowCodeInput = false;
 

@@ -153,7 +153,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     if (result == MessageBoxResult.Yes)
                     {
                         var unlinkResult = await _userService.UnlinkGitHubAsync();
-                        if (unlinkResult.IsSuccess)
+                        if (unlinkResult.Success)
                         {
                             GitHubUsername = null;
                             MessageBox.Show("GitHub аккаунт отвязан");
@@ -178,23 +178,23 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 return;
             }
 
-            Username = user.Username;
-            Email = user.Email;
-            TeamName = user.TeamName;
-            GitHubUsername = user.GitHubUsername;
-            CurrentIconPath = user.IconName != null ? $"/Assets/Images/Profile/{user.IconName}.png" : "/Assets/Images/Profile/robot1.png";
+            Username = user.Data.Username;
+            Email = user.Data.Email;
+            TeamName = user.Data.TeamName;
+            GitHubUsername = user.Data.GitHubUsername;
+            CurrentIconPath = user.Data.IconName != null ? $"/Assets/Images/Profile/{user.Data.IconName}.png" : "/Assets/Images/Profile/robot1.png";
 
             var icons = await _userService.GetAllIconsAsync();
             AvailableIcons.Clear();
-            foreach (var icon in icons)
+            foreach (var icon in icons.Data)
             {
-                if (icon.Id == user.IconId)
+                if (icon.Id == user.Data.IconId)
                 {
                     icon.IsSelected = true;
                 }
 
                 AvailableIcons.Add(icon);
-                if (icon.Name == user.IconName) SelectedIcon = icon;
+                if (icon.Name == user.Data.IconName) SelectedIcon = icon;
             }
         }
     }

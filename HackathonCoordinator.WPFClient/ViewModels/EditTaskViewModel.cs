@@ -190,9 +190,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async Task LoadTeamDataAsync()
         {
             var team = await _teamService.GetCurrentTeamAsync();
-            if (team != null)
+            if (team.Success)
             {
-                HasGitHubRepo = !string.IsNullOrEmpty(team.GitHubUrl) && team.GitHubUrl != "Не указан";
+                HasGitHubRepo = !string.IsNullOrEmpty(team.Data.GitHubUrl) && team.Data.GitHubUrl != "Не указан";
             }
         }
 
@@ -200,7 +200,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             var types = await _taskService.GetTaskTypesAsync();
             TaskTypes.Clear();
-            foreach (var type in types)
+            foreach (var type in types.Data)
             {
                 TaskTypes.Add(type);
             }
@@ -209,11 +209,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async Task LoadTeamMembersAsync()
         {
             var team = await _teamService.GetCurrentTeamAsync();
-            if (team != null)
+            if (team.Success)
             {
                 TeamMembers.Clear();
 
-                foreach (var member in team.Members)
+                foreach (var member in team.Data.Members)
                 {
                     TeamMembers.Add(member);
                 }
@@ -228,17 +228,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async Task LoadTaskDataAsync(int taskId)
         {
             var task = await _taskService.GetTaskDetailsAsync(taskId);
-            if (task != null)
+            if (task.Success)
             {
-                Title = task.Title;
-                Description = task.Description ?? "";
-                SelectedType = TaskTypes.FirstOrDefault(t => t.Id == task.TypeId);
-                SelectedAssignee = TeamMembers.FirstOrDefault(m => m.Id == task.AssignedToId);
-                Deadline = task.Deadline;
-                GitHubBranchName = task.GitHubBranchName ?? "";
+                Title = task.Data.Title;
+                Description = task.Data.Description ?? "";
+                SelectedType = TaskTypes.FirstOrDefault(t => t.Id == task.Data.TypeId);
+                SelectedAssignee = TeamMembers.FirstOrDefault(m => m.Id == task.Data.AssignedToId);
+                Deadline = task.Data.Deadline;
+                GitHubBranchName = task.Data.GitHubBranchName ?? "";
 
                 // Определяем, есть ли уже ветка в GitHub
-                HasExistingBranch = !string.IsNullOrEmpty(task.GitHubBranchName);
+                HasExistingBranch = !string.IsNullOrEmpty(task.Data.GitHubBranchName);
 
                 // Обновляем подсказку и состояние поля
                 UpdateGitHubBranchHint();

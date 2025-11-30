@@ -1,0 +1,155 @@
+﻿<Page x:Class="HackathonCoordinator.WPFClient.Views.ChatsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
+      Title="Чаты">
+
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Page.Resources>
+
+    <Page.DataContext>
+        <vm:ChatsViewModel/>
+    </Page.DataContext>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок и управление -->
+        <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,15">
+            <DockPanel>
+                <Button Content="← Назад" 
+                        Command="{Binding BackCommand}"
+                        Style="{StaticResource NavigationButton}"
+                        DockPanel.Dock="Left"
+                        Margin="0,0,20,0"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+                    <Button Content="🔄"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource IconButton}"
+                            ToolTip="Обновить список чатов"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="💬 Мои чаты" 
+                               Style="{StaticResource PageHeaderStyle}"/>
+                    <TextBlock Text="Все чаты вашей команды и задач"
+                               Style="{StaticResource PageSubtitleStyle}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Список чатов -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Индикатор загрузки -->
+                <ProgressBar IsIndeterminate="True" 
+                             Height="4"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Margin="0,0,0,20"/>
+
+                <!-- Список чатов -->
+                <ItemsControl ItemsSource="{Binding Chats}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource InteractiveCardStyle}">
+                                <Border.InputBindings>
+                                    <MouseBinding Gesture="LeftClick"
+                                                  Command="{Binding DataContext.OpenChatCommand, 
+                                                                    RelativeSource={RelativeSource AncestorType=Page}}"
+                                                  CommandParameter="{Binding}"/>
+                                </Border.InputBindings>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Иконка типа чата -->
+                                    <Border Grid.Column="0"
+                                            Width="50" 
+                                            Height="50" 
+                                            CornerRadius="10"
+                                            Background="{DynamicResource PrimaryBrush}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,15,0">
+                                        <TextBlock Text="{Binding ChatType, Converter={x:Static converters:ChatTypeToIconConverter.Instance}}"
+                                                   FontSize="20"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <!-- Информация о чате -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <!-- Название чата -->
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextColor}"
+                                                   Margin="0,0,0,5"/>
+
+                                        <!-- Участники и последнее сообщение -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                            <TextBlock Text="👥"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                                       Margin="0,0,5,0"/>
+                                            <TextBlock Text="{Binding ParticipantsText}"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextSecondaryColor}"/>
+                                        </StackPanel>
+
+                                        <!-- Предпросмотр последнего сообщения -->
+                                        <TextBlock Text="{Binding LastMessagePreview}"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource TextColor}"
+                                                   TextWrapping="Wrap"
+                                                   MaxHeight="40"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+
+                                    <!-- Время последнего сообщения -->
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding TimeAgo}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryColor}"
+                                                   HorizontalAlignment="Right"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Сообщение когда нет чатов -->
+                <Border Style="{StaticResource CardStyle}"
+                        Visibility="{Binding HasNoChats, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40">
+                        <TextBlock Text="💬"
+                                   FontSize="48"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,15"/>
+                        <TextBlock Text="У вас пока нет чатов"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Чаты появятся когда вы присоединитесь к команде или вам назначат задачи"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{DynamicResource TextSecondaryColor}"
+                                   TextAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

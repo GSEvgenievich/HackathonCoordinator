@@ -1,65 +1,35 @@
-﻿using HackathonCoordinator.ServiceLayer.Services;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
 using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 
-namespace HackathonCoordinator.WPFClient.Services
+namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class GitHubOAuthService
+    public class GitHubOAuthService : BaseService
     {
-        private readonly HttpClient _httpClient;
-        private readonly UserService _userService;
-        private const string BaseUrl = "http://localhost:5046/api/";
-
-        public GitHubOAuthService()
+        public async Task<ApiResponse<GitHubAuthUrlResponseDto>> GetGitHubAuthUrlAsync(string state)
         {
-            _httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            _userService = new UserService();
-        }
-
-        public async Task<string> GetGitHubAuthUrlAsync(string state)
-        {
-            var response = await _httpClient.GetFromJsonAsync<GitHubAuthUrlResponse>($"oauth/github-auth-url?state={state}");
-
-            return response.AuthUrl;
-        }
-
-        public async Task<GitHubAuthResult> ExchangeCodeAsync(string code)
-        {
-            var response = await _httpClient.PostAsJsonAsync("oauth/github-exchange-code", new { Code = code });
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var error = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Failed to exchange code: {error}");
+                var response = await _client.GetAsync($"oauth/github-auth-url?state={state}");
+                return await HandleResponseAsync<GitHubAuthUrlResponseDto>(response);
             }
-
-            return await response.Content.ReadFromJsonAsync<GitHubAuthResult>();
+            catch (Exception ex)
+            {
+                return ApiResponse<GitHubAuthUrlResponseDto>.Fail($"Ошибка получения URL авторизации: {ex.Message}");
+            }
         }
-    }
 
-    public class GitHubAuthUrlResponse
-    {
-        public string AuthUrl { get; set; }
-    }
-
-    public class GitHubAuthResult
-    {
-        public string AccessToken { get; set; }
-        public GitHubUserInfo UserInfo { get; set; }
-    }
-
-    public class GitHubUserInfo
-    {
-        [JsonPropertyName("login")]
-        public string Login { get; set; }
-
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
-
-        [JsonPropertyName("email")]
-        public string Email { get; set; }
-
-        [JsonPropertyName("avatar_url")]
-        public string AvatarUrl { get; set; }
+        public async Task<ApiResponse<GitHubAuthResultDto>> ExchangeCodeAsync(string code)
+        {
+            try
+            {
+                var content = CreateJsonContent(new { Code = code });
+                var response = await _client.PostAsync("oauth/github-exchange-code", content);
+                return await HandleResponseAsync<GitHubAuthResultDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<GitHubAuthResultDto>.Fail($"Ошибка обмена кода: {ex.Message}");
+            }
+        }
     }
 }

@@ -1,115 +1,80 @@
-﻿using HackathonCoordinator.ServiceLayer.Storages;
-using Newtonsoft.Json;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Storages;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class AuthService
+    public class AuthService : BaseService
     {
-        private readonly HttpClient _client;
-        private const string BaseUrl = "http://localhost:5046/api/";
-
         public string Token { get; private set; }
 
-        public AuthService()
-        {
-            _client = new HttpClient() { BaseAddress = new Uri(BaseUrl) };
-            SetAuthHeader();
-        }
-
-        private void SetAuthHeader()
-        {
-            var token = SecureTokenStorage.GetToken();
-            _client.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
-                ? null
-                : new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        public async Task<string> LoginAsync(string login, string password)
+        public async Task<ApiResponse<LoginResponseDto>> LoginAsync(string login, string password)
         {
             SetAuthHeader();
 
             try
             {
-                var json = JsonConvert.SerializeObject(new { Login = login, Password = password });
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
+                var content = CreateJsonContent(new { Login = login, Password = password });
                 var response = await _client.PostAsync("auth/login", content);
-                var body = await response.Content.ReadAsStringAsync();
+                var apiResponse = await HandleResponseAsync<LoginResponseDto>(response);
 
-                if (!response.IsSuccessStatusCode)
+                if (apiResponse.Success && apiResponse.Data != null)
                 {
-                    return "Ошибка авторизации, возможно введены неверные данные";
+                    Token = apiResponse.Data.Token;
+                    SecureTokenStorage.SaveToken(Token);
+                    _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
                 }
 
-                dynamic result = JsonConvert.DeserializeObject(body);
-                Token = result.token;
-
-                SecureTokenStorage.SaveToken(Token);
-                _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
-
-                return "OK";
+                return apiResponse;
             }
             catch (HttpRequestException)
             {
-                return "Ошибка соединения с сервером";
+                return ApiResponse<LoginResponseDto>.Fail("Ошибка соединения с сервером");
             }
             catch (Exception ex)
             {
-                return $"Неожиданная ошибка";
+                return ApiResponse<LoginResponseDto>.Fail($"Неожиданная ошибка: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> RegisterAsync(string username, string login, string email, string password)
+        public async Task<ApiResponse> RegisterAsync(string username, string login, string email, string password)
         {
             SetAuthHeader();
 
             try
             {
-                var json = JsonConvert.SerializeObject(new { Username = username, Login = login, Email = email, Password = password });
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
+                var content = CreateJsonContent(new { Username = username, Login = login, Email = email, Password = password });
                 var response = await _client.PostAsync("auth/register", content);
-                var body = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return (false, body);
-                }
-
-                return (true, "Регистрация успешно завершена!");
+                return await HandleResponseAsync(response);
             }
             catch (HttpRequestException)
             {
-                return (false, "Ошибка соединения с сервером");
+                return ApiResponse.Fail("Ошибка соединения с сервером");
             }
             catch (Exception ex)
             {
-                return (false, $"Неожиданная ошибка: {ex.Message}");
+                return ApiResponse.Fail($"Неожиданная ошибка: {ex.Message}");
             }
         }
 
-        public async Task<bool> ValidateTokenAsync()
+        public async Task<ApiResponse> ValidateTokenAsync()
         {
             SetAuthHeader();
 
             var token = SecureTokenStorage.GetToken();
             if (string.IsNullOrEmpty(token))
-                return false;
+                return ApiResponse.Fail("Токен не найден");
 
-            _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             try
             {
                 var response = await _client.GetAsync("auth/validate");
-                return response.IsSuccessStatusCode;
+                return await HandleResponseAsync(response);
             }
             catch (HttpRequestException ex)
             {
-                return false;
+                return ApiResponse.Fail($"Ошибка соединения: {ex.Message}");
             }
         }
 
@@ -120,56 +85,41 @@ namespace HackathonCoordinator.ServiceLayer.Services
             Token = null;
         }
 
-        public async Task<(bool Success, string Message)> LinkGitHubAccountAsync(string githubUsername, string accessToken, string avatarUrl)
+        public async Task<ApiResponse> LinkGitHubAccountAsync(string githubUsername, string accessToken, string avatarUrl)
         {
             SetAuthHeader();
 
-            var json = System.Text.Json.JsonSerializer.Serialize(new
+            try
             {
-                GitHubUsername = githubUsername,
-                GitHubAccessToken = accessToken,
-                GitHubAvatarUrl = avatarUrl
-            });
+                var content = CreateJsonContent(new
+                {
+                    GitHubUsername = githubUsername,
+                    GitHubAccessToken = accessToken,
+                    GitHubAvatarUrl = avatarUrl
+                });
 
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _client.PostAsync("auth/link-github", content);
-
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "GitHub аккаунт успешно привязан");
+                var response = await _client.PostAsync("users/me/github/link", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка привязки GitHub: {ex.Message}");
+            }
         }
 
-        public async Task<(bool Success, string Message)> UnlinkGitHubAccountAsync()
+        public async Task<ApiResponse> UnlinkGitHubAccountAsync()
         {
             SetAuthHeader();
 
-            var response = await _client.PostAsync("auth/unlink-github", null);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "GitHub аккаунт отвязан");
+            try
+            {
+                var response = await _client.PostAsync("users/me/github/unlink", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка отвязки GitHub: {ex.Message}");
+            }
         }
-
-        public async Task<GitHubUserInfo> GetGitHubUserInfoAsync()
-        {
-            SetAuthHeader();
-
-            var response = await _client.GetAsync("auth/github-info");
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            return await response.Content.ReadFromJsonAsync<GitHubUserInfo>();
-        }
-    }
-
-    public class GitHubUserInfo
-    {
-        public string GitHubUsername { get; set; }
-        public string GitHubAvatarUrl { get; set; }
     }
 }

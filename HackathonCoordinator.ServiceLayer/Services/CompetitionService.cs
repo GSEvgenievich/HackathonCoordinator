@@ -1,180 +1,115 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Storages;
-using Newtonsoft.Json;
-using System.Net.Http.Headers;
-using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public class CompetitionService
+    public class CompetitionService : BaseService
     {
-        private readonly HttpClient _client;
-        private const string BaseUrl = "http://localhost:5046/api/";
-
-        public CompetitionService()
-        {
-            _client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            SetAuthHeader();
-        }
-
-        private void SetAuthHeader()
-        {
-            var token = SecureTokenStorage.GetToken();
-            _client.DefaultRequestHeaders.Authorization = string.IsNullOrEmpty(token)
-                ? null
-                : new AuthenticationHeaderValue("Bearer", token);
-        }
-
-        public async Task<List<CompetitionDto>> GetCompetitionsAsync()
-        {
-            SetAuthHeader();
-            var response = await _client.GetAsync("competitions");
-            if (!response.IsSuccessStatusCode) return new List<CompetitionDto>();
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<List<CompetitionDto>>(json) ?? new List<CompetitionDto>();
-        }
-
-        public async Task<CompetitionDto> GetCompetitionAsync(int id)
-        {
-            SetAuthHeader();
-            var response = await _client.GetAsync($"competitions/{id}");
-            if (!response.IsSuccessStatusCode) return null;
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<CompetitionDto>(json);
-        }
-
-        public async Task<(bool Success, string Message)> CreateCompetitionAsync(CreateCompetitionDto dto)
-        {
-            SetAuthHeader();
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PostAsync("competitions", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Соревнование успешно создано");
-        }
-
-        public async Task<(bool Success, string Message)> UpdateCompetitionAsync(int id, CreateCompetitionDto dto)
-        {
-            SetAuthHeader();
-            var json = JsonConvert.SerializeObject(dto);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _client.PutAsync($"competitions/{id}", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Соревнование успешно обновлено");
-        }
-
-        public async Task<(bool Success, string Message)> CreateTeamAsync(int competitionId, string teamName)
+        public async Task<ApiResponse<List<CompetitionDto>>> GetCompetitionsAsync()
         {
             SetAuthHeader();
 
             try
             {
-                var json = JsonConvert.SerializeObject(new { Name = teamName });
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _client.PostAsync($"competitions/{competitionId}/teams", content);
-                var body = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                    return (false, $"Ошибка: {body}");
-
-                return (true, "Команда успешно создана");
+                var response = await _client.GetAsync("competitions");
+                return await HandleResponseAsync<List<CompetitionDto>>(response);
             }
             catch (Exception ex)
             {
-                return (false, $"Ошибка при создании команды: {ex.Message}");
+                return ApiResponse<List<CompetitionDto>>.Fail($"Ошибка получения соревнований: {ex.Message}");
             }
         }
 
-        public async Task<(bool Success, string Message)> DeleteTeamAsync(int teamId)
+        public async Task<ApiResponse<CompetitionDto>> GetCompetitionAsync(int id)
         {
             SetAuthHeader();
 
-            var response = await _client.DeleteAsync($"teams/{teamId}");
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return (false, $"Ошибка: {body}");
-
-            return (true, "Команда успешно удалена");
+            try
+            {
+                var response = await _client.GetAsync($"competitions/{id}");
+                return await HandleResponseAsync<CompetitionDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<CompetitionDto>.Fail($"Ошибка получения соревнования: {ex.Message}");
+            }
         }
 
-        public async Task<CompetitionExportDataDto> GetCompetitionExportDataAsync(int competitionId)
+        public async Task<ApiResponse> CreateCompetitionAsync(CreateCompetitionDto dto)
         {
             SetAuthHeader();
-            var response = await _client.GetAsync($"export/competition-data/{competitionId}");
 
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<CompetitionExportDataDto>(json);
+            try
+            {
+                var content = CreateJsonContent(dto);
+                var response = await _client.PostAsync("competitions", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка создания соревнования: {ex.Message}");
+            }
         }
-    }
 
-    public class CompetitionExportDataDto
-    {
-        public CompetitionDto Competition { get; set; }
-        public List<TeamExportDto> Teams { get; set; }
-        public CompetitionStatsDto Stats { get; set; }
-        public string SuggestedFileName { get; set; }
-    }
+        public async Task<ApiResponse> UpdateCompetitionAsync(int id, CreateCompetitionDto dto)
+        {
+            SetAuthHeader();
 
-    public class TeamExportDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public List<TeamMemberDto> Members { get; set; }
-        public List<TaskExportDto> Tasks { get; set; }
-        public TeamStatsDto TeamStats { get; set; }
-    }
+            try
+            {
+                var content = CreateJsonContent(dto);
+                var response = await _client.PutAsync($"competitions/{id}", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка обновления соревнования: {ex.Message}");
+            }
+        }
 
-    public class TeamMemberDto
-    {
-        public string Username { get; set; }
-        public string Role { get; set; }
-        public bool IsCaptain { get; set; }
-    }
+        public async Task<ApiResponse> CreateTeamAsync(int competitionId, string teamName)
+        {
+            SetAuthHeader();
 
-    public class TaskExportDto
-    {
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public string Type { get; set; }
-        public string Status { get; set; }
-        public string AssignedTo { get; set; }
-        public DateTime? Deadline { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
+            try
+            {
+                var content = CreateJsonContent(new { Name = teamName });
+                var response = await _client.PostAsync($"competitions/{competitionId}/teams", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка создания команды: {ex.Message}");
+            }
+        }
 
-    public class TeamStatsDto
-    {
-        public int TotalTasks { get; set; }
-        public int CompletedTasks { get; set; }
-        public int InProgressTasks { get; set; }
-        public int PlannedTasks { get; set; }
-        public int CompletionPercentage { get; set; }
-    }
+        public async Task<ApiResponse> DeleteTeamAsync(int teamId)
+        {
+            SetAuthHeader();
 
-    public class CompetitionStatsDto
-    {
-        public int TotalParticipants { get; set; }
-        public int TotalTasks { get; set; }
-        public int TotalCompletedTasks { get; set; }
-        public int TotalCompletionPercentage { get; set; }
-        public int AverageTeamProgress { get; set; }
+            try
+            {
+                var response = await _client.DeleteAsync($"teams/{teamId}");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка удаления команды: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse<CompetitionExportDataDto>> GetCompetitionExportDataAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"export/competition-data/{competitionId}");
+                return await HandleResponseAsync<CompetitionExportDataDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<CompetitionExportDataDto>.Fail($"Ошибка получения данных для экспорта: {ex.Message}");
+            }
+        }
     }
 }
