@@ -14,14 +14,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
     public class TeamsController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
+        private readonly NotificationHelperService _notificationHelper;
         private readonly IEncryptionService _encryptionService;
         private readonly IGitHubService _gitHubService;
 
-        public TeamsController(HackathonCoordinatorContext context, IEncryptionService encryptionService, IGitHubService gitHubService)
+        public TeamsController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper, IEncryptionService encryptionService, IGitHubService gitHubService)
         {
             _context = context;
             _encryptionService = encryptionService;
             _gitHubService = gitHubService;
+            _notificationHelper = notificationHelper;
         }
 
         /// <summary>
@@ -52,6 +54,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             user.TeamId = team.Id;
             await _context.SaveChangesAsync();
+
+            // УВЕДОМЛЕНИЕ: Новый участник команды
+            try
+            {
+                await _notificationHelper.NotifyNewTeamMember(team.Id, user.Id, user.Username);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+            }
 
             return HandleSuccess($"Вы успешно присоединились к команде «{team.Name}»");
         }
@@ -268,6 +280,19 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     message += $". Предупреждение: {warning}";
                 }
 
+                // УВЕДОМЛЕНИЕ: Новая задача
+                try
+                {
+                    await _notificationHelper.NotifyTeamAboutNewTask(task.Id, teamId, task.Title);
+
+                    if (task.AssignedToId.HasValue)
+                        await _notificationHelper.NotifyTaskAssignment(task.Id, task.AssignedToId.Value, task.Title);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+                }
+
                 return HandleSuccess(message);
             }
             catch
@@ -457,6 +482,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             await _context.SaveChangesAsync();
 
+            // УВЕДОМЛЕНИЕ: Участник вышел из команды
+            try
+            {
+                await _notificationHelper.NotifyTeamMemberLeft(team.Id, user.Id, user.Username);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+            }
+
             return HandleSuccess("Вы покинули команду");
         }
 
@@ -503,6 +538,17 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             await _context.SaveChangesAsync();
 
+            // УВЕДОМЛЕНИЕ: Назначение капитана
+            try
+            {
+                await _notificationHelper.NotifyCaptainAssignment(teamId, newCaptain.Id, team.Name);
+                await _notificationHelper.NotifyNewCaptainToTeam(teamId, newCaptain.Id, newCaptain.Username, team.Name);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+            }
+
             return HandleSuccess("Капитан успешно назначен");
         }
 
@@ -518,9 +564,18 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (user?.RoleId != 3)
                 return HandleForbidden("Только организатор может удалять команды");
 
-            var team = await _context.Teams.FindAsync(id);
+            var team = await _context.Teams
+                .Include(t => t.Competition)
+                .Include(t => t.Users)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
             if (team == null)
                 return HandleNotFound("Команда не найдена");
+
+            var teamName = team.Name;
+            var competitionName = team.Competition?.Name;
+            var competitionId = team.Competition?.Id;
+            var memberIds = team.Users.Select(u => u.Id).ToList();
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -542,6 +597,25 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 }
 
                 await transaction.CommitAsync();
+
+                // УВЕДОМЛЕНИЯ после успешного удаления
+                try
+                {
+                    // Уведомляем всех бывших участников команды
+                    await _notificationHelper.NotifyTeamDeleted(memberIds, teamName, user.Username);
+
+                    // Уведомляем организаторов о удалении команды
+                    if (!string.IsNullOrEmpty(competitionName))
+                    {
+                        await _notificationHelper.NotifyOrganizersAboutTeamDeletion(competitionId.Value, teamName, competitionName, user.Username);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Логируем ошибку, но не прерываем успешное удаление
+                    Console.WriteLine($"Ошибка при создании уведомлений: {ex.Message}");
+                }
+
                 return HandleSuccess("Команда успешно удалена");
             }
             catch
@@ -577,9 +651,20 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 return HandleError("Нельзя выгнать капитана команды");
 
             var teamName = memberToKick.Team?.Name;
+            var teamId = memberToKick.Team?.Id;
             memberToKick.TeamId = null;
 
             await _context.SaveChangesAsync();
+
+            // УВЕДОМЛЕНИЕ: Вас выгнали
+            try
+            {
+                await _notificationHelper.NotifyMemberKicked(memberId, teamName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+            }
 
             return HandleSuccess($"Участник {memberToKick.Username} выгнан из команды {teamName}");
         }
@@ -628,6 +713,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 RepoUrl = result.RepoUrl,
                 RepoName = result.RepoName
             };
+
+            // УВЕДОМЛЕНИЕ: Новый репозиторий
+            try
+            {
+                await _notificationHelper.NotifyGitHubRepoCreated(teamId, team.Name, result.RepoName, result.RepoUrl);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+            }
 
             return HandleResult(response);
         }

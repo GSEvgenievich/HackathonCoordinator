@@ -73,6 +73,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool CanEditTask => Task?.CanEdit ?? false;
         public bool CanCompleteTask => Task?.CanComplete ?? false;
         public bool CanCancelTask => Task?.CanCancel ?? false;
+        public bool CanConfirmCompletion => Task?.CanConfirmCompletion ?? false;
+        public bool CanRejectCompletion => Task?.CanRejectCompletion ?? false;
+        public bool CanCancelTaskAsCaptain => Task?.CanCancelTaskAsCaptain ?? false;
         public bool HasChat => Task?.HasChat ?? false;
 
         public RelayCommand BackCommand { get; }
@@ -84,6 +87,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public RelayCommand CompleteTaskCommand { get; }
         public RelayCommand CancelTaskCommand { get; }
         public RelayCommand OpenTaskChatCommand { get; }
+        public RelayCommand ConfirmCompletionCommand { get; }
+        public RelayCommand RejectCompletionCommand { get; }
+        public RelayCommand CancelTaskAsCaptainCommand { get; }
 
         public TaskDetailsViewModel()
         {
@@ -101,6 +107,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             CompleteTaskCommand = new RelayCommand(async () => await CompleteTaskAsync());
             CancelTaskCommand = new RelayCommand(async () => await CancelTaskAsync());
             OpenTaskChatCommand = new RelayCommand(async () => await OpenTaskChat());
+            ConfirmCompletionCommand = new RelayCommand(async () => await ConfirmCompletionAsync());
+            RejectCompletionCommand = new RelayCommand(async () => await RejectCompletionAsync());
+            CancelTaskAsCaptainCommand = new RelayCommand(async () => await CancelTaskAsCaptainAsync());
 
             LoadCurrentUser();
         }
@@ -157,6 +166,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OnPropertyChanged(nameof(CanEditTask));
             OnPropertyChanged(nameof(CanCompleteTask));
             OnPropertyChanged(nameof(CanCancelTask));
+            OnPropertyChanged(nameof(CanConfirmCompletion));
+            OnPropertyChanged(nameof(CanRejectCompletion));
+            OnPropertyChanged(nameof(CanCancelTaskAsCaptain));
             OnPropertyChanged(nameof(HasChat));
         }
 
@@ -238,6 +250,72 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (result == MessageBoxResult.Yes)
             {
                 var cancellationResult = await _taskService.RequestCancellationAsync(Task.Id);
+                MessageBox.Show(cancellationResult.Message);
+
+                if (cancellationResult.Success)
+                {
+                    LoadTaskData(Task.Id);
+                }
+            }
+        }
+
+        private async Task ConfirmCompletionAsync()
+        {
+            if (Task == null) return;
+
+            var result = MessageBox.Show(
+                "Вы уверены, что хотите подтвердить завершение этой задачи?",
+                "Подтверждение завершения",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                var completionResult = await _taskService.ConfirmCompletionAsync(Task.Id);
+                MessageBox.Show(completionResult.Message);
+
+                if (completionResult.Success)
+                {
+                    LoadTaskData(Task.Id);
+                }
+            }
+        }
+
+        private async Task RejectCompletionAsync()
+        {
+            if (Task == null) return;
+
+            var result = MessageBox.Show(
+                "Вы уверены, что хотите отклонить завершение этой задачи? Задача вернется в работу.",
+                "Отклонение завершения",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                var rejectionResult = await _taskService.RejectCompletionAsync(Task.Id);
+                MessageBox.Show(rejectionResult.Message);
+
+                if (rejectionResult.Success)
+                {
+                    LoadTaskData(Task.Id);
+                }
+            }
+        }
+
+        private async Task CancelTaskAsCaptainAsync()
+        {
+            if (Task == null) return;
+
+            var result = MessageBox.Show(
+                "Вы уверены, что хотите отменить эту задачу?",
+                "Отмена задачи",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                var cancellationResult = await _taskService.CancelTaskAsync(Task.Id);
                 MessageBox.Show(cancellationResult.Message);
 
                 if (cancellationResult.Success)

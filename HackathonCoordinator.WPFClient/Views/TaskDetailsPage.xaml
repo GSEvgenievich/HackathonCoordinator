@@ -164,34 +164,76 @@
                         </Border>
                     </StackPanel>
                 </Border>
-
+                
                 <!-- Действия для исполнителя -->
                 <Border Style="{StaticResource CardStyle}" 
                         Visibility="{Binding IsMyTask, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
                         <TextBlock Text="🚀 Мои действия"
-                               Style="{StaticResource SectionHeaderStyle}"
-                               Margin="0,0,0,15"/>
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   Margin="0,0,0,15"/>
 
                         <StackPanel Orientation="Horizontal">
                             <!-- Запрос завершения -->
-                            <Button Content="✅ Завершить задачу"
+                            <Button Content="✅ Запросить завершение"
                                     Command="{Binding CompleteTaskCommand}"
                                     Style="{StaticResource PrimaryButton}"
                                     Margin="0,0,10,0"
                                     Visibility="{Binding CanCompleteTask, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- Запрос отмены -->
-                            <Button Content="❌ Отменить задачу"
+                            <Button Content="❌ Запросить отмену"
                                     Command="{Binding CancelTaskCommand}"
                                     Style="{StaticResource ActionButton}"
-                                    Background="{DynamicResource DangerBrush}"
+                                    BorderBrush="{DynamicResource DangerBrush}"
+                                    Foreground="{DynamicResource DangerBrush}"
                                     Visibility="{Binding CanCancelTask, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         </StackPanel>
 
                         <TextBlock Text="Для завершения или отмены задачи требуется подтверждение капитана"
-                               Style="{StaticResource CaptionSecondaryStyle}"
-                               Margin="0,10,0,0"/>
+                                   Style="{StaticResource CaptionSecondaryStyle}"
+                                   Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Действия для капитана -->
+                <Border Style="{StaticResource CardStyle}" 
+                        Visibility="{Binding CanEditTask, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="👑 Действия капитана"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   Margin="0,0,0,15"/>
+
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Подтвердить завершение -->
+                            <Button Content="✅ Подтвердить завершение"
+                                    Command="{Binding ConfirmCompletionCommand}"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    Margin="0,0,10,0"
+                                    Visibility="{Binding CanConfirmCompletion, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                            <!-- Отклонить завершение -->
+                            <Button Content="❌ Отклонить завершение"
+                                    Command="{Binding RejectCompletionCommand}"
+                                    Style="{StaticResource ActionButton}"
+                                    BorderBrush="{DynamicResource WarningBrush}"
+                                    Foreground="{DynamicResource WarningBrush}"
+                                    Margin="0,0,10,0"
+                                    Visibility="{Binding CanRejectCompletion, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                            <!-- Отменить задачу (всегда доступно капитану) -->
+                            <Button Content="🗑️ Отменить задачу"
+                                    Command="{Binding CancelTaskAsCaptainCommand}"
+                                    Style="{StaticResource ActionButton}"
+                                    BorderBrush="{DynamicResource DangerBrush}"
+                                    Foreground="{DynamicResource DangerBrush}"
+                                    Visibility="{Binding CanCancelTaskAsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="Управление статусами задач команды"
+                                   Style="{StaticResource CaptionSecondaryStyle}"
+                                   Margin="0,10,0,0"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

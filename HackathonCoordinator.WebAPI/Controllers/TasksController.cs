@@ -17,12 +17,14 @@ public class TasksController : BaseApiController
     private readonly HackathonCoordinatorContext _context;
     private readonly IEncryptionService _encryptionService;
     private readonly IGitHubService _gitHubService;
+    private readonly NotificationHelperService _notificationHelper;
 
-    public TasksController(HackathonCoordinatorContext context, IEncryptionService encryptionService, IGitHubService gitHubService)
+    public TasksController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper, IEncryptionService encryptionService, IGitHubService gitHubService)
     {
         _context = context;
         _encryptionService = encryptionService;
         _gitHubService = gitHubService;
+        _notificationHelper = notificationHelper;
     }
 
     /// <summary>
@@ -98,10 +100,14 @@ public class TasksController : BaseApiController
             Deadline = task.Deadline,
             GitHubBranchName = task.GithubBranchName,
             CreatedAt = task.CreatedAt,
+
             CanEdit = isCaptain,
             CanAssign = isCaptain && task.AssignedToId == null,
             CanComplete = isMyTask && task.StatusId == 2,
-            CanCancel = isMyTask && task.StatusId != 5,
+            CanCancel = isMyTask && task.StatusId == 2,
+            CanConfirmCompletion = isCaptain && task.StatusId == 3,
+            CanRejectCompletion = isCaptain && task.StatusId == 3,
+            CanCancelTaskAsCaptain = isCaptain && task.StatusId != 4 && task.StatusId != 5,
             HasChat = task.ChatId != null,
             TaskChatId = task.ChatId
         };
@@ -134,6 +140,12 @@ public class TasksController : BaseApiController
 
         var oldBranchName = task.GithubBranchName;
         var hasExistingBranch = !string.IsNullOrEmpty(oldBranchName);
+
+        if (task.Deadline != dto.Deadline)
+        {
+            task.IsDeadlineNotified = false;
+            task.IsDeadlineApproachNotified = false;
+        }
 
         task.Title = dto.Title.Trim();
         task.Description = dto.Description?.Trim();
@@ -223,6 +235,16 @@ public class TasksController : BaseApiController
 
         await _context.SaveChangesAsync();
 
+        // УВЕДОМЛЕНИЕ: Назначение задачи
+        try
+        {
+            await _notificationHelper.NotifyTaskAssignment(task.Id, assignee.Id, task.Title);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+        }
+
         return HandleSuccess("Задача успешно назначена");
     }
 
@@ -235,6 +257,8 @@ public class TasksController : BaseApiController
         var userId = GetUserId();
         var task = await _context.Tasks
             .Include(t => t.AssignedTo)
+            .Include(t => t.Team)
+            .ThenInclude(t => t.Users)
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
@@ -249,6 +273,24 @@ public class TasksController : BaseApiController
         task.StatusId = 3;
         await _context.SaveChangesAsync();
 
+        // УВЕДОМЛЕНИЕ: Запрос завершения задачи для капитана
+        try
+        {
+            var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+            if (captain != null)
+            {
+                await _notificationHelper.NotifyRequestTaskCompletion(
+                    task.Id,
+                    captain.Id,
+                    task.Title,
+                    task.AssignedTo?.Username ?? "Неизвестный участник");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+        }
+
         return HandleSuccess("Запрос на завершение отправлен капитану");
     }
 
@@ -261,6 +303,8 @@ public class TasksController : BaseApiController
         var userId = GetUserId();
         var task = await _context.Tasks
             .Include(t => t.AssignedTo)
+            .Include(t => t.Team)
+            .ThenInclude(t => t.Users)
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
         if (task == null)
@@ -272,10 +316,187 @@ public class TasksController : BaseApiController
         if (task.StatusId == 5)
             return HandleError("Задача уже отменена");
 
-        task.StatusId = 5;
+        if (task.StatusId != 2)
+            return HandleError("Задача должна быть в статусе 'В процессе'");
+
+        task.StatusId = 3;
         await _context.SaveChangesAsync();
 
+        // УВЕДОМЛЕНИЕ: Запрос отмены задачи для капитана
+        try
+        {
+            var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+            if (captain != null)
+            {
+                await _notificationHelper.NotifyRequestTaskCancellation(
+                    task.Id,
+                    captain.Id,
+                    task.Title,
+                    task.AssignedTo?.Username ?? "Неизвестный участник");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+        }
+
         return HandleSuccess("Задача отменена");
+    }
+
+    /// <summary>
+    /// Отклонить завершение задачи (для капитана)
+    /// </summary>
+    [HttpPost("{taskId}/reject-completion")]
+    public async Task<ActionResult<ApiResponse>> RejectCompletion(int taskId)
+    {
+        var userId = GetUserId();
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null)
+            return HandleUnauthorized("Пользователь не найден");
+
+        var task = await _context.Tasks
+            .Include(t => t.AssignedTo)
+            .Include(t => t.Team)
+            .ThenInclude(t => t.Users)
+            .FirstOrDefaultAsync(t => t.Id == taskId);
+
+        if (task == null)
+            return HandleNotFound("Задача не найдена");
+
+        // Проверяем, что пользователь - капитан команды
+        var isCaptain = task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1);
+        if (!isCaptain)
+            return HandleForbidden("Только капитан команды может отклонять завершение задач");
+
+        if (task.StatusId != 3) // На проверке
+            return HandleError("Задача должна быть в статусе 'На проверке'");
+
+        task.StatusId = 2; // Возвращаем в статус "В процессе"
+        await _context.SaveChangesAsync();
+
+        // УВЕДОМЛЕНИЕ: Отклонение завершения задачи для исполнителя
+        try
+        {
+            if (task.AssignedToId.HasValue)
+            {
+                await _notificationHelper.NotifyTaskRejection(
+                    task.AssignedToId.Value,
+                    task.Title,
+                    task.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+        }
+
+        return HandleSuccess("Завершение задачи отклонено. Задача возвращена в работу");
+    }
+
+    /// <summary>
+    /// Подтвердить завершение задачи
+    /// </summary>
+    [HttpPost("{taskId}/confirm-completion")]
+    public async Task<ActionResult<ApiResponse>> ConfirmCompletion(int taskId)
+    {
+        var userId = GetUserId();
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null)
+            return HandleUnauthorized("Пользователь не найден");
+
+        var task = await _context.Tasks
+            .Include(t => t.AssignedTo)
+            .Include(t => t.Team)
+            .ThenInclude(t => t.Users)
+            .FirstOrDefaultAsync(t => t.Id == taskId);
+
+        if (task == null)
+            return HandleNotFound("Задача не найдена");
+
+        // Проверяем, что пользователь - капитан команды
+        var isCaptain = task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1);
+        if (!isCaptain)
+            return HandleForbidden("Только капитан команды может подтверждать завершение задач");
+
+        if (task.StatusId != 3)
+            return HandleError("Задача должна быть в статусе 'На проверке'");
+
+        task.StatusId = 4; // Завершена
+        await _context.SaveChangesAsync();
+
+        // УВЕДОМЛЕНИЕ: Подтверждение завершения задачи для исполнителя
+        try
+        {
+            if (task.AssignedToId.HasValue)
+            {
+                await _notificationHelper.NotifyTaskConfirmation(
+                    task.AssignedToId.Value,
+                    task.Title,
+                    task.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+        }
+
+        return HandleSuccess("Задача успешно подтверждена");
+    }
+
+    /// <summary>
+    /// Отменить задачу
+    /// </summary>
+    [HttpPost("{taskId}/cancel")]
+    public async Task<ActionResult<ApiResponse>> TaskCancelAsync(int taskId)
+    {
+        var userId = GetUserId();
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null)
+            return HandleUnauthorized("Пользователь не найден");
+
+        var task = await _context.Tasks
+            .Include(t => t.AssignedTo)
+            .Include(t => t.Team)
+            .ThenInclude(t => t.Users)
+            .FirstOrDefaultAsync(t => t.Id == taskId);
+
+        if (task == null)
+            return HandleNotFound("Задача не найдена");
+
+        // Проверяем, что пользователь - капитан команды
+        var isCaptain = task.Team.Users.Any(u => u.Id == userId && u.RoleId == 1);
+        if (!isCaptain)
+            return HandleForbidden("Только капитан команды может отменить задач");
+
+        if (task.StatusId == 5) // Уже отменена
+            return HandleError("Задача уже отменена");
+
+        if (task.StatusId == 4) // Уже завершена
+            return HandleError("Нельзя отменить завершенную задачу");
+
+        task.StatusId = 5; // Отменена
+        await _context.SaveChangesAsync();
+
+        // УВЕДОМЛЕНИЕ: Отмена задачи для исполнителя
+        try
+        {
+            if (task.AssignedToId.HasValue)
+            {
+                await _notificationHelper.NotifyTaskCancellation(
+                    task.AssignedToId.Value,
+                    task.Title,
+                    task.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+        }
+
+        return HandleSuccess("Задача успешно отменена");
     }
 
     /// <summary>

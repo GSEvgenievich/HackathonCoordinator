@@ -75,7 +75,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             LogoutCommand = new RelayCommand(ExecuteLogout);
             OpenUsersManagementCommand = new RelayCommand(() => ExecuteOpenUsersManagement());
 
-            LoadUnreadNotificationsCount();
             InitializeNotificationsSignalR();
 
             Application.Current.Exit += (s, e) => DisposeNotificationHub();
@@ -98,7 +97,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private async void InitializeNotificationsSignalR()
+        public async void InitializeNotificationsSignalR()
         {
             var baseUrl = "http://localhost:5046";
 
@@ -121,6 +120,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 await _notificationHubConnection.StartAsync();
                 _notificationHubConnected = true;
+                await _notificationHubConnection.InvokeAsync("SubscribeToUserNotifications");
+                LoadUnreadNotificationsCount();
 
                 System.Diagnostics.Debug.WriteLine("Успешно подключен к хабу уведомлений");
             }
@@ -168,25 +169,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        public async void SubscribeToNotifications(bool isOrganizer, int? teamId)
-        {
-            await _notificationHubConnection.InvokeAsync("SubscribeToUserNotifications");
-
-            if(isOrganizer)
-                await _notificationHubConnection.InvokeAsync("SubscribeToOrganizersNotifications");
-
-            if (teamId != null)
-                await _notificationHubConnection.InvokeAsync("SubscribeToTeamNotifications", teamId);
-        }
-
-        public async void UnSubscribeFromNotifications()
-        {
-            var user = await _userService.GetCurrentUserAsync();
-
-            await _notificationHubConnection.InvokeAsync("UnsubscribeFromAllNotifications", user.Data.TeamId);
-        }
-
-        public async void DisposeNotificationHub()
+        public async Task DisposeNotificationHub()
         {
             if (_notificationHubConnection != null)
             {
@@ -243,15 +226,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 _navigationService.NavigateTo(new TeamPage());
         }
 
-        private void ExecuteLogout()
+        private async void ExecuteLogout()
         {
             var result = MessageBox.Show("Вы уверены, что хотите выйти?", "Подтверждение выхода",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
             {
-                UnSubscribeFromNotifications();
-
+                await DisposeNotificationHub();
                 _authService.Logout();
                 _navigationService.NavigateTo(new AuthorizationPage());
             }

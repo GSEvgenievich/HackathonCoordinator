@@ -142,6 +142,51 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
+        public async Task<ApiResponse> ConfirmCompletionAsync(int taskId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"tasks/{taskId}/confirm-completion", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка подтверждения завершения: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse> RejectCompletionAsync(int taskId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"tasks/{taskId}/reject-completion", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка отклонения завершения: {ex.Message}");
+            }
+        }
+
+        public async Task<ApiResponse> CancelTaskAsync(int taskId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"tasks/{taskId}/cancel", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка отмены задачи: {ex.Message}");
+            }
+        }
+
         public async Task<ApiResponse> DeleteTaskAsync(int taskId)
         {
             SetAuthHeader();

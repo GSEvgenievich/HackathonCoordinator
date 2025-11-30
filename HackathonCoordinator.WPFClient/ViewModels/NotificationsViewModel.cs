@@ -19,6 +19,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly NotificationService _notificationService;
         private readonly NavigationService _navigationService;
         private readonly UserService _userService;
+        private readonly CompetitionService _competitionService;
         private HubConnection _hubConnection;
         private bool _isConnected;
 
@@ -62,6 +63,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _notificationService = new NotificationService();
             _navigationService = App.NavigationService;
             _userService = new UserService();
+            _competitionService = new CompetitionService();
 
             LoadNotificationsCommand = new RelayCommand(async () => await LoadNotificationsAsync());
             MarkAsReadCommand = new RelayCommand<NotificationDto>(async (notification) => await MarkAsReadAsync(notification));
@@ -94,25 +96,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 await _hubConnection.StartAsync();
                 _isConnected = true;
-                SubscribeToNotifications();
+                await _hubConnection.InvokeAsync("SubscribeToUserNotifications");
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка подключения к уведомлениям: {ex.Message}");
             }
-        }
-
-        public async void SubscribeToNotifications()
-        {
-            var user = await _userService.GetCurrentUserAsync();
-
-            await _hubConnection.InvokeAsync("SubscribeToUserNotifications");
-
-            if (user.Data.RoleId == 3)
-                await _hubConnection.InvokeAsync("SubscribeToOrganizersNotifications");
-
-            if (user.Data.TeamId != null)
-                await _hubConnection.InvokeAsync("SubscribeToTeamNotifications", user.Data.TeamId);
         }
 
         private void SetupSignalREvents()
@@ -281,7 +270,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void OpenRelatedEntity(NotificationDto notification)
+        private async void OpenRelatedEntity(NotificationDto notification)
         {
             if (notification.RelatedEntityType == "task" && notification.RelatedEntityId.HasValue)
             {
@@ -289,7 +278,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             else if (notification.RelatedEntityType == "team" && notification.RelatedEntityId.HasValue)
             {
-                _navigationService.NavigateTo(new TeamPage(notification.RelatedEntityId.Value));
+                var user = await _userService.GetCurrentUserAsync();
+
+                if (user.Data.RoleId == 3)
+                    _navigationService.NavigateTo(new TeamPage(notification.RelatedEntityId.Value));
+                else
+                    _navigationService.NavigateTo(new TeamPage());
+            }
+            else if (notification.RelatedEntityType == "competition" && notification.RelatedEntityId.HasValue)
+            {
+                var competition = await _competitionService.GetCompetitionAsync(notification.RelatedEntityId.Value);
+                _navigationService.NavigateTo(new CompetitionDetailsPage(competition.Data));
             }
             // Автоматически отмечаем как прочитанное при открытии
             if (!notification.IsRead)

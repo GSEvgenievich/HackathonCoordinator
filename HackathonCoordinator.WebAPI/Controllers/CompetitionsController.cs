@@ -204,6 +204,22 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
+
+                // Уведомление: Новая команда
+                try
+                {
+                    await _notificationHelper.NotifyOrganizersAboutNewTeam(
+                        competition.Id,
+                        team.Id,
+                        team.Name,
+                        competition.Name,
+                        user.Username);
+                }
+                catch (Exception ex)
+                {
+                    // Логируем ошибку, но не прерываем создание соревнования
+                    Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+                }
                 return HandleSuccess("Команда успешно создана");
             }
             catch

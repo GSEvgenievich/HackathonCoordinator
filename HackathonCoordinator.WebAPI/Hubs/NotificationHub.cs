@@ -22,19 +22,8 @@ namespace HackathonCoordinator.WebAPI.Hubs
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
+            await UnsubscribeFromNotifications();
             await base.OnDisconnectedAsync(exception);
-        }
-
-        /// <summary>
-        /// Отписаться от всех уведомлений
-        /// </summary>
-        public async Task UnsubscribeFromAllNotifications(int? teamId)
-        {
-            await UnsubscribeFromUserNotifications();
-            await UnsubscribeFromOrganizersNotifications();
-
-            if (teamId != null)
-                UnsubscribeFromTeamNotifications(teamId.Value);
         }
 
         /// <summary>
@@ -49,42 +38,10 @@ namespace HackathonCoordinator.WebAPI.Hubs
         /// <summary>
         /// Отписаться от уведомлений пользователя
         /// </summary>
-        public async Task UnsubscribeFromUserNotifications()
+        public async Task UnsubscribeFromNotifications()
         {
             var userId = GetUserId();
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"user-{userId}");
-        }
-
-        /// <summary>
-        /// Подписаться на уведомления организаторов
-        /// </summary>
-        public async Task SubscribeToOrganizersNotifications()
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"organizers");
-        }
-
-        /// <summary>
-        /// Отписаться от уведомлений организаторов
-        /// </summary>
-        public async Task UnsubscribeFromOrganizersNotifications()
-        {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"organizers");
-        }
-
-        /// <summary>
-        /// Подписаться на уведомления команды
-        /// </summary>
-        public async Task SubscribeToTeamNotifications(int teamId)
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"team-{teamId}");
-        }
-
-        /// <summary>
-        /// Отписаться от уведомлений команды
-        /// </summary>
-        public async Task UnsubscribeFromTeamNotifications(int teamId)
-        {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"team-{teamId}");
         }
 
         private int GetUserId()

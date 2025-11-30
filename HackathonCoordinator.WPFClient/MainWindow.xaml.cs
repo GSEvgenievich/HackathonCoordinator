@@ -47,6 +47,7 @@ namespace HackathonCoordinator.WPFClient
 
                 if (DataContext is MainWindowViewModel viewModel)
                 {
+                    viewModel.InitializeNotificationsSignalR();
                     viewModel.CheckUserRole();
                     viewModel.GetUsername();
                 }

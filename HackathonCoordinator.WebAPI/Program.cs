@@ -120,6 +120,7 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+builder.Services.AddHostedService<DeadlineNotificationService>();
 
 var app = builder.Build();
 
