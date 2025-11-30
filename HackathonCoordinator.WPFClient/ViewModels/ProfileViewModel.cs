@@ -61,10 +61,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public string GitHubUsername
         {
             get => _gitHubUsername;
-            set 
+            set
             {
-                _gitHubUsername = value; 
-                OnPropertyChanged(); 
+                _gitHubUsername = value;
+                OnPropertyChanged();
                 OnPropertyChanged(nameof(GitHubStatus));
                 OnPropertyChanged(nameof(GitHubStatusColor));
                 OnPropertyChanged(nameof(GitHubButtonText));
@@ -128,17 +128,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
             });
 
-            LogoutCommand = new RelayCommand(() =>
-            {
-                _authService.Logout();
-                _navigationService.NavigateTo(new AuthorizationPage());
-            });
+            LogoutCommand = new RelayCommand(ExecuteLogout);
 
             LinkGitHubCommand = new RelayCommand(async () =>
             {
                 if (string.IsNullOrEmpty(GitHubUsername))
                 {
-                    // Переходим на страницу привязки GitHub
                     _navigationService.NavigateTo(new GitHubAuthPage());
                 }
                 else
@@ -195,6 +190,26 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 AvailableIcons.Add(icon);
                 if (icon.Name == user.Data.IconName) SelectedIcon = icon;
+            }
+        }
+
+        private void ExecuteLogout()
+        {
+            var result = MessageBox.Show("Вы уверены, что хотите выйти?", "Подтверждение выхода",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                    {
+                        mainViewModel.UnSubscribeFromNotifications();
+                    }
+                }
+
+                _authService.Logout();
+                _navigationService.NavigateTo(new AuthorizationPage());
             }
         }
     }

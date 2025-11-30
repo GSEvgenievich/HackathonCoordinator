@@ -92,12 +92,13 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                
-                <Button Style="{StaticResource SidebarButtonStyle}" 
+
+                <Button Command="{Binding OpenNotificationsCommand}" 
+                        Style="{StaticResource SidebarButtonStyle}" 
                         Tag="NotificationsPage"
                         ToolTip="Уведомления">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <TextBlock Text="🔔" FontSize="18" Margin="10,0,0,0"/>
+                        <TextBlock Text="{Binding NotificationsButtonText}" FontSize="18" Margin="10,0,0,0"/>
                         <TextBlock Text="Уведомления" 
                                    x:Name="NotificationsText" 
                                    Margin="10,0,0,0" 
