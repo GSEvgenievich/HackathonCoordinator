@@ -1,0 +1,267 @@
+﻿<!-- Views/NotificationsPage.xaml -->
+<Page x:Class="HackathonCoordinator.WPFClient.Views.NotificationsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
+      Title="Уведомления"
+      Unloaded="Page_Unloaded">
+
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+        <!-- Стиль для уведомления -->
+        <Style x:Key="NotificationCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- Стиль для непрочитанного уведомления -->
+        <Style x:Key="UnreadNotificationCardStyle" TargetType="Border" BasedOn="{StaticResource NotificationCardStyle}">
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+        </Style>
+    </Page.Resources>
+
+    <Page.DataContext>
+        <vm:NotificationsViewModel/>
+    </Page.DataContext>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок и управление -->
+        <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,15">
+            <DockPanel>
+                <Button Content="← Назад" 
+                        Command="{Binding BackCommand}"
+                        Style="{StaticResource NavigationButton}"
+                        DockPanel.Dock="Left"
+                        Margin="0,0,20,0"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+                    <Button Content="🔄"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource IconButton}"
+                            ToolTip="Обновить"
+                            Margin="0,0,10,0"/>
+
+                    <Button Content="✅ Прочитать все"
+                            Command="{Binding MarkAllAsReadCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Visibility="{Binding HasUnreadNotifications, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="🔔 Уведомления" 
+                               Style="{StaticResource PageHeaderStyle}"/>
+                    <TextBlock Text="{Binding UnreadCount, StringFormat='Непрочитанных: {0}'}"
+                               Style="{StaticResource PageSubtitleStyle}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Список уведомлений -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Индикатор загрузки -->
+                <ProgressBar IsIndeterminate="True" 
+                             Height="4"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Margin="0,0,0,20"/>
+
+                <!-- Непрочитанные уведомления -->
+                <StackPanel Visibility="{Binding HasUnreadNotifications, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Margin="0,0,0,20">
+                    <TextBlock Text="📥 Непрочитанные"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextColor}"
+                               Margin="0,0,0,10"/>
+
+                    <ItemsControl ItemsSource="{Binding UnreadNotifications}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource UnreadNotificationCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Иконка типа уведомления -->
+                                        <Border Grid.Column="0"
+                                                Width="40" 
+                                                Height="40" 
+                                                CornerRadius="8"
+                                                Background="{DynamicResource PrimaryBrush}"
+                                                VerticalAlignment="Top"
+                                                Margin="0,0,15,0">
+                                            <TextBlock Text="{Binding TypeIcon}"
+                                                       FontSize="16"
+                                                       Foreground="White"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- Содержимое уведомления -->
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextColor}"
+                                                       Margin="0,0,0,5"/>
+
+                                            <TextBlock Text="{Binding Message}"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource TextColor}"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,0,0,8"/>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding TypeName}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+
+                                                <TextBlock Text=" • "
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+
+                                                <TextBlock Text="{Binding TimeAgo}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Действия -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                            <Button Content="✅"
+                                                    Command="{Binding DataContext.MarkAsReadCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource IconButton}"
+                                                    ToolTip="Отметить как прочитанное"
+                                                    Margin="0,0,5,0"/>
+
+                                            <Button Content="🗑️"
+                                                    Command="{Binding DataContext.DeleteNotificationCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource DangerIconButton}"
+                                                    ToolTip="Удалить уведомление"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Прочитанные уведомления -->
+                <StackPanel Visibility="{Binding HasReadNotifications, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="📤 Прочитанные"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextColor}"
+                               Margin="0,0,0,10"/>
+
+                    <ItemsControl ItemsSource="{Binding ReadNotifications}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource NotificationCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Иконка типа уведомления -->
+                                        <Border Grid.Column="0"
+                                                Width="40" 
+                                                Height="40" 
+                                                CornerRadius="8"
+                                                Background="{DynamicResource ControlBackground}"
+                                                VerticalAlignment="Top"
+                                                Margin="0,0,15,0">
+                                            <TextBlock Text="{Binding TypeIcon}"
+                                                       FontSize="16"
+                                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- Содержимое уведомления -->
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextColor}"
+                                                       Margin="0,0,0,5"/>
+
+                                            <TextBlock Text="{Binding Message}"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource TextColor}"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,0,0,8"/>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding TypeName}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+
+                                                <TextBlock Text=" • "
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+
+                                                <TextBlock Text="{Binding TimeAgo}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Действия -->
+                                        <Button Grid.Column="2" 
+                                                Content="🗑️"
+                                                Command="{Binding DataContext.DeleteNotificationCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource DangerIconButton}"
+                                                ToolTip="Удалить уведомление"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Сообщение когда нет уведомлений -->
+                <Border Style="{StaticResource CardStyle}"
+                        Visibility="{Binding HasNoNotifications, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40">
+                        <TextBlock Text="🔔"
+                                   FontSize="48"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,15"/>
+                        <TextBlock Text="У вас пока нет уведомлений"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Здесь будут появляться уведомления о событиях в вашей команде и задачах"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{DynamicResource TextSecondaryColor}"
+                                   TextAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

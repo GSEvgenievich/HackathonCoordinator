@@ -50,8 +50,14 @@ builder.Services.AddHttpClient("GitHub", client =>
 });
 
 builder.Services.AddDbContext<HackathonCoordinatorContext>();
-builder.Services.AddSignalR();
+
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+});
+
 builder.Services.AddScoped<IGitHubService, GitHubService>();
+builder.Services.AddScoped<NotificationHelperService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
 
@@ -93,7 +99,8 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
 
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/chathub") || path.StartsWithSegments("/notificationhub")))
             {
                 context.Token = accessToken;
             }
@@ -126,6 +133,7 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHub<ChatHub>("/chathub");
+app.MapHub<NotificationHub>("/notificationhub");
 
 app.MapControllers();
 

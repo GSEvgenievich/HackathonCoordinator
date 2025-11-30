@@ -61,6 +61,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         mainViewModel.Username = user.Data.Username;
                         mainViewModel.CheckUserRole();
                         mainViewModel.GetUsername();
+                        mainViewModel.SubscribeToNotifications(user.Data.RoleId == 3, user.Data.TeamId);
                     }
                 }
 

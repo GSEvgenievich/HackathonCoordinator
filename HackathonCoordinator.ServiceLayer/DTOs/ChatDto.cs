@@ -1,6 +1,5 @@
 ﻿namespace HackathonCoordinator.ServiceLayer.DTOs
 {
-    // ChatDto.cs
     public class ChatDto
     {
         public int Id { get; set; }

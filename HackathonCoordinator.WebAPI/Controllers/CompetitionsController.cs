@@ -1,6 +1,7 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Models;
+using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace HackathonCoordinator.WebAPI.Controllers
     public class CompetitionsController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
+        private readonly NotificationHelperService _notificationHelper;
 
-        public CompetitionsController(HackathonCoordinatorContext context)
+        public CompetitionsController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper)
         {
             _context = context;
+            _notificationHelper = notificationHelper;
         }
 
         /// <summary>
@@ -100,6 +103,20 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             _context.Competitions.Add(competition);
             await _context.SaveChangesAsync();
+
+            // СОЗДАЕМ УВЕДОМЛЕНИЕ ДЛЯ ВСЕХ ОРГАНИЗАТОРОВ
+            try
+            {
+                await _notificationHelper.NotifyOrganizersAboutNewCompetition(
+                    competition.Id,
+                    competition.Name,
+                    user.Username);
+            }
+            catch (Exception ex)
+            {
+                // Логируем ошибку, но не прерываем создание соревнования
+                Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+            }
 
             return HandleSuccess("Соревнование успешно создано");
         }
