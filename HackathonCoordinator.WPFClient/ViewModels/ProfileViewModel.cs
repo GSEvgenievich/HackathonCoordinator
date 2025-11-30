@@ -193,7 +193,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void ExecuteLogout()
+        private async void ExecuteLogout()
         {
             var result = MessageBox.Show("Вы уверены, что хотите выйти?", "Подтверждение выхода",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -204,7 +204,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
                     {
-                        mainViewModel.UnSubscribeFromNotifications();
+                        await mainViewModel.DisposeNotificationHub();
                     }
                 }
 

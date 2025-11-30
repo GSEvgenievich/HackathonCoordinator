@@ -93,19 +93,43 @@
                     </StackPanel>
                 </Button>
 
-                <Button Command="{Binding OpenNotificationsCommand}" 
-                        Style="{StaticResource SidebarButtonStyle}" 
+                <Button Style="{StaticResource SidebarButtonStyle}" 
+                        Command="{Binding OpenNotificationsCommand}"
                         Tag="NotificationsPage"
                         ToolTip="Уведомления">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding NotificationsButtonText}" FontSize="18" Margin="10,0,0,0"/>
-                        <TextBlock Text="Уведомления" 
-                                   x:Name="NotificationsText" 
-                                   Margin="10,0,0,0" 
-                                   Visibility="Collapsed"
-                                   Foreground="{DynamicResource SidebarTextColor}"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <Grid>
+                        <!-- Основной контент -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <TextBlock Text="🔔" FontSize="18" Margin="10,0,0,0"/>
+                            <TextBlock Text="Уведомления" 
+                                       x:Name="NotificationsText" 
+                                       Margin="10,0,0,0" 
+                                       Visibility="Collapsed"
+                                       Foreground="{DynamicResource SidebarTextColor}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Бейдж с количеством уведомлений -->
+                        <Border x:Name="NotificationBadge"
+                                Background="{DynamicResource DangerBrush}"
+                                BorderBrush="White"
+                                BorderThickness="2"
+                                CornerRadius="10"
+                                Width="20"
+                                Height="20"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Margin="20,-5,0,0"
+                                Visibility="{Binding HasUnreadNotifications, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="{Binding UnreadNotificationsCount}"
+                                       FontSize="13"
+                                       FontWeight="Bold"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextAlignment="Center"/>
+                        </Border>
+                    </Grid>
                 </Button>
                 <Button Command="{Binding OpenChatsCommand}" 
                         Style="{StaticResource SidebarButtonStyle}" 

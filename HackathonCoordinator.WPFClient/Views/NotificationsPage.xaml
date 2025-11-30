@@ -11,11 +11,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 
         <!-- Стиль для уведомления -->
-        <Style x:Key="NotificationCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="12"/>
+        <Style x:Key="NotificationCardStyle" TargetType="Border" BasedOn="{StaticResource InteractiveCardStyle}">
             <Setter Property="Padding" Value="15"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
@@ -91,6 +87,11 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Style="{StaticResource UnreadNotificationCardStyle}">
+                                    <Border.InputBindings>
+                                        <MouseBinding Gesture="LeftClick"
+                                                    Command="{Binding DataContext.OpenRelatedEntityCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}"/>
+                                    </Border.InputBindings>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
@@ -176,6 +177,11 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Style="{StaticResource NotificationCardStyle}">
+                                    <Border.InputBindings>
+                                        <MouseBinding Gesture="LeftClick"
+                                                    Command="{Binding DataContext.OpenRelatedEntityCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}"/>
+                                    </Border.InputBindings>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>

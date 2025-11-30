@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace HackathonCoordinator.WebAPI.Models;
+﻿namespace HackathonCoordinator.WebAPI.Models;
 
 public partial class Task
 {
@@ -38,4 +35,6 @@ public partial class Task
     public virtual Team Team { get; set; } = null!;
 
     public virtual TaskType Type { get; set; } = null!;
+    public bool IsDeadlineNotified { get; set; } = false;
+    public bool IsDeadlineApproachNotified { get; set; } = false;
 }
