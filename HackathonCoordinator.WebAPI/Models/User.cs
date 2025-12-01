@@ -37,8 +37,6 @@ public partial class User
 
     public virtual Role Role { get; set; } = null!;
 
-    public virtual ICollection<TaskVoteResponse> TaskVoteResponses { get; set; } = new List<TaskVoteResponse>();
-
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 
     public virtual Team? Team { get; set; }

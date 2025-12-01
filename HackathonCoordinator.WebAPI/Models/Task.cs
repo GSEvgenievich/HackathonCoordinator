@@ -1,4 +1,7 @@
-﻿namespace HackathonCoordinator.WebAPI.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace HackathonCoordinator.WebAPI.Models;
 
 public partial class Task
 {
@@ -24,17 +27,17 @@ public partial class Task
 
     public int ChatId { get; set; }
 
+    public bool IsDeadlineNotified { get; set; }
+
+    public bool IsDeadlineApproachNotified { get; set; }
+
     public virtual User? AssignedTo { get; set; }
 
     public virtual Chat Chat { get; set; } = null!;
 
     public virtual TaskStatus Status { get; set; } = null!;
 
-    public virtual TaskVote? TaskVote { get; set; }
-
     public virtual Team Team { get; set; } = null!;
 
     public virtual TaskType Type { get; set; } = null!;
-    public bool IsDeadlineNotified { get; set; } = false;
-    public bool IsDeadlineApproachNotified { get; set; } = false;
 }

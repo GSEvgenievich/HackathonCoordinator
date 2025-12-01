@@ -1,5 +1,8 @@
 ﻿namespace HackathonCoordinator.WebAPI
 {
+    /// <summary>
+    /// Общий ответ API с данными
+    /// </summary>
     public class ApiResponse<T>
     {
         public bool Success { get; set; }
@@ -22,6 +25,9 @@
         };
     }
 
+    /// <summary>
+    /// Ответ API без данных
+    /// </summary>
     public class ApiResponse
     {
         public bool Success { get; set; }

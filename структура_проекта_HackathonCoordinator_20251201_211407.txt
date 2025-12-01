@@ -1,5 +1,5 @@
 ﻿Анализ структуры проекта: C:\Users\geras\OneDrive\Рабочий стол\HackathonCoordinator
-Дата анализа: 25.11.2025 17:03:55
+Дата анализа: 01.12.2025 21:14:06
 ================================================================================
 
 АНАЛИЗ РЕШЕНИЙ И ПРОЕКТОВ:
@@ -20,30 +20,54 @@
 .github/
         workflows/
 HackathonCoordinator.ServiceLayer/
-    HackathonCoordinator.ServiceLayer.csproj (353 B)
+    ApiResponse.cs
+    HackathonCoordinator.ServiceLayer.csproj (450 B)
         DTOs/
         ApiResultDto.cs
+        ChatDto.cs
+        ChatParticipantDto.cs
         CompetitionDto.cs
+        CompetitionExportDataDto.cs
+        CompetitionStatsDto.cs
         CreateCompetitionDto.cs
+        CreateNotificationDto.cs
         CreateTaskDto.cs
+        GitHubAuthResultDto.cs
+        GitHubAuthUrlResponseDto.cs
+        GitHubRepoCreationResponseDto.cs
+        GitHubTokenResponseDto.cs
+        GitHubUserInfoDto.cs
         IconDto.cs
+        LoginResponseDto.cs
         MemberDto.cs
+        MessageDto.cs
+        NotificationDto.cs
+        NotificationStatsDto.cs
         TaskDetailsDto.cs
         TaskDto.cs
-        TaskStatusDTO.cs
+        TaskExportDto.cs
+        TaskStatusDto.cs
         TaskTypeDto.cs
         TeamDto.cs
-        UserProfileDto.cs
+        TeamExportDto.cs
+        TeamMemberDto.cs
+        TeamStatsDto.cs
+        UserDto.cs
         Services/
         AuthService.cs
+        BaseService.cs
+        ChatService.cs
         CompetitionService.cs
+        ExcelExportService.cs
         GitHubOAuthService.cs
+        NotificationService.cs
         TaskService.cs
         TeamService.cs
         UserService.cs
         Storages/
         SecureTokenStorage.cs
 HackathonCoordinator.WebAPI/
+    ApiResponse.cs
     Program.cs
     HackathonCoordinator.WebAPI.csproj (1,04 KB)
     HackathonCoordinator.WebAPI.http (66 B)
@@ -51,36 +75,61 @@ HackathonCoordinator.WebAPI/
     appsettings.json
         Controllers/
         AuthController.cs
+        BaseApiController.cs
+        ChatsController.cs
         CompetitionsController.cs
+        ExportController.cs
         IconsController.cs
+        NotificationsController.cs
         OAuthController.cs
         TasksController.cs
-        TeamController.cs
+        TeamsController.cs
         UserController.cs
         Data/
         HackathonCoordinatorContext.cs
         DTOs/
         AssignCaptainDto.cs
         AssignTaskDto.cs
+        ChatDto.cs
+        ChatParticipantDto.cs
         CompetitionDto.cs
+        CompetitionExportDataDto.cs
+        CompetitionStatsDto.cs
         CreateCompetitionDto.cs
         CreateGitHubRepoDto.cs
+        CreateNotificationDto.cs
         CreateTaskDto.cs
         CreateTeamInCompetitionDto.cs
-        GitHubUserInfoDto.cs
+        ExchangeCodeRequestDto.cs
+        GitHubAuthResultDto.cs
+        GitHubAuthUrlResponseDto.cs
+        GitHubRepoCreationResponseDto.cs
+        GitHubTokenResponseDto.cs
         IconDto.cs
         JoinTeamDto.cs
         LinkGitHubDto.cs
         LoginDto.cs
+        LoginResponseDto.cs
         MemberDto.cs
+        MessageDto.cs
+        NotificationDto.cs
+        NotificationStatsDto.cs
         RegisterDto.cs
+        SendMessageDto.cs
         TaskDetailsDto.cs
         TaskDto.cs
+        TaskExportDto.cs
         TeamDto.cs
+        TeamExportDto.cs
+        TeamMemberDto.cs
+        TeamStatsDto.cs
         TransferLeadershipDto.cs
         UpdateProfileDto.cs
         UserDto.cs
         VerifyEmailDto.cs
+        Hubs/
+        ChatHub.cs
+        NotificationHub.cs
         Models/
         Chat.cs
         ChatType.cs
@@ -102,18 +151,24 @@ HackathonCoordinator.WebAPI/
         launchSettings.json
         Services/
         AesEncryptionService.cs
+        DeadlineNotificationService.cs
+        GitHubService.cs
         IEncryptionService.cs
+        IGitHubService.cs
+        NotificationHelperService.cs
         SmtpEmailSenderService.cs
 HackathonCoordinator.WPFClient/
     App.xaml.cs
     AssemblyInfo.cs
     MainWindow.xaml.cs
-    HackathonCoordinator.WPFClient.csproj (3,66 KB)
+    HackathonCoordinator.WPFClient.csproj (4,12 KB)
     App.xaml
     MainWindow.xaml
         Assets/
                 Fonts/
                 Images/
+            Icon.ico (93,96 KB)
+            Icon.png (2,85 MB)
                         Profile/
                 boy1.png (64,83 KB)
                 boy2.png (66,06 KB)
@@ -139,10 +194,16 @@ HackathonCoordinator.WPFClient/
         Converters/
         BoolToArrowConverter.cs
         BoolToBrushConverter.cs
+        BoolToMessageContainerStyleConverter.cs
+        BoolToMessageStyleConverter.cs
+        BoolToMessageTextColorConverter.cs
+        BoolToMessageTimeColorConverter.cs
         BoolToVisibilityConverter.cs
+        ChatTypeToIconConverter.cs
         CompetitionStatusToBrushConverter.cs
         CompetitionStatusToIconConverter.cs
         GitHubRepoNameValidator.cs
+        InverseBoolToVisibilityConverter.cs
         LoadingButtonConverter.cs
         MyTaskBorderConverter.cs
         Helpers/
@@ -162,46 +223,55 @@ HackathonCoordinator.WPFClient/
         ViewModels/
         AuthorizationViewModel.cs
         BaseViewModel.cs
+        ChatsViewModel.cs
+        ChatViewModel.cs
         CompetitionDetailsViewModel.cs
         CompetitionsViewModel.cs
         EditCompetitionPageViewModel.cs
         EditTaskViewModel.cs
         GitHubAuthViewModel.cs
         MainWindowViewModel.cs
-        NoTeamViewModel.cs
+        NotificationsViewModel.cs
         ProfileViewModel.cs
         RegistrationViewModel.cs
         TaskDetailsViewModel.cs
         TeamViewModel.cs
+        UsersManagementViewModel.cs
         Views/
         AuthorizationPage.xaml.cs
+        ChatPage.xaml.cs
+        ChatsPage.xaml.cs
         CompetitionDetailsPage.xaml.cs
         CompetitionsPage.xaml.cs
         EditCompetitionPage.xaml.cs
         EditTaskPage.xaml.cs
         GitHubAuthPage.xaml.cs
-        NoTeamPage.xaml.cs
+        NotificationsPage.xaml.cs
         ProfilePage.xaml.cs
         RegistrationPage.xaml.cs
         TaskDetailsPage.xaml.cs
         TeamPage.xaml.cs
+        UsersManagementPage.xaml.cs
         AuthorizationPage.xaml
+        ChatPage.xaml
+        ChatsPage.xaml
         CompetitionDetailsPage.xaml
         CompetitionsPage.xaml
         EditCompetitionPage.xaml
         EditTaskPage.xaml
         GitHubAuthPage.xaml
-        NoTeamPage.xaml
+        NotificationsPage.xaml
         ProfilePage.xaml
         RegistrationPage.xaml
         TaskDetailsPage.xaml
         TeamPage.xaml
+        UsersManagementPage.xaml
 
 ================================================================================
 ИТОГОВАЯ СТАТИСТИКА:
 • Решений: 1
 • Проектов: 3
-• Папок: 26
-• Файлов: 153
-• Время анализа: 0,19 сек
-• Общий размер: 218,02 MB
+• Папок: 27
+• Файлов: 222
+• Время анализа: 0,17 сек
+• Общий размер: 245,65 MB

@@ -323,9 +323,9 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Создать уведомление о важном сообщении в чате
+        /// Создать уведомление о важном сообщении в чате команды
         /// </summary>
-        public async Task NotifyNewChatMessage(int chatId, int teamId, string captain, string messagePreview)
+        public async Task NotifyImportantTeamChatMessage(int chatId, int teamId, string captain, string messagePreview)
         {
             var teamMembers = await _context.Users
                 .Where(u => u.TeamId == teamId)
@@ -337,12 +337,28 @@ namespace HackathonCoordinator.WebAPI.Services
                 {
                     UserId = member.Id,
                     NotificationTypeId = 14,
-                    Title = "Важное сообщение от капитана в чате",
+                    Title = "Важное сообщение от капитана в чате команды",
                     Message = $"{captain} (капитан): {messagePreview}",
-                    RelatedEntityType = "chat",
-                    RelatedEntityId = chatId
+                    RelatedEntityType = "team chat",
+                    RelatedEntityId = teamId
                 });
             }
+        }
+
+        /// <summary>
+        /// Создать уведомление о важном сообщении в чате задачи
+        /// </summary>
+        public async Task NotifyImportantTaskChatMessage(int chatId, int userId, int taskId, string taskName, string captain, string messagePreview)
+        {
+            await CreateNotificationAsync(new CreateNotificationDto
+            {
+                UserId = userId,
+                NotificationTypeId = 7,
+                Title = $"Важное сообщение от капитана в чате задачи {taskName}",
+                Message = $"{captain} (капитан): {messagePreview}",
+                RelatedEntityType = "task chat",
+                RelatedEntityId = taskId
+            });
         }
 
         /// <summary>
