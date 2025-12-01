@@ -1,5 +1,4 @@
-﻿// ViewModels/NotificationsViewModel.cs
-using HackathonCoordinator.ServiceLayer.DTOs;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
@@ -19,6 +18,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly NotificationService _notificationService;
         private readonly NavigationService _navigationService;
         private readonly UserService _userService;
+        private readonly ChatService _chatService;
         private readonly CompetitionService _competitionService;
         private HubConnection _hubConnection;
         private bool _isConnected;
@@ -63,6 +63,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _notificationService = new NotificationService();
             _navigationService = App.NavigationService;
             _userService = new UserService();
+            _chatService = new ChatService();
             _competitionService = new CompetitionService();
 
             LoadNotificationsCommand = new RelayCommand(async () => await LoadNotificationsAsync());
@@ -289,6 +290,30 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var competition = await _competitionService.GetCompetitionAsync(notification.RelatedEntityId.Value);
                 _navigationService.NavigateTo(new CompetitionDetailsPage(competition.Data));
+            }
+            else if (notification.RelatedEntityType == "team chat" && notification.RelatedEntityId.HasValue)
+            {
+                var chatPage = new ChatPage();
+                var viewModel = chatPage.DataContext as ChatViewModel;
+
+                if (viewModel != null)
+                {
+                    await viewModel.LoadTeamChatAsync(notification.RelatedEntityId.Value);
+
+                    _navigationService.NavigateTo(chatPage);
+                }
+            }
+            else if (notification.RelatedEntityType == "task chat" && notification.RelatedEntityId.HasValue)
+            {
+                var chatPage = new ChatPage();
+                var viewModel = chatPage.DataContext as ChatViewModel;
+
+                if (viewModel != null)
+                {
+                    await viewModel.LoadTaskChatAsync(notification.RelatedEntityId.Value);
+
+                    _navigationService.NavigateTo(chatPage);
+                }
             }
             // Автоматически отмечаем как прочитанное при открытии
             if (!notification.IsRead)

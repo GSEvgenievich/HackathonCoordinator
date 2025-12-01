@@ -55,6 +55,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
+        private bool _isCaptain;
+        public bool IsCaptain
+        {
+            get => _isCaptain;
+            set { _isCaptain = value; OnPropertyChanged(); }
+        }
+
         private bool _isLoading;
         public bool IsLoading
         {
@@ -247,6 +254,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     UpdateMessagesAndParticipants();
                     OnPropertyChanged(nameof(HasNoMessages));
 
+                    CheckIfCurrentUserIsCaptain();
+
                     if (_isConnected)
                         await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
                 }
@@ -278,6 +287,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     ChatTitle = $"💬 Чат задачи";
                     UpdateMessagesAndParticipants();
 
+                    CheckIfCurrentUserIsCaptain();
+
                     // Присоединяемся к чату через SignalR
                     if (_isConnected)
                         await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
@@ -294,6 +305,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        private void CheckIfCurrentUserIsCaptain()
+        {
+            if (CurrentUser != null)
+            {
+                IsCaptain = CurrentUser.RoleId == 1;
+            }
+            else
+            {
+                IsCaptain = false;
             }
         }
 

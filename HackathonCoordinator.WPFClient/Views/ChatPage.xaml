@@ -193,39 +193,46 @@
 
         <!-- Панель ввода сообщения -->
         <Border Style="{StaticResource CardStyle}" Grid.Row="2" Margin="0,10,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Поле ввода -->
-                <TextBox Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
-                         Style="{StaticResource ModernTextBox}"
-                         Tag="Введите сообщение..."
-                         VerticalContentAlignment="Center"
-                         MinHeight="40"
-                         MaxHeight="70"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto">
-                    <TextBox.InputBindings>
-                        <KeyBinding Key="Enter" 
-                                    Command="{Binding SendMessageCommand}"
-                                    Modifiers="Ctrl"/>
-                    </TextBox.InputBindings>
-                </TextBox>
+                    <!-- Поле ввода -->
+                    <TextBox Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource ModernTextBox}"
+                             Tag="Введите сообщение..."
+                             VerticalContentAlignment="Center"
+                             MinHeight="40"
+                             MaxHeight="70"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" 
+                                        Command="{Binding SendMessageCommand}"
+                                        Modifiers="Ctrl"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
 
-                <!-- Кнопка отправки -->
-                <Button Content="📤"
-                        Command="{Binding SendMessageCommand}"
-                        Style="{StaticResource PrimaryButton}"
-                        Grid.Column="1"
-                        Margin="10,0,0,0"
-                        Width="50"
-                        Height="50"
-                        IsEnabled="{Binding CanSendMessage}"/>
-            </Grid>
+                    <!-- Кнопка отправки -->
+                    <Button Content="📤"
+                            Command="{Binding SendMessageCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Grid.Column="1"
+                            Margin="10,0,0,0"
+                            Width="50"
+                            Height="50"
+                            IsEnabled="{Binding CanSendMessage}"/>
+                </Grid>
+                <TextBlock Text="💡 Напишите команду @notify в сообщении, чтобы отправить уведомление участникам"
+                       Style="{StaticResource CaptionStyle}"
+                       Foreground="{DynamicResource PrimaryBrush}"
+                       HorizontalAlignment="Left"
+                       Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Page>

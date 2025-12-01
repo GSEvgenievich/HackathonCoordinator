@@ -17,9 +17,9 @@ public partial class Team
 
     public string? GitRepoName { get; set; }
 
-    public int? ChatId { get; set; }
+    public int ChatId { get; set; }
 
-    public virtual Chat? Chat { get; set; }
+    public virtual Chat Chat { get; set; } = null!;
 
     public virtual Competition Competition { get; set; } = null!;
 

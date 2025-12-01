@@ -2,6 +2,7 @@
 using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Models;
+using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -16,11 +17,13 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly NotificationHelperService _notificationHelper;
 
-        public ChatsController(HackathonCoordinatorContext context, IHubContext<ChatHub> hubContext)
+        public ChatsController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper, IHubContext<ChatHub> hubContext)
         {
             _context = context;
             _hubContext = hubContext;
+            _notificationHelper = notificationHelper;
         }
 
         /// <summary>
@@ -115,7 +118,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (captain != null)
                 participants.Add(captain);
 
-            if (assignedTo != null)
+            if (assignedTo != null && assignedTo.Id != captain.Id)
                 participants.Add(assignedTo);
 
             var chatDto = MapToChatDto(chat, userId, participants);
@@ -151,7 +154,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             if (chat.TypeId == 1) // Чат команды
             {
-                // Проверяем, состоит ли пользователь в команде, связанной с этим чатом
                 hasAccess = chat.Teams.Any(t => t.Users.Any(u => u.Id == userId)) || user.RoleId == 3;
             }
             else if (chat.TypeId == 2) // Чат задачи
@@ -203,7 +205,46 @@ namespace HackathonCoordinator.WebAPI.Controllers
             // Отправляем сообщение через SignalR
             await _hubContext.Clients.Group($"chat-{dto.ChatId}")
                 .SendAsync("ReceiveMessage", messageDto);
-            var q = _hubContext.Groups;
+
+            if (dto.Text.Contains("@notify") && user.RoleId == 1)
+            {
+                // Уведомление для участников чата
+                try
+                {
+                    if (chat.TypeId == 1)
+                    {
+                        var team = chat.Teams.FirstOrDefault();
+
+                        await _notificationHelper.NotifyImportantTeamChatMessage(
+                            chat.Id,
+                            team.Id,
+                            team.Users.Where(u => u.RoleId == 1).Select(u => u.Username).FirstOrDefault(),
+                            message.Text.Replace("@notify", "").Trim());
+                    }
+                    else if (chat.TypeId == 2)
+                    {
+                        var task = chat.Tasks.FirstOrDefault();
+                        if (task.AssignedToId.HasValue)
+                        {
+                            var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+
+                            await _notificationHelper.NotifyImportantTaskChatMessage(
+                                chat.Id,
+                                task.AssignedToId.Value,
+                                task.Id,
+                                task.Title,
+                                captain.Username,
+                                message.Text.Replace("@notify", "").Trim());
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Логируем ошибку, но не прерываем создание соревнования
+                    Console.WriteLine($"Ошибка при создании уведомления: {ex.Message}");
+                }
+            }
+
             return HandleResult(messageDto, "Сообщение отправлено");
         }
 
