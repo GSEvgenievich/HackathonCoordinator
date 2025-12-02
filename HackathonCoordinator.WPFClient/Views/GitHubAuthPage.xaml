@@ -2,12 +2,9 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters">
+      Title="Привязка GitHub"
+      Unloaded="Page_Unloaded">
 
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-    </Page.Resources>
-    
     <Page.DataContext>
         <vm:GitHubAuthViewModel/>
     </Page.DataContext>
@@ -78,7 +75,7 @@
 
                     <Button Content="Вернуться в профиль"
                             Command="{Binding GoToProfileCommand}"
-                            Style="{StaticResource SecondaryButton}" Click="Button_Click"/>
+                            Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
 
                 <!-- Успешная привязка -->

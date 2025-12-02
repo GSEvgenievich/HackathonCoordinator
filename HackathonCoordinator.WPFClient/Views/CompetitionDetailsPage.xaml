@@ -2,13 +2,9 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
-      Title="Соревнование">
+      Title="Соревнование"
+      Unloaded="Page_Unloaded">
 
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <converters:CompetitionStatusToBrushConverter x:Key="StatusToBrushConverter"/>
-    </Page.Resources>
 
     <Page.DataContext>
         <vm:CompetitionDetailsViewModel/>
@@ -35,7 +31,7 @@
                                        TextWrapping="Wrap"/>
 
                                 <!-- Статус соревнования -->
-                                <Border Background="{Binding Competition.StatusColor, Converter={StaticResource StatusToBrushConverter}}"
+                                <Border Background="{Binding Competition.StatusColor, Converter={StaticResource CompetitionStatusToBrushConverter}}"
                                         CornerRadius="12"
                                         Padding="6,2"
                                         HorizontalAlignment="Left"
@@ -55,7 +51,7 @@
                                TextWrapping="Wrap"
                                Margin="0,0,0,15"/>
 
-                        <!-- Детали соревнования в компактном виде -->
+                        <!-- Детали соревнования -->
                         <Grid Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -114,7 +110,7 @@
                                Foreground="{DynamicResource TextColor}"
                                Margin="0,0,0,15"/>
 
-                        <!-- Для организатора - создать команду -->
+                        <!-- Для организатора -->
                         <StackPanel Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
                             <TextBlock Text="Создание команды"
                                        Style="{StaticResource BodyTextStyle}"
@@ -131,7 +127,7 @@
                                     ToolTip="Экспортировать данные соревнования и данные всех команд"/>
                         </StackPanel>
 
-                        <!-- Для обычного пользователя - присоединиться -->
+                        <!-- Для обычного пользователя -->
                         <StackPanel Visibility="{Binding IsRegularUser, Converter={StaticResource BoolToVisibilityConverter}}">
 
                             <!-- Состояние: пользователь уже в команде -->

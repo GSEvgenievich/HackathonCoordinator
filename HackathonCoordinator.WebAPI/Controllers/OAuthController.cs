@@ -29,7 +29,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// Обмен кода авторизации на access token
         /// </summary>
         [HttpPost("github-exchange-code")]
-        public async Task<ActionResult<ApiResponse<GitHubAuthResultDto>>> ExchangeGitHubCode([FromBody] ExchangeCodeRequestDto request)
+        public async Task<ActionResult<ApiResponse<GitHubAuthResultDto>>> ExchangeGitHubCodeAsync([FromBody] ExchangeCodeRequestDto request)
         {
             var result = await _gitHubService.ExchangeCodeAsync(request.Code);
 

@@ -1,15 +1,11 @@
-﻿using HackathonCoordinator.WebAPI.Models;
-using HackathonCoordinator.WPFClient.ViewModels;
+﻿using HackathonCoordinator.WPFClient.ViewModels;
 using System.Text.RegularExpressions;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows;
 
 namespace HackathonCoordinator.WPFClient.Views
 {
-
-    /// <summary>
-    /// Логика взаимодействия для TeamPage.xaml
-    /// </summary>
     public partial class TeamPage : Page
     {
         private int? TeamId { get; set; } = null;
@@ -27,11 +23,19 @@ namespace HackathonCoordinator.WPFClient.Views
             Loaded += OnPageLoaded;
         }
 
-        private async void OnPageLoaded(object sender, System.Windows.RoutedEventArgs e)
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is TeamViewModel viewModel)
             {
                 await viewModel.LoadTeamDataAsync(TeamId);
+            }
+        }
+
+        private void Page_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is TeamViewModel viewModel)
+            {
+                viewModel.Dispose();
             }
         }
 

@@ -1,5 +1,4 @@
-﻿// Controllers/ExportController.cs
-using HackathonCoordinator.WebAPI.Data;
+﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +14,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
 
-        public ExportController(HackathonCoordinatorContext context)
+        public ExportController(
+            HackathonCoordinatorContext context)
         {
             _context = context;
         }
@@ -31,100 +31,152 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != 3)
+                if (user?.RoleId != (int)Roles.Organizer)
                     return HandleForbidden<CompetitionExportDataDto>("Только организатор может экспортировать данные");
 
-                var competition = await _context.Competitions
-                    .Include(c => c.CreatedBy)
-                    .Include(c => c.Teams)
-                        .ThenInclude(t => t.Users)
-                    .Include(c => c.Teams)
-                        .ThenInclude(t => t.Tasks)
-                            .ThenInclude(task => task.AssignedTo)
-                    .Include(c => c.Teams)
-                        .ThenInclude(t => t.Tasks)
-                            .ThenInclude(task => task.Type)
-                    .Include(c => c.Teams)
-                        .ThenInclude(t => t.Tasks)
-                            .ThenInclude(task => task.Status)
-                    .FirstOrDefaultAsync(c => c.Id == competitionId);
-
+                var competition = await GetCompetitionWithDetailsAsync(competitionId);
                 if (competition == null)
                     return HandleNotFound<CompetitionExportDataDto>("Соревнование не найдено");
 
-                var exportData = new CompetitionExportDataDto
-                {
-                    Competition = new CompetitionDto
-                    {
-                        Id = competition.Id,
-                        Name = competition.Name,
-                        Description = competition.Description,
-                        StartDate = competition.StartDate,
-                        EndDate = competition.EndDate,
-                        CreatedByUsername = competition.CreatedBy.Username,
-                        CreatedAt = competition.CreatedAt
-                    },
-                    Teams = competition.Teams.Select(t => new TeamExportDto
-                    {
-                        Id = t.Id,
-                        Name = t.Name,
-                        CreatedAt = t.CreatedAt,
-                        Members = t.Users.Select(u => new TeamMemberDto
-                        {
-                            Username = u.Username,
-                            Role = u.RoleId == 1 ? "Капитан" : "Участник",
-                            IsCaptain = u.RoleId == 1
-                        }).ToList(),
-                        Tasks = t.Tasks.Select(task => new TaskExportDto
-                        {
-                            Title = task.Title,
-                            Description = task.Description,
-                            Type = task.Type.Name,
-                            Status = task.Status.Name,
-                            AssignedTo = task.AssignedTo?.Username,
-                            Deadline = task.Deadline,
-                            CreatedAt = task.CreatedAt
-                        }).ToList(),
-                        TeamStats = CalculateTeamStats(t)
-                    }).ToList(),
-                    Stats = CalculateCompetitionStats(competition),
-                    SuggestedFileName = GenerateFileName(competition.Name)
-                };
+                var exportData = await CreateExportDataDtoAsync(competition);
 
                 return HandleResult(exportData);
             }
             catch (Exception ex)
             {
-                return HandleError<CompetitionExportDataDto>($"Ошибка получения данных: {ex.Message}");
+                return HandleError<CompetitionExportDataDto>("Ошибка получения данных для экспорта");
             }
         }
 
-        private string GenerateFileName(string competitionName)
+        // --- Вспомогательные методы ---
+
+        /// <summary>
+        /// Получение соревнования с деталями для экспорта
+        /// </summary>
+        private async Task<Competition?> GetCompetitionWithDetailsAsync(int competitionId)
         {
-            if (string.IsNullOrWhiteSpace(competitionName))
-                return $"competition_export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-
-            var invalidChars = Path.GetInvalidFileNameChars();
-            var safeName = new string(competitionName.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
-            safeName = safeName.Trim().Replace("  ", " ");
-
-            if (safeName.Length > 50)
-                safeName = safeName.Substring(0, 50).Trim();
-
-            safeName = string.IsNullOrWhiteSpace(safeName) ? "competition" : safeName;
-
-            return $"{safeName}_export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            return await _context.Competitions
+                .Include(c => c.CreatedBy)
+                .Include(c => c.Teams)
+                    .ThenInclude(t => t.Users)
+                    .ThenInclude(t => t.Role)
+                .Include(c => c.Teams)
+                    .ThenInclude(t => t.Tasks)
+                        .ThenInclude(task => task.AssignedTo)
+                .Include(c => c.Teams)
+                    .ThenInclude(t => t.Tasks)
+                        .ThenInclude(task => task.Type)
+                .Include(c => c.Teams)
+                    .ThenInclude(t => t.Tasks)
+                        .ThenInclude(task => task.Status)
+                .FirstOrDefaultAsync(c => c.Id == competitionId);
         }
 
-        private TeamStatsDto CalculateTeamStats(Team team)
+        /// <summary>
+        /// Создание DTO с данными для экспорта
+        /// </summary>
+        private async Task<CompetitionExportDataDto> CreateExportDataDtoAsync(Competition competition)
         {
-            var tasks = team.Tasks ?? new List<Models.Task>();
-            var totalTasks = tasks.Count;
-            var completedTasks = tasks.Count(t => t.StatusId == 4);
-            var inProgressTasks = tasks.Count(t => t.StatusId == 2 || t.StatusId == 3);
-            var plannedTasks = tasks.Count(t => t.StatusId == 1);
+            var competitionDto = CreateCompetitionDto(competition);
+            var teamExportDtos = await CreateTeamExportDtosAsync(competition);
+            var competitionStats = CalculateCompetitionStats(teamExportDtos);
 
-            var completionPercentage = totalTasks > 0 ? (int)Math.Round((double)completedTasks / totalTasks * 100) : 0;
+            return new CompetitionExportDataDto
+            {
+                Competition = competitionDto,
+                Teams = teamExportDtos,
+                Stats = competitionStats,
+                SuggestedFileName = GenerateFileName(competition.Name)
+            };
+        }
+
+        /// <summary>
+        /// Создание DTO соревнования
+        /// </summary>
+        private CompetitionDto CreateCompetitionDto(Competition competition)
+        {
+            return new CompetitionDto
+            {
+                Id = competition.Id,
+                Name = competition.Name,
+                Description = competition.Description,
+                StartDate = competition.StartDate,
+                EndDate = competition.EndDate,
+                CreatedByUsername = competition.CreatedBy.Username,
+                CreatedAt = competition.CreatedAt
+            };
+        }
+
+        /// <summary>
+        /// Создание списка DTO команд для экспорта
+        /// </summary>
+        private async Task<List<TeamExportDto>> CreateTeamExportDtosAsync(Competition competition)
+        {
+            var teamExportDtos = new List<TeamExportDto>();
+
+            foreach (var team in competition.Teams)
+            {
+                var teamDto = new TeamExportDto
+                {
+                    Id = team.Id,
+                    Name = team.Name,
+                    CreatedAt = team.CreatedAt,
+                    Members = CreateTeamMemberDtos(team.Users),
+                    Tasks = CreateTaskExportDtos(team.Tasks),
+                    TeamStats = CalculateTeamStats(team.Tasks?.ToList() ?? new List<Models.Task>())
+                };
+
+                teamExportDtos.Add(teamDto);
+            }
+
+            return teamExportDtos;
+        }
+
+        /// <summary>
+        /// Создание списка DTO участников команды
+        /// </summary>
+        private List<TeamMemberDto> CreateTeamMemberDtos(ICollection<User> users)
+        {
+            return users.Select(u => new TeamMemberDto
+            {
+                Username = u.Username,
+                Role = u.Role.Name,
+                IsCaptain = u.RoleId == (int)Roles.Captain
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Создание списка DTO задач команды
+        /// </summary>
+        private List<TaskExportDto> CreateTaskExportDtos(ICollection<Models.Task> tasks)
+        {
+            return tasks.Select(task => new TaskExportDto
+            {
+                Title = task.Title,
+                Description = task.Description,
+                Type = task.Type?.Name ?? "Не указан",
+                Status = task.Status?.Name ?? "Не указан",
+                AssignedTo = task.AssignedTo?.Username,
+                Deadline = task.Deadline,
+                CreatedAt = task.CreatedAt
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Расчет статистики команды
+        /// </summary>
+        private TeamStatsDto CalculateTeamStats(List<Models.Task> tasks)
+        {
+            var totalTasks = tasks.Count;
+            var completedTasks = tasks.Count(t => t.StatusId == (int)TaskStatuses.Completed);
+            var inProgressTasks = tasks.Count(t =>
+                t.StatusId == (int)TaskStatuses.InProgress ||
+                t.StatusId == (int)TaskStatuses.InReview);
+            var plannedTasks = tasks.Count(t => t.StatusId == (int)TaskStatuses.Pending);
+
+            var completionPercentage = totalTasks > 0
+                ? (int)Math.Round((double)completedTasks / totalTasks * 100)
+                : 0;
 
             return new TeamStatsDto
             {
@@ -136,22 +188,59 @@ namespace HackathonCoordinator.WebAPI.Controllers
             };
         }
 
-        private CompetitionStatsDto CalculateCompetitionStats(Competition competition)
+        /// <summary>
+        /// Расчет общей статистики соревнования
+        /// </summary>
+        private CompetitionStatsDto CalculateCompetitionStats(List<TeamExportDto> teamExportDtos)
         {
-            var allTeamsStats = competition.Teams.Select(CalculateTeamStats).ToList();
+            var allTeamStats = teamExportDtos.Select(t => t.TeamStats).ToList();
+            var totalParticipants = teamExportDtos.Sum(t => t.Members.Count);
+            var totalTasks = allTeamStats.Sum(s => s.TotalTasks);
+            var totalCompletedTasks = allTeamStats.Sum(s => s.CompletedTasks);
 
             return new CompetitionStatsDto
             {
-                TotalParticipants = competition.Teams.Sum(t => t.Users.Count),
-                TotalTasks = allTeamsStats.Sum(s => s.TotalTasks),
-                TotalCompletedTasks = allTeamsStats.Sum(s => s.CompletedTasks),
-                TotalCompletionPercentage = allTeamsStats.Sum(s => s.TotalTasks) > 0
-                    ? (int)Math.Round((double)allTeamsStats.Sum(s => s.CompletedTasks) / allTeamsStats.Sum(s => s.TotalTasks) * 100)
+                TotalParticipants = totalParticipants,
+                TotalTasks = totalTasks,
+                TotalCompletedTasks = totalCompletedTasks,
+                TotalCompletionPercentage = totalTasks > 0
+                    ? (int)Math.Round((double)totalCompletedTasks / totalTasks * 100)
                     : 0,
-                AverageTeamProgress = allTeamsStats.Count > 0
-                    ? (int)Math.Round(allTeamsStats.Average(s => s.CompletionPercentage))
+                AverageTeamProgress = allTeamStats.Count > 0 && allTeamStats.All(s => s.TotalTasks > 0)
+                    ? (int)Math.Round(allTeamStats.Average(s => s.CompletionPercentage))
                     : 0
             };
+        }
+
+        /// <summary>
+        /// Генерация безопасного имени файла
+        /// </summary>
+        private string GenerateFileName(string competitionName)
+        {
+            if (string.IsNullOrWhiteSpace(competitionName))
+                return $"competition_export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var safeName = new string(competitionName
+                .Select(ch => invalidChars.Contains(ch) ? '_' : ch)
+                .ToArray());
+
+            safeName = safeName.Trim();
+
+            // Удаление двойных пробелов
+            while (safeName.Contains("  "))
+                safeName = safeName.Replace("  ", " ");
+
+            // Ограничение длины имени
+            if (safeName.Length > 50)
+                safeName = safeName.Substring(0, 50).Trim();
+
+            // Проверка на пустое имя после обработки
+            if (string.IsNullOrWhiteSpace(safeName))
+                safeName = "competition";
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            return $"{safeName}_export_{timestamp}.xlsx";
         }
     }
 }

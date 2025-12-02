@@ -1,28 +1,9 @@
-﻿<!-- Views/NotificationsPage.xaml -->
-<Page x:Class="HackathonCoordinator.WPFClient.Views.NotificationsPage"
+﻿<Page x:Class="HackathonCoordinator.WPFClient.Views.NotificationsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
       Title="Уведомления"
       Unloaded="Page_Unloaded">
-
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-
-        <!-- Стиль для уведомления -->
-        <Style x:Key="NotificationCardStyle" TargetType="Border" BasedOn="{StaticResource InteractiveCardStyle}">
-            <Setter Property="Padding" Value="15"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
-
-        <!-- Стиль для непрочитанного уведомления -->
-        <Style x:Key="UnreadNotificationCardStyle" TargetType="Border" BasedOn="{StaticResource NotificationCardStyle}">
-            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-        </Style>
-    </Page.Resources>
 
     <Page.DataContext>
         <vm:NotificationsViewModel/>
@@ -89,7 +70,8 @@
                                 <Border Style="{StaticResource UnreadNotificationCardStyle}">
                                     <Border.InputBindings>
                                         <MouseBinding Gesture="LeftClick"
-                                                    Command="{Binding DataContext.OpenRelatedEntityCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    Command="{Binding DataContext.OpenRelatedEntityCommand, 
+                                                              RelativeSource={RelativeSource AncestorType=Page}}"
                                                     CommandParameter="{Binding}"/>
                                     </Border.InputBindings>
                                     <Grid>
@@ -146,14 +128,16 @@
                                         <!-- Действия -->
                                         <StackPanel Grid.Column="2" Orientation="Horizontal">
                                             <Button Content="✅"
-                                                    Command="{Binding DataContext.MarkAsReadCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    Command="{Binding DataContext.MarkAsReadCommand, 
+                                                              RelativeSource={RelativeSource AncestorType=Page}}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource IconButton}"
                                                     ToolTip="Отметить как прочитанное"
                                                     Margin="0,0,5,0"/>
 
                                             <Button Content="🗑️"
-                                                    Command="{Binding DataContext.DeleteNotificationCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    Command="{Binding DataContext.DeleteNotificationCommand, 
+                                                              RelativeSource={RelativeSource AncestorType=Page}}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource DangerIconButton}"
                                                     ToolTip="Удалить уведомление"/>
@@ -179,7 +163,8 @@
                                 <Border Style="{StaticResource NotificationCardStyle}">
                                     <Border.InputBindings>
                                         <MouseBinding Gesture="LeftClick"
-                                                    Command="{Binding DataContext.OpenRelatedEntityCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    Command="{Binding DataContext.OpenRelatedEntityCommand, 
+                                                              RelativeSource={RelativeSource AncestorType=Page}}"
                                                     CommandParameter="{Binding}"/>
                                     </Border.InputBindings>
                                     <Grid>
@@ -236,7 +221,8 @@
                                         <!-- Действия -->
                                         <Button Grid.Column="2" 
                                                 Content="🗑️"
-                                                Command="{Binding DataContext.DeleteNotificationCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                Command="{Binding DataContext.DeleteNotificationCommand, 
+                                                          RelativeSource={RelativeSource AncestorType=Page}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource DangerIconButton}"
                                                 ToolTip="Удалить уведомление"/>

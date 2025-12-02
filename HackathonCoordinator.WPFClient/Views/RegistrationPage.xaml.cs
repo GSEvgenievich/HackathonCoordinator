@@ -4,15 +4,13 @@ using System.Windows.Controls;
 
 namespace HackathonCoordinator.WPFClient.Views
 {
-    /// <summary>
-    /// Логика взаимодействия для RegistrationPage.xaml
-    /// </summary>
     public partial class RegistrationPage : Page
     {
         public RegistrationPage()
         {
             InitializeComponent();
 
+            // Обработчики для основного пароля
             PasswordBox.PasswordChanged += (s, e) =>
             {
                 if (DataContext is RegistrationViewModel vm)
@@ -22,6 +20,10 @@ namespace HackathonCoordinator.WPFClient.Views
                 }
             };
 
+            PasswordBox.GotFocus += (s, e) => UpdatePasswordPlaceholder();
+            PasswordBox.LostFocus += (s, e) => UpdatePasswordPlaceholder();
+
+            // Обработчики для подтверждения пароля
             ConfirmPasswordBox.PasswordChanged += (s, e) =>
             {
                 if (DataContext is RegistrationViewModel vm)
@@ -31,8 +33,6 @@ namespace HackathonCoordinator.WPFClient.Views
                 }
             };
 
-            PasswordBox.GotFocus += (s, e) => UpdatePasswordPlaceholder();
-            PasswordBox.LostFocus += (s, e) => UpdatePasswordPlaceholder();
             ConfirmPasswordBox.GotFocus += (s, e) => UpdateConfirmPasswordPlaceholder();
             ConfirmPasswordBox.LostFocus += (s, e) => UpdateConfirmPasswordPlaceholder();
         }

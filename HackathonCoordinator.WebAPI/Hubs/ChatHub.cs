@@ -4,6 +4,9 @@ using System.Security.Claims;
 
 namespace HackathonCoordinator.WebAPI.Hubs
 {
+    /// <summary>
+    /// SignalR хаб для чата
+    /// </summary>
     [Authorize]
     public class ChatHub : Hub
     {
@@ -30,7 +33,6 @@ namespace HackathonCoordinator.WebAPI.Hubs
         public async Task JoinChat(int chatId)
         {
             var userId = GetUserId();
-            var userName = GetUserName();
             var connectionId = Context.ConnectionId;
 
             await Groups.AddToGroupAsync(connectionId, $"chat-{chatId}");
@@ -41,21 +43,24 @@ namespace HackathonCoordinator.WebAPI.Hubs
         /// </summary>
         public async Task LeaveChat(int chatId)
         {
-            var userId = GetUserId();
-            var userName = GetUserName();
-
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"chat-{chatId}");
         }
 
+        /// <summary>
+        /// Получение ID текущего пользователя из claims
+        /// </summary>
         private int GetUserId()
         {
             var idClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier);
             return int.TryParse(idClaim?.Value, out var userId) ? userId : 0;
         }
 
+        /// <summary>
+        /// Получение имени текущего пользователя из claims
+        /// </summary>
         private string GetUserName()
         {
-            return Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+            return Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Неизвестно";
         }
     }
 }

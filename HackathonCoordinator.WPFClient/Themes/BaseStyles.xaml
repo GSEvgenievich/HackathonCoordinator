@@ -2,8 +2,32 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters">
 
+    <!-- ==================================================================== -->
+    <!-- КОНВЕРТЕРЫ -->
+    <!-- ==================================================================== -->
+    
+    <!-- Конвертеры видимости -->
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+
+    <!-- Конвертеры для чатов -->
+    <converters:ChatTypeToIconConverter x:Key="ChatTypeToIconConverter"/>
+    <converters:BoolToMessageContainerStyleConverter x:Key="BoolToMessageContainerStyleConverter"/>
+    <converters:BoolToMessageStyleConverter x:Key="BoolToMessageStyleConverter"/>
+    <converters:BoolToMessageTextColorConverter x:Key="BoolToMessageTextColorConverter"/>
+    <converters:BoolToMessageTimeColorConverter x:Key="BoolToMessageTimeColorConverter"/>
+
+    <!-- Конвертеры для соревнований -->
+    <converters:CompetitionStatusToBrushConverter x:Key="CompetitionStatusToBrushConverter"/>
+
+    <!-- Конвертеры для команд -->
     <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
+    <converters:BoolToArrowConverter x:Key="BoolToArrowConverter"/>
+    <converters:MyTaskBorderConverter x:Key="MyTaskBorderConverter"/>
+    
+    <!-- ==================================================================== -->
+    <!-- ТИПОГРАФИКА И БАЗОВЫЕ СТИЛИ -->
+    <!-- ==================================================================== -->
 
     <!-- Единая система типографики -->
     <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>
@@ -21,7 +45,7 @@
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="LineHeight" Value="1.2"/>
     </Style>
-    
+
     <Style x:Key="H2Style" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
         <Setter Property="FontSize" Value="24"/>
         <Setter Property="FontWeight" Value="Bold"/>
@@ -40,7 +64,7 @@
         <Setter Property="LineHeight" Value="1.4"/>
     </Style>
 
-    <!-- Текстовые стили -->
+    <!-- Основные текстовые стили -->
     <Style x:Key="BodyLargeStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="LineHeight" Value="1.5"/>
@@ -66,7 +90,7 @@
         <Setter Property="LineHeight" Value="1.2"/>
     </Style>
 
-    <!-- Специализированные текстовые стили -->
+    <!-- Вторичные текстовые стили (менее заметные) -->
     <Style x:Key="BodySecondaryStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStyle}">
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
     </Style>
@@ -79,15 +103,31 @@
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
     </Style>
 
-    <!-- Стили для специальных случаев (обратная совместимость) -->
+    <!-- Специализированные текстовые стили -->
     <Style x:Key="PageTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource H2Style}">
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="Margin" Value="0,0,0,20"/>
     </Style>
 
     <Style x:Key="BodyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodySecondaryStyle}"/>
+    <Style x:Key="ErrorTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#D32F2F"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,5,0,0"/>
+    </Style>
 
-    <!-- Стили контролов -->
+    <Style x:Key="CaptionTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+
+    <!-- ==================================================================== -->
+    <!-- ЭЛЕМЕНТЫ ФОРМ И КОНТРОЛЫ -->
+    <!-- ==================================================================== -->
+
+    <!-- Текстовые поля -->
     <Style TargetType="TextBox" x:Key="ModernTextBox">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
@@ -170,6 +210,20 @@
         </Setter>
     </Style>
 
+    <Style x:Key="ValidTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsRepoNameValid}" Value="False">
+                <Setter Property="BorderBrush" Value="#D32F2F"/>
+                <Setter Property="BorderThickness" Value="2"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsRepoNameValid}" Value="True">
+                <Setter Property="BorderBrush" Value="#4CAF50"/>
+                <Setter Property="BorderThickness" Value="2"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Поля для пароля -->
     <Style TargetType="PasswordBox" x:Key="ModernPasswordBox">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
@@ -222,7 +276,127 @@
         </Setter>
     </Style>
 
-    <!-- Кнопки -->
+    <!-- Чекбоксы -->
+    <Style x:Key="ModernCheckBox" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="#CCCCCC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Grid Background="Transparent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Check box -->
+                        <Border x:Name="checkBoxBorder"
+                            Grid.Column="0"
+                            Width="16"
+                            Height="16"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3"
+                            Margin="0,0,8,0">
+                            <Path x:Name="checkMark"
+                              Data="M 3 8 L 6 11 L 13 4"
+                              Stroke="#FFFFFF"
+                              StrokeThickness="2"
+                              Stretch="Uniform"
+                              Fill="Transparent"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Opacity="0"/>
+                        </Border>
+
+                        <!-- Content -->
+                        <ContentPresenter Grid.Column="1"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalAlignment="Left"/>
+
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="checkMark" Property="Opacity" Value="1"/>
+                            <Setter TargetName="checkBoxBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                            <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                        </Trigger>
+
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Комбобоксы -->
+    <Style x:Key="ModernComboBox" TargetType="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource BackgroundColor}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Border.CornerRadius" Value="8"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+            </Trigger>
+            <Trigger Property="IsDropDownOpen" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- DatePicker -->
+    <Style x:Key="ModernDatePicker" TargetType="DatePicker">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            </Trigger>
+            <Trigger Property="IsFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="DatePickerTextBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <!-- ==================================================================== -->
+    <!-- КНОПКИ И ДЕЙСТВИЯ -->
+    <!-- ==================================================================== -->
+
+    <!-- Основные кнопки -->
     <Style x:Key="PrimaryButton" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="Foreground" Value="White"/>
@@ -290,6 +464,7 @@
         </Setter>
     </Style>
 
+    <!-- Иконочные кнопки -->
     <Style x:Key="RoundIconButton" TargetType="Button">
         <Setter Property="Width" Value="32"/>
         <Setter Property="Height" Value="32"/>
@@ -313,7 +488,23 @@
         </Setter>
     </Style>
 
-    <!-- Стиль для боковой панели -->
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource RoundIconButton}"/>
+
+    <Style x:Key="DangerIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+    </Style>
+
+    <!-- Специализированные кнопки -->
+    <Style x:Key="NavigationButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="MinWidth" Value="100"/>
+        <Setter Property="Padding" Value="12,8"/>
+    </Style>
+
+    <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="MinWidth" Value="100"/>
+    </Style>
+
     <Style x:Key="SidebarButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource SidebarTextColor}"/>
@@ -348,13 +539,28 @@
         </Setter>
     </Style>
 
+    <!-- Кнопки для модальных окон -->
+    <Style x:Key="ModalPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="Padding" Value="15,10"/>
+        <Setter Property="MinWidth" Value="120"/>
+    </Style>
+
+    <Style x:Key="ModalSecondaryButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="Padding" Value="15,10"/>
+        <Setter Property="MinWidth" Value="80"/>
+    </Style>
+
     <Style x:Key="ModalDangerButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
         <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
         <Setter Property="Foreground" Value="White"/>
     </Style>
-    
-    <!-- Карточки -->
+
+    <!-- ==================================================================== -->
+    <!-- КАРТОЧКИ И КОНТЕЙНЕРЫ -->
+    <!-- ==================================================================== -->
+
+    <!-- Базовые карточки -->
     <Style x:Key="CardStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
@@ -390,72 +596,7 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Комбо-бокс -->
-    <Style x:Key="ModernComboBox" TargetType="ComboBox">
-        <Setter Property="Background" Value="{DynamicResource BackgroundColor}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
-        <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Border.CornerRadius" Value="8"/>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-            </Trigger>
-            <Trigger Property="IsDropDownOpen" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-            </Trigger>
-        </Style.Triggers>
-    </Style>
-
-    <!-- DatePicker -->
-    <Style x:Key="ModernDatePicker" TargetType="DatePicker">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-            </Trigger>
-            <Trigger Property="IsFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                <Setter Property="BorderThickness" Value="2"/>
-            </Trigger>
-        </Style.Triggers>
-    </Style>
-
-    <Style TargetType="DatePickerTextBox">
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-    </Style>
-
-    <!-- Специализированные стили для TeamPage -->
-    <Style x:Key="NavigationButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
-        <Setter Property="MinWidth" Value="100"/>
-        <Setter Property="Padding" Value="12,8"/>
-    </Style>
-
-    <Style x:Key="PageHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource H1Style}"/>
-    <Style x:Key="PageSubtitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodySecondaryStyle}">
-        <Setter Property="Margin" Value="0,5,0,0"/>
-    </Style>
-    <Style x:Key="SectionHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource H3Style}"/>
-    <Style x:Key="SectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource H4Style}"/>
-
-    <!-- Статистика -->
+    <!-- Стили для статистики -->
     <Style x:Key="StatsContainerStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
         <Setter Property="CornerRadius" Value="12"/>
@@ -463,6 +604,35 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
+
+    <!-- Стили для пустых состояний -->
+    <Style x:Key="EmptyStateStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="30"/>
+        <Setter Property="Margin" Value="0,10,0,0"/>
+    </Style>
+
+    <!-- Разделители -->
+    <Style x:Key="VerticalDividerStyle" TargetType="Rectangle">
+        <Setter Property="Width" Value="1"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Fill" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0"/>
+    </Style>
+
+    <!-- ==================================================================== -->
+    <!-- СТИЛИ ДЛЯ КОНКРЕТНЫХ СТРАНИЦ -->
+    <!-- ==================================================================== -->
+
+    <!-- Страница TeamPage -->
+    <Style x:Key="PageHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource H1Style}"/>
+    <Style x:Key="PageSubtitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodySecondaryStyle}">
+        <Setter Property="Margin" Value="0,5,0,0"/>
+    </Style>
+    <Style x:Key="SectionHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource H3Style}"/>
+    <Style x:Key="SectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource H4Style}"/>
 
     <Style x:Key="StatsHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource MicroSecondaryStyle}">
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -477,21 +647,7 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
-    <Style x:Key="VerticalDividerStyle" TargetType="Rectangle">
-        <Setter Property="Width" Value="1"/>
-        <Setter Property="Height" Value="40"/>
-        <Setter Property="Fill" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Margin" Value="8,0"/>
-    </Style>
-
-    <!-- Действия -->
-    <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
-        <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="MinWidth" Value="100"/>
-    </Style>
-
-    <!-- Участники -->
+    <!-- Участники команды -->
     <Style x:Key="MemberCardStyle" TargetType="Border">
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
@@ -533,10 +689,24 @@
         <Setter Property="Margin" Value="0,2,0,0"/>
     </Style>
 
-    <!-- Задачи -->
+    <!-- Задачи команды -->
+    <Style x:Key="TaskSectionHeaderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="15"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
     <Style x:Key="TaskCardStyle" TargetType="Border" BasedOn="{StaticResource InteractiveCardStyle}">
         <Setter Property="Margin" Value="0,0,0,8"/>
         <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <Style x:Key="MyTaskCardStyle" TargetType="Border" BasedOn="{StaticResource TaskCardStyle}">
+        <Setter Property="BorderBrush" Value="#4CAF50"/>
+        <Setter Property="Background" Value="#F8FFF8"/>
     </Style>
 
     <Style x:Key="TaskTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyLargeStyle}">
@@ -548,37 +718,15 @@
         <Setter Property="MaxHeight" Value="40"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
-    
-    <!-- Стиль для сообщений -->
-    <Style x:Key="MyMessageContainerStyle" TargetType="StackPanel">
-        <Setter Property="HorizontalAlignment" Value="Right"/>
-        <Setter Property="Margin" Value="0,0,10,0"/>
-    </Style>
 
-    <Style x:Key="OtherMessageContainerStyle" TargetType="StackPanel">
-        <Setter Property="HorizontalAlignment" Value="Left"/>
-        <Setter Property="Margin" Value="0,0,20,0"/>
-    </Style>
-
-    <Style x:Key="MyMessageStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="10 5"/>
-    </Style>
-
-    <Style x:Key="OtherMessageStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="10 5"/>
-    </Style>
-
-    <Style x:Key="CaptionTextStyle" TargetType="TextBlock">
+    <Style x:Key="MyTaskIndicatorStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#4CAF50"/>
+        <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
-        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Margin" Value="5,0,0,0"/>
     </Style>
-    
-    <!-- Бейджи и мета-информация -->
+
+    <!-- Бейджи и счетчики -->
     <Style x:Key="CounterBadgeStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="CornerRadius" Value="10"/>
@@ -589,6 +737,21 @@
     <Style x:Key="CounterTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MicroStyle}">
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <Style x:Key="MyTasksBadgeStyle" TargetType="Border">
+        <Setter Property="Background" Value="#E8F5E8"/>
+        <Setter Property="BorderBrush" Value="#4CAF50"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Margin" Value="8,0,0,0"/>
+    </Style>
+
+    <Style x:Key="MyTasksCounterTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#2E7D32"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
     <Style x:Key="TypeBadgeStyle" TargetType="Border">
@@ -617,18 +780,39 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <!-- Иконки -->
-    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource RoundIconButton}"/>
-    <Style x:Key="DangerIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
-        <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+    <!-- Страница ChatPage -->
+    <Style x:Key="MyMessageContainerStyle" TargetType="StackPanel">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,10,0"/>
     </Style>
 
-    <!-- Пустые состояния -->
-    <Style x:Key="EmptyStateStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="30"/>
-        <Setter Property="Margin" Value="0,10,0,0"/>
+    <Style x:Key="OtherMessageContainerStyle" TargetType="StackPanel">
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Margin" Value="0,0,20,0"/>
+    </Style>
+
+    <Style x:Key="MyMessageStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10 5"/>
+    </Style>
+
+    <Style x:Key="OtherMessageStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10 5"/>
+    </Style>
+
+    <!-- Страница NotificationsPage -->
+    <Style x:Key="NotificationCardStyle" TargetType="Border" BasedOn="{StaticResource InteractiveCardStyle}">
+        <Setter Property="Padding" Value="15"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+
+    <Style x:Key="UnreadNotificationCardStyle" TargetType="Border" BasedOn="{StaticResource NotificationCardStyle}">
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
     </Style>
 
     <Style x:Key="EmptyStateIconStyle" TargetType="TextBlock" BasedOn="{StaticResource H2Style}">
@@ -641,7 +825,10 @@
 
     <Style x:Key="EmptyStateSubtitleStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionSecondaryStyle}"/>
 
-    <!-- Модальные окна -->
+    <!-- ==================================================================== -->
+    <!-- МОДАЛЬНЫЕ ОКНА И ДИАЛОГИ -->
+    <!-- ==================================================================== -->
+
     <Style x:Key="ModalOverlayStyle" TargetType="Border">
         <Setter Property="Background" Value="#CC000000"/>
         <Setter Property="Panel.ZIndex" Value="1000"/>
@@ -672,141 +859,11 @@
         <Setter Property="FontSize" Value="13"/>
     </Style>
 
-    <Style x:Key="ModalPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-        <Setter Property="Padding" Value="15,10"/>
-        <Setter Property="MinWidth" Value="120"/>
-    </Style>
+    <!-- ==================================================================== -->
+    <!-- SCROLLBARS -->
+    <!-- ==================================================================== -->
 
-    <Style x:Key="ModalSecondaryButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
-        <Setter Property="Padding" Value="15,10"/>
-        <Setter Property="MinWidth" Value="80"/>
-    </Style>
-
-    <!-- Заголовок секции задач -->
-    <Style x:Key="TaskSectionHeaderStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="15"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-
-    <!-- Стиль для карточки моей задачи -->
-    <Style x:Key="MyTaskCardStyle" TargetType="Border" BasedOn="{StaticResource TaskCardStyle}">
-        <Setter Property="BorderBrush" Value="#4CAF50"/>
-        <Setter Property="Background" Value="#F8FFF8"/>
-    </Style>
-
-    <!-- Стиль для бейджа "ваших задач" -->
-    <Style x:Key="MyTasksBadgeStyle" TargetType="Border">
-        <Setter Property="Background" Value="#E8F5E8"/>
-        <Setter Property="BorderBrush" Value="#4CAF50"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="6,2"/>
-        <Setter Property="Margin" Value="8,0,0,0"/>
-    </Style>
-
-    <Style x:Key="MyTasksCounterTextStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="#2E7D32"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-    </Style>
-
-    <!-- Стиль для индикатора моей задачи -->
-    <Style x:Key="MyTaskIndicatorStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="#4CAF50"/>
-        <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Margin" Value="5,0,0,0"/>
-    </Style>
-
-    <!-- Стиль для чекбокса -->
-    <Style x:Key="ModernCheckBox" TargetType="CheckBox">
-        <Setter Property="Foreground" Value="{DynamicResource TextColor}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderBrush" Value="#CCCCCC"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="8,4"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="CheckBox">
-                    <Grid Background="Transparent">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Check box -->
-                        <Border x:Name="checkBoxBorder"
-                            Grid.Column="0"
-                            Width="16"
-                            Height="16"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="3"
-                            Margin="0,0,8,0">
-                            <Path x:Name="checkMark"
-                              Data="M 3 8 L 6 11 L 13 4"
-                              Stroke="#FFFFFF"
-                              StrokeThickness="2"
-                              Stretch="Uniform"
-                              Fill="Transparent"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              Opacity="0"/>
-                        </Border>
-
-                        <!-- Content -->
-                        <ContentPresenter Grid.Column="1"
-                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                      HorizontalAlignment="Left"/>
-
-                    </Grid>
-
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="checkMark" Property="Opacity" Value="1"/>
-                            <Setter TargetName="checkBoxBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-                            <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                        </Trigger>
-
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="ErrorTextStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="#D32F2F"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Margin" Value="0,5,0,0"/>
-    </Style>
-
-    <Style x:Key="ValidTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding IsRepoNameValid}" Value="False">
-                <Setter Property="BorderBrush" Value="#D32F2F"/>
-                <Setter Property="BorderThickness" Value="2"/>
-            </DataTrigger>
-            <DataTrigger Binding="{Binding IsRepoNameValid}" Value="True">
-                <Setter Property="BorderBrush" Value="#4CAF50"/>
-                <Setter Property="BorderThickness" Value="2"/>
-            </DataTrigger>
-        </Style.Triggers>
-    </Style>
-
-    <!-- Вертикальный ScrollBar (ваш существующий) -->
+    <!-- Вертикальный ScrollBar -->
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
         <Setter Property="Margin" Value="3 0"/>
@@ -895,4 +952,5 @@
             </Setter.Value>
         </Setter>
     </Style>
+
 </ResourceDictionary>

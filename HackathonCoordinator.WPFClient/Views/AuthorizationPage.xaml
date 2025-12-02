@@ -4,20 +4,14 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
       mc:Ignorable="d" 
       Title="Авторизация">
-
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-    </Page.Resources>
 
     <Page.DataContext>
         <vm:AuthorizationViewModel/>
     </Page.DataContext>
 
     <Grid>
-        <!-- Фоновое изображение темы -->
         <Grid.Background>
             <DynamicResource ResourceKey="MainBackgroundBrush"/>
         </Grid.Background>
@@ -28,14 +22,13 @@
                 HorizontalAlignment="Center"
                 Padding="0">
 
-            <!-- Внутренний контейнер с градиентом -->
             <Border Background="{DynamicResource AccentBackgroundBrush}"
                     CornerRadius="12"
                     Margin="1">
 
                 <StackPanel Margin="40" VerticalAlignment="Center">
 
-                    <!-- Заголовок с иконкой -->
+                    <!-- Заголовок -->
                     <StackPanel Orientation="Horizontal" 
                                 HorizontalAlignment="Center" 
                                 Margin="0,0,0,30">
@@ -73,6 +66,7 @@
                                      Foreground="{DynamicResource TextColor}"/>
                     </StackPanel>
 
+                    <!-- Кнопки авторизации -->
                     <Border Style="{StaticResource CardStyle}"
                             Background="{DynamicResource ControlBackground}">
                         <StackPanel>

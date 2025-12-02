@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HackathonCoordinator.WebAPI.Services
 {
+    /// <summary>
+    /// Фоновый сервис для мониторинга дедлайнов задач и отправки уведомлений
+    /// </summary>
     public class DeadlineNotificationService : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
@@ -20,7 +23,7 @@ namespace HackathonCoordinator.WebAPI.Services
         {
             _logger.LogInformation("Сервис уведомлений о дедлайнах запущен");
 
-            // Первая проверка через 1 минуту после запуска
+            // Начальная задержка перед первой проверкой
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
@@ -30,7 +33,7 @@ namespace HackathonCoordinator.WebAPI.Services
                     await CheckExpiredDeadlinesAsync();
                     await CheckApproachingDeadlinesAsync();
 
-                    // Проверяем каждые 30 минут
+                    // Проверка каждые 30 минут
                     await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
                 }
                 catch (OperationCanceledException)
@@ -47,6 +50,9 @@ namespace HackathonCoordinator.WebAPI.Services
             _logger.LogInformation("Сервис уведомлений о дедлайнах остановлен");
         }
 
+        /// <summary>
+        /// Проверка просроченных дедлайнов
+        /// </summary>
         private async Task CheckExpiredDeadlinesAsync()
         {
             using var scope = _serviceProvider.CreateScope();
@@ -54,6 +60,8 @@ namespace HackathonCoordinator.WebAPI.Services
             var notificationHelper = scope.ServiceProvider.GetRequiredService<NotificationHelperService>();
 
             var now = DateTime.Now;
+
+            // Поиск просроченных задач, о которых еще не уведомляли
             var expiredTasks = await context.Tasks
                 .Include(t => t.AssignedTo)
                 .Include(t => t.Team)
@@ -68,7 +76,7 @@ namespace HackathonCoordinator.WebAPI.Services
             {
                 try
                 {
-                    // Уведомляем исполнителя
+                    // Уведомление исполнителя
                     if (task.AssignedToId.HasValue)
                     {
                         await notificationHelper.NotifyExpiredDeadline(
@@ -78,7 +86,7 @@ namespace HackathonCoordinator.WebAPI.Services
                             task.Deadline.Value);
                     }
 
-                    // Уведомляем капитана команды
+                    // Уведомление капитана команды
                     var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
                     if (captain != null)
                     {
@@ -103,6 +111,9 @@ namespace HackathonCoordinator.WebAPI.Services
             }
         }
 
+        /// <summary>
+        /// Проверка приближающихся дедлайнов (за 24 часа)
+        /// </summary>
         private async Task CheckApproachingDeadlinesAsync()
         {
             using var scope = _serviceProvider.CreateScope();

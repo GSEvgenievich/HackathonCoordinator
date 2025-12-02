@@ -4,14 +4,12 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
-    public class ChatsViewModel : INotifyPropertyChanged
+    public class ChatsViewModel : BaseViewModel
     {
         private readonly ChatService _chatService;
         private readonly TeamService _teamService;
@@ -19,23 +17,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly UserService _userService;
         private readonly NavigationService _navigationService;
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
         private bool _isLoading;
         public bool IsLoading
         {
             get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
+            set => SetProperty(ref _isLoading, value);
         }
 
         public ObservableCollection<ChatListItemDto> Chats { get; } = new();
 
+        // AsyncRelayCommand для асинхронных операций
         public ICommand LoadChatsCommand { get; }
         public ICommand OpenChatCommand { get; }
         public ICommand BackCommand { get; }
         public ICommand RefreshCommand { get; }
+
+        public bool HasNoChats => !Chats.Any();
 
         public ChatsViewModel()
         {
@@ -45,12 +42,23 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
             _navigationService = App.NavigationService;
 
-            LoadChatsCommand = new RelayCommand(async () => await LoadChatsAsync());
-            OpenChatCommand = new RelayCommand<ChatListItemDto>(async (chat) => await OpenChatAsync(chat));
-            BackCommand = new RelayCommand(GoBack);
-            RefreshCommand = new RelayCommand(async () => await LoadChatsAsync());
+            // AsyncRelayCommand для загрузки чатов
+            LoadChatsCommand = new AsyncRelayCommand(
+                execute: async () => await LoadChatsAsync(),
+                canExecute: () => true);
 
-            // Загружаем чаты при создании
+            // AsyncRelayCommand для открытия чата
+            OpenChatCommand = new AsyncRelayCommand<ChatListItemDto>(
+                execute: async (chat) => await OpenChatAsync(chat),
+                canExecute: (chat) => chat != null);
+
+            BackCommand = new RelayCommand(GoBack);
+
+            // AsyncRelayCommand для обновления
+            RefreshCommand = new AsyncRelayCommand(
+                execute: async () => await LoadChatsAsync(),
+                canExecute: () => true);
+
             LoadChatsCommand.Execute(null);
         }
 
@@ -60,28 +68,36 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             try
             {
-                Chats.Clear();
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    Chats.Clear();
+                });
 
-                // Получаем текущего пользователя
                 var user = await _userService.GetCurrentUserAsync();
                 if (!user.Success)
                 {
-                    MessageBox.Show("Ошибка загрузки пользователя");
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        MessageBox.Show("Ошибка загрузки пользователя", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
                     return;
                 }
 
-                // Загружаем чат команды
                 if (user.Data.TeamId.HasValue)
                 {
                     var teamChat = await _chatService.GetTeamChatAsync(user.Data.TeamId.Value);
                     if (teamChat.Success && teamChat.Data != null)
                     {
                         var chatItem = MapToChatListItem(teamChat.Data, "👥 Чат команды");
-                        Chats.Add(chatItem);
+
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            Chats.Add(chatItem);
+                        });
                     }
                 }
 
-                // Загружаем чаты задач
                 var userTasksIds = await _taskService.GetUserTasksIdsAsync();
                 if (userTasksIds.Success)
                 {
@@ -91,28 +107,39 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         if (taskChat.Success && taskChat.Data != null)
                         {
                             var chatItem = MapToChatListItem(taskChat.Data, $"🎯 {taskChat.Data.Name}");
-                            Chats.Add(chatItem);
+
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                Chats.Add(chatItem);
+                            });
                         }
                     }
                 }
 
-                // Сортируем по времени последнего сообщения (сверху самые активные)
-                var sortedChats = Chats
-                    .OrderByDescending(c => c.LastMessageTime)
-                    .ThenBy(c => c.ChatType == "team" ? 0 : 1) // Сначала чат команды
-                    .ToList();
-
-                Chats.Clear();
-                foreach (var chat in sortedChats)
+                // Сортировка
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    Chats.Add(chat);
-                }
+                    var sortedChats = Chats
+                        .OrderByDescending(c => c.LastMessageTime)
+                        .ThenBy(c => c.ChatType == "team" ? 0 : 1)
+                        .ToList();
 
-                OnPropertyChanged(nameof(HasNoChats));
+                    Chats.Clear();
+                    foreach (var chat in sortedChats)
+                    {
+                        Chats.Add(chat);
+                    }
+
+                    OnPropertyChanged(nameof(HasNoChats));
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки чатов: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки чатов: {ex.Message}\n\nПроверьте подключение к серверу.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
             finally
             {
@@ -140,8 +167,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task OpenChatAsync(ChatListItemDto chatItem)
         {
-            if (chatItem == null) return;
-
             try
             {
                 var chatPage = new ChatPage();
@@ -149,43 +174,153 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 if (viewModel != null)
                 {
-                    if (chatItem.ChatType == "чат команды" && chatItem.TeamId.HasValue)
+                    if (chatItem.TeamId.HasValue)
                     {
                         await viewModel.LoadTeamChatAsync(chatItem.TeamId.Value);
                     }
-                    else
+                    else if (chatItem.TaskId.HasValue)
                     {
                         await viewModel.LoadTaskChatAsync(chatItem.TaskId.Value);
                     }
+                    else
+                    {
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            MessageBox.Show("Не удалось определить тип чата", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
+                        });
+                        return;
+                    }
 
-                    _navigationService.NavigateTo(chatPage);
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _navigationService.NavigateTo(chatPage);
+                    });
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка открытия чата: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка открытия чата: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private void GoBack()
         {
-            _navigationService.GoBack();
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                    {
+                        mainViewModel.OpenMainPage();
+                    }
+                }
+            });
         }
 
-        public bool HasNoChats => !Chats.Any();
+        protected override void DisposeManagedResources()
+        {
+            base.DisposeManagedResources();
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                Chats?.Clear();
+            });
+
+            if (_chatService is IDisposable chatDisposable)
+                chatDisposable.Dispose();
+
+            if (_teamService is IDisposable teamDisposable)
+                teamDisposable.Dispose();
+
+            if (_taskService is IDisposable taskDisposable)
+                taskDisposable.Dispose();
+
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
+        }
     }
 
-    public class ChatListItemDto
+    public class ChatListItemDto : BaseViewModel
     {
-        public int ChatId { get; set; }
-        public string ChatType { get; set; }
-        public string DisplayName { get; set; }
-        public int ParticipantsCount { get; set; }
-        public string LastMessage { get; set; }
-        public DateTime LastMessageTime { get; set; }
-        public string LastMessageSender { get; set; }
-        public int? TeamId { get; set; }
-        public int? TaskId { get; set; }
+        private int _chatId;
+        public int ChatId
+        {
+            get => _chatId;
+            set => SetProperty(ref _chatId, value);
+        }
+
+        private string _chatType;
+        public string ChatType
+        {
+            get => _chatType;
+            set => SetProperty(ref _chatType, value);
+        }
+
+        private string _displayName;
+        public string DisplayName
+        {
+            get => _displayName;
+            set => SetProperty(ref _displayName, value);
+        }
+
+        private int _participantsCount;
+        public int ParticipantsCount
+        {
+            get => _participantsCount;
+            set => SetProperty(ref _participantsCount, value);
+        }
+
+        private string _lastMessage;
+        public string LastMessage
+        {
+            get => _lastMessage;
+            set
+            {
+                SetProperty(ref _lastMessage, value);
+                OnPropertyChanged(nameof(LastMessagePreview));
+            }
+        }
+
+        private DateTime _lastMessageTime;
+        public DateTime LastMessageTime
+        {
+            get => _lastMessageTime;
+            set
+            {
+                SetProperty(ref _lastMessageTime, value);
+                OnPropertyChanged(nameof(TimeAgo));
+            }
+        }
+
+        private string _lastMessageSender;
+        public string LastMessageSender
+        {
+            get => _lastMessageSender;
+            set
+            {
+                SetProperty(ref _lastMessageSender, value);
+                OnPropertyChanged(nameof(LastMessagePreview));
+            }
+        }
+
+        private int? _teamId;
+        public int? TeamId
+        {
+            get => _teamId;
+            set => SetProperty(ref _teamId, value);
+        }
+
+        private int? _taskId;
+        public int? TaskId
+        {
+            get => _taskId;
+            set => SetProperty(ref _taskId, value);
+        }
 
         public string ParticipantsText => $"{ParticipantsCount} участников";
         public string LastMessagePreview => GetMessagePreview();

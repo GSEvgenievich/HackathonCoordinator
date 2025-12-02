@@ -2,12 +2,8 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
-      Title="Задача">
-
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-    </Page.Resources>
+      Title="Задача"
+      Unloaded="Page_Unloaded">
 
     <Page.DataContext>
         <vm:TaskDetailsViewModel/>
@@ -46,14 +42,14 @@
 
                             <!-- Кнопки действий -->
                             <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
-                                <!-- Редактировать (только для капитана) -->
+                                <!-- Редактировать -->
                                 <Button Content="✏️ Редактировать"
                                         Command="{Binding EditTaskCommand}"
                                         Style="{StaticResource ActionButton}"
                                         Margin="0,0,10,0"
                                         Visibility="{Binding CanEditTask, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <!-- Назначить задачу (капитан, нет исполнителя) -->
+                                <!-- Назначить задачу -->
                                 <Button Content="🎯 Назначить"
                                         Command="{Binding OpenAssignmentDialogCommand}"
                                         Style="{StaticResource PrimaryButton}"
@@ -64,7 +60,7 @@
                                 <Button Content="💬 Чат задачи"
                                         Command="{Binding OpenTaskChatCommand}"
                                         Style="{StaticResource ActionButton}"
-                                        Visibility="{Binding HasChat, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        Visibility="{Binding CanOpenChat, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -164,7 +160,7 @@
                         </Border>
                     </StackPanel>
                 </Border>
-                
+
                 <!-- Действия для исполнителя -->
                 <Border Style="{StaticResource CardStyle}" 
                         Visibility="{Binding IsMyTask, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -222,7 +218,7 @@
                                     Margin="0,0,10,0"
                                     Visibility="{Binding CanRejectCompletion, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                            <!-- Отменить задачу (всегда доступно капитану) -->
+                            <!-- Отменить задачу -->
                             <Button Content="🗑️ Отменить задачу"
                                     Command="{Binding CancelTaskAsCaptainCommand}"
                                     Style="{StaticResource ActionButton}"
@@ -287,7 +283,7 @@
                                 DockPanel.Dock="Right"
                                 Command="{Binding OpenVotingCommand}"
                                 Style="{StaticResource ModalPrimaryButton}"/>
-                        
+
                         <Button Content="Назначить"
                                 Command="{Binding AssignTaskCommand}"
                                 Style="{StaticResource ModalPrimaryButton}"

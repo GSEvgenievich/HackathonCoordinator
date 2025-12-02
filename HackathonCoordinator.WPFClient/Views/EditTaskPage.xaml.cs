@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.WPFClient.ViewModels;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace HackathonCoordinator.WPFClient.Views
@@ -16,7 +17,7 @@ namespace HackathonCoordinator.WPFClient.Views
             Loaded += OnPageLoaded;
         }
 
-        private void OnPageLoaded(object sender, System.Windows.RoutedEventArgs e)
+        private void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is EditTaskViewModel viewModel)
             {
@@ -24,6 +25,14 @@ namespace HackathonCoordinator.WPFClient.Views
                     viewModel.InitializeForCreate(_id);
                 else
                     viewModel.InitializeForEdit(_id);
+            }
+        }
+
+        private void Page_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is EditTaskViewModel viewModel)
+            {
+                viewModel.Dispose();
             }
         }
     }

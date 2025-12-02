@@ -2,12 +2,8 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
-      Title="Редактирование соревнования">
-
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-    </Page.Resources>
+      Title="Редактирование соревнования"
+      Unloaded="Page_Unloaded">
 
     <Page.DataContext>
         <vm:EditCompetitionViewModel/>
@@ -16,7 +12,6 @@
     <Grid Margin="30">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-
                 <!-- Заголовок страницы -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -51,7 +46,7 @@
                         </StackPanel>
 
                         <!-- Описание -->
-                        <StackPanel Margin="0,0,0 12">
+                        <StackPanel Margin="0,0,0,12">
                             <TextBlock Text="📝 Описание"
                                    Style="{StaticResource SectionTitleStyle}"
                                    Margin="0,0,0,8"/>

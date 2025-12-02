@@ -6,39 +6,34 @@ using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
-    public class NotificationsViewModel : INotifyPropertyChanged
+    public class NotificationsViewModel : BaseViewModel
     {
         private readonly NotificationService _notificationService;
         private readonly NavigationService _navigationService;
         private readonly UserService _userService;
         private readonly ChatService _chatService;
         private readonly CompetitionService _competitionService;
+
         private HubConnection _hubConnection;
         private bool _isConnected;
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private bool _isLoading;
         public bool IsLoading
         {
             get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
+            set => SetProperty(ref _isLoading, value);
         }
 
         private int _unreadCount;
         public int UnreadCount
         {
             get => _unreadCount;
-            set { _unreadCount = value; OnPropertyChanged(); }
+            set => SetProperty(ref _unreadCount, value);
         }
 
         public ObservableCollection<NotificationDto> Notifications { get; } = new();
@@ -50,6 +45,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool HasReadNotifications => ReadNotifications.Any();
         public bool HasNoNotifications => !HasNotifications;
 
+        // AsyncRelayCommand для всех операций
         public ICommand LoadNotificationsCommand { get; }
         public ICommand MarkAsReadCommand { get; }
         public ICommand MarkAllAsReadCommand { get; }
@@ -66,13 +62,37 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _chatService = new ChatService();
             _competitionService = new CompetitionService();
 
-            LoadNotificationsCommand = new RelayCommand(async () => await LoadNotificationsAsync());
-            MarkAsReadCommand = new RelayCommand<NotificationDto>(async (notification) => await MarkAsReadAsync(notification));
-            MarkAllAsReadCommand = new RelayCommand(async () => await MarkAllAsReadAsync());
-            DeleteNotificationCommand = new RelayCommand<NotificationDto>(async (notification) => await DeleteNotificationAsync(notification));
-            OpenRelatedEntityCommand = new RelayCommand<NotificationDto>(OpenRelatedEntity);
+            // AsyncRelayCommand для загрузки уведомлений
+            LoadNotificationsCommand = new AsyncRelayCommand(
+                execute: async () => await LoadNotificationsAsync(),
+                canExecute: () => true);
+
+            // AsyncRelayCommand для отметки прочитанным
+            MarkAsReadCommand = new AsyncRelayCommand<NotificationDto>(
+                execute: async (notification) => await MarkAsReadAsync(notification),
+                canExecute: (notification) => notification != null && !notification.IsRead);
+
+            // AsyncRelayCommand для отметки всех прочитанными
+            MarkAllAsReadCommand = new AsyncRelayCommand(
+                execute: async () => await MarkAllAsReadAsync(),
+                canExecute: () => UnreadNotifications.Any());
+
+            // AsyncRelayCommand для удаления
+            DeleteNotificationCommand = new AsyncRelayCommand<NotificationDto>(
+                execute: async (notification) => await DeleteNotificationAsync(notification),
+                canExecute: (notification) => notification != null);
+
+            // AsyncRelayCommand для открытия связанной сущности
+            OpenRelatedEntityCommand = new AsyncRelayCommand<NotificationDto>(
+                execute: async (notification) => await OpenRelatedEntityAsync(notification),
+                canExecute: (notification) => notification != null);
+
             BackCommand = new RelayCommand(GoBack);
-            RefreshCommand = new RelayCommand(async () => await LoadNotificationsAsync());
+
+            // AsyncRelayCommand для обновления
+            RefreshCommand = new AsyncRelayCommand(
+                execute: async () => await LoadNotificationsAsync(),
+                canExecute: () => true);
 
             InitializeSignalR();
             LoadNotificationsCommand.Execute(null);
@@ -101,7 +121,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка подключения к уведомлениям: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка подключения к уведомлениям: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
@@ -136,32 +160,41 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 var response = await _notificationService.GetUserNotificationsAsync();
-                if (response.Success)
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     Notifications.Clear();
                     UnreadNotifications.Clear();
                     ReadNotifications.Clear();
 
-                    foreach (var notification in response.Data)
+                    if (response.Success)
                     {
-                        Notifications.Add(notification);
+                        foreach (var notification in response.Data)
+                        {
+                            Notifications.Add(notification);
 
-                        if (notification.IsRead)
-                            ReadNotifications.Add(notification);
-                        else
-                            UnreadNotifications.Add(notification);
+                            if (notification.IsRead)
+                                ReadNotifications.Add(notification);
+                            else
+                                UnreadNotifications.Add(notification);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка загрузки уведомлений: {response.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                     }
 
                     UpdateProperties();
-                }
-                else
-                {
-                    MessageBox.Show($"Ошибка загрузки уведомлений: {response.Message}");
-                }
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки уведомлений: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки уведомлений: {ex.Message}\n\nПроверьте подключение к серверу.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
             finally
             {
@@ -181,33 +214,39 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                // Игнорируем ошибки при загрузке счетчика
                 System.Diagnostics.Debug.WriteLine($"Ошибка загрузки счетчика уведомлений: {ex.Message}");
             }
         }
 
         private async Task MarkAsReadAsync(NotificationDto notification)
         {
-            if (notification.IsRead) return;
-
             try
             {
                 var response = await _notificationService.MarkAsReadAsync(notification.Id);
-                if (response.Success)
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    notification.IsRead = true;
-                    UnreadNotifications.Remove(notification);
-                    ReadNotifications.Add(notification);
-                    UpdateProperties();
-                }
-                else
-                {
-                    MessageBox.Show($"Ошибка: {response.Message}");
-                }
+                    if (response.Success)
+                    {
+                        notification.IsRead = true;
+                        UnreadNotifications.Remove(notification);
+                        ReadNotifications.Insert(0, notification);
+                        UpdateProperties();
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка отметки уведомления: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка отметки уведомления: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
@@ -216,115 +255,172 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 var response = await _notificationService.MarkAllAsReadAsync();
-                if (response.Success)
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    foreach (var notification in UnreadNotifications.ToList())
+                    if (response.Success)
                     {
-                        notification.IsRead = true;
-                        ReadNotifications.Add(notification);
+                        foreach (var notification in UnreadNotifications.ToList())
+                        {
+                            notification.IsRead = true;
+                            ReadNotifications.Add(notification);
+                        }
+                        UnreadNotifications.Clear();
+                        UpdateProperties();
                     }
-                    UnreadNotifications.Clear();
-                    UpdateProperties();
-                }
-                else
-                {
-                    MessageBox.Show($"Ошибка: {response.Message}");
-                }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка отметки всех уведомлений: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка отметки всех уведомлений: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private async Task DeleteNotificationAsync(NotificationDto notification)
         {
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите удалить это уведомление?",
-                "Подтверждение удаления",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите удалить это уведомление?",
+                    "Подтверждение удаления",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
             if (result != MessageBoxResult.Yes) return;
 
             try
             {
                 var response = await _notificationService.DeleteNotificationAsync(notification.Id);
-                if (response.Success)
-                {
-                    Notifications.Remove(notification);
-                    if (notification.IsRead)
-                        ReadNotifications.Remove(notification);
-                    else
-                        UnreadNotifications.Remove(notification);
 
-                    UpdateProperties();
-                }
-                else
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    MessageBox.Show($"Ошибка: {response.Message}");
+                    if (response.Success)
+                    {
+                        Notifications.Remove(notification);
+                        if (notification.IsRead)
+                            ReadNotifications.Remove(notification);
+                        else
+                            UnreadNotifications.Remove(notification);
+
+                        UpdateProperties();
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка удаления уведомления: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+
+        private async Task OpenRelatedEntityAsync(NotificationDto notification)
+        {
+            try
+            {
+                if (!notification.IsRead)
+                {
+                    await MarkAsReadAsync(notification);
+                }
+
+                if (notification.RelatedEntityType == "task" && notification.RelatedEntityId.HasValue)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _navigationService.NavigateTo(new TaskDetailsPage(notification.RelatedEntityId.Value));
+                    });
+                }
+                else if (notification.RelatedEntityType == "team" && notification.RelatedEntityId.HasValue)
+                {
+                    var user = await _userService.GetCurrentUserAsync();
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (user.Data.RoleId == 3)
+                            _navigationService.NavigateTo(new TeamPage(notification.RelatedEntityId.Value));
+                        else
+                            _navigationService.NavigateTo(new TeamPage());
+                    });
+                }
+                else if (notification.RelatedEntityType == "competition" && notification.RelatedEntityId.HasValue)
+                {
+                    var competition = await _competitionService.GetCompetitionAsync(notification.RelatedEntityId.Value);
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _navigationService.NavigateTo(new CompetitionDetailsPage(competition.Data));
+                    });
+                }
+                else if (notification.RelatedEntityType == "team chat" && notification.RelatedEntityId.HasValue)
+                {
+                    var chatPage = new ChatPage();
+                    var viewModel = chatPage.DataContext as ChatViewModel;
+
+                    if (viewModel != null)
+                    {
+                        await viewModel.LoadTeamChatAsync(notification.RelatedEntityId.Value);
+
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _navigationService.NavigateTo(chatPage);
+                        });
+                    }
+                }
+                else if (notification.RelatedEntityType == "task chat" && notification.RelatedEntityId.HasValue)
+                {
+                    var chatPage = new ChatPage();
+                    var viewModel = chatPage.DataContext as ChatViewModel;
+
+                    if (viewModel != null)
+                    {
+                        await viewModel.LoadTaskChatAsync(notification.RelatedEntityId.Value);
+
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _navigationService.NavigateTo(chatPage);
+                        });
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка удаления уведомления: {ex.Message}");
-            }
-        }
-
-        private async void OpenRelatedEntity(NotificationDto notification)
-        {
-            if (notification.RelatedEntityType == "task" && notification.RelatedEntityId.HasValue)
-            {
-                _navigationService.NavigateTo(new TaskDetailsPage(notification.RelatedEntityId.Value));
-            }
-            else if (notification.RelatedEntityType == "team" && notification.RelatedEntityId.HasValue)
-            {
-                var user = await _userService.GetCurrentUserAsync();
-
-                if (user.Data.RoleId == 3)
-                    _navigationService.NavigateTo(new TeamPage(notification.RelatedEntityId.Value));
-                else
-                    _navigationService.NavigateTo(new TeamPage());
-            }
-            else if (notification.RelatedEntityType == "competition" && notification.RelatedEntityId.HasValue)
-            {
-                var competition = await _competitionService.GetCompetitionAsync(notification.RelatedEntityId.Value);
-                _navigationService.NavigateTo(new CompetitionDetailsPage(competition.Data));
-            }
-            else if (notification.RelatedEntityType == "team chat" && notification.RelatedEntityId.HasValue)
-            {
-                var chatPage = new ChatPage();
-                var viewModel = chatPage.DataContext as ChatViewModel;
-
-                if (viewModel != null)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    await viewModel.LoadTeamChatAsync(notification.RelatedEntityId.Value);
-
-                    _navigationService.NavigateTo(chatPage);
-                }
-            }
-            else if (notification.RelatedEntityType == "task chat" && notification.RelatedEntityId.HasValue)
-            {
-                var chatPage = new ChatPage();
-                var viewModel = chatPage.DataContext as ChatViewModel;
-
-                if (viewModel != null)
-                {
-                    await viewModel.LoadTaskChatAsync(notification.RelatedEntityId.Value);
-
-                    _navigationService.NavigateTo(chatPage);
-                }
-            }
-            // Автоматически отмечаем как прочитанное при открытии
-            if (!notification.IsRead)
-            {
-                _ = MarkAsReadAsync(notification);
+                    MessageBox.Show($"Ошибка открытия связанной сущности: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private void GoBack()
         {
-            _navigationService.GoBack();
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                    {
+                        mainViewModel.OpenMainPage();
+                    }
+                }
+            });
         }
 
         private void UpdateProperties()
@@ -335,12 +431,33 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OnPropertyChanged(nameof(HasNoNotifications));
         }
 
-        public async void Dispose()
+        protected override void DisposeManagedResources()
         {
+            base.DisposeManagedResources();
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                Notifications?.Clear();
+                UnreadNotifications?.Clear();
+                ReadNotifications?.Clear();
+            });
+
             if (_hubConnection != null)
             {
-                await _hubConnection.DisposeAsync();
+                _hubConnection.DisposeAsync();
             }
+
+            if (_notificationService is IDisposable notificationDisposable)
+                notificationDisposable.Dispose();
+
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
+
+            if (_chatService is IDisposable chatDisposable)
+                chatDisposable.Dispose();
+
+            if (_competitionService is IDisposable competitionDisposable)
+                competitionDisposable.Dispose();
         }
     }
 }

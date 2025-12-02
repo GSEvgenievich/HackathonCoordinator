@@ -3,6 +3,7 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
+using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
@@ -11,6 +12,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly NavigationService _navigationService;
         private readonly AuthService _authService;
         private readonly UserService _userService;
+
         private string _login = "";
         private string _password = "";
 
@@ -26,8 +28,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set => SetProperty(ref _password, value);
         }
 
-        public RelayCommand LoginCommand { get; }
-        public RelayCommand NavigateToRegistrationCommand { get; }
+        // Только асинхронные команды
+        public ICommand LoginCommand { get; }
+        public ICommand NavigateToRegistrationCommand { get; }
 
         public AuthorizationViewModel()
         {
@@ -35,45 +38,78 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _authService = new AuthService();
             _userService = new UserService();
 
-            LoginCommand = new RelayCommand(async () => await ExecuteLoginAsync());
-            NavigateToRegistrationCommand = new RelayCommand(() =>
-                _navigationService.NavigateTo(new RegistrationPage()));
+            // AsyncRelayCommand для асинхронного входа
+            LoginCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteLoginAsync(),
+                canExecute: () => !string.IsNullOrWhiteSpace(Login) && !string.IsNullOrWhiteSpace(Password));
+
+            // Простая навигация - можно оставить RelayCommand
+            NavigateToRegistrationCommand = new RelayCommand(
+                () => _navigationService.NavigateTo(new RegistrationPage()));
         }
 
         private async Task ExecuteLoginAsync()
         {
-            if (string.IsNullOrWhiteSpace(Login) || string.IsNullOrWhiteSpace(Password))
+            try
             {
-                MessageBox.Show("Введите логин и пароль");
-                return;
-            }
+                var resultMessage = await _authService.LoginAsync(Login, Password);
 
-            var resultMessage = await _authService.LoginAsync(Login, Password);
-
-            if (resultMessage.Success)
-            {
-                var user = await _userService.GetCurrentUserAsync();
-
-                if (Application.Current.MainWindow is MainWindow mainWindow)
+                if (resultMessage.Success)
                 {
-                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                    {
-                        mainViewModel.Username = user.Data.Username;
-                        mainViewModel.CheckUserRole();
-                        mainViewModel.GetUsername();
-                        mainViewModel.InitializeNotificationsSignalR();
-                    }
-                }
+                    var user = await _userService.GetCurrentUserAsync();
 
-                if (user.Data.TeamId == null)
-                    _navigationService.NavigateTo(new CompetitionsPage());
+                    // Обновление главного окна
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (Application.Current.MainWindow is MainWindow mainWindow)
+                        {
+                            if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                            {
+                                mainViewModel.Username = user.Data.Username;
+                                mainViewModel.CheckUserRole();
+                                mainViewModel.GetUsername();
+                                mainViewModel.InitializeNotificationsSignalR();
+                            }
+                        }
+                    });
+
+                    // Навигация
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (user.Data.TeamId == null)
+                            _navigationService.NavigateTo(new CompetitionsPage());
+                        else
+                            _navigationService.NavigateTo(new TeamPage());
+                    });
+                }
                 else
-                    _navigationService.NavigateTo(new TeamPage());
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        MessageBox.Show(resultMessage.Message, "Ошибка входа",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                    });
+                }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show(resultMessage.Message);
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка входа: {ex.Message}\n\nПроверьте подключение к серверу.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
+        }
+
+        protected override void DisposeManagedResources()
+        {
+            base.DisposeManagedResources();
+
+            if (_authService is IDisposable authDisposable)
+                authDisposable.Dispose();
+
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
         }
     }
 }

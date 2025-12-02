@@ -27,6 +27,7 @@ namespace HackathonCoordinator.WPFClient.Views
             // Отписываемся когда страница выгружается
             if (DataContext is ChatViewModel viewModel)
             {
+                viewModel.Dispose();
                 viewModel.ScrollToBottomRequested -= ViewModel_ScrollToBottomRequested;
             }
         }

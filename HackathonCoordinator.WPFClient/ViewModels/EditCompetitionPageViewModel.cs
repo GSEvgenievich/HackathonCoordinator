@@ -4,9 +4,9 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
@@ -80,20 +80,25 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public bool HasErrorMessage => !string.IsNullOrEmpty(ErrorMessage);
         public bool IsEditMode => _isEditMode;
-
         public string PageTitle => _isEditMode ? "Редактирование соревнования" : "Создание соревнования";
         public string SaveButtonText => _isEditMode ? "Сохранить изменения" : "Создать соревнование";
 
-        public RelayCommand SaveCommand { get; }
-        public RelayCommand CancelCommand { get; }
+        // AsyncRelayCommand для сохранения
+        public ICommand SaveCommand { get; }
+        public ICommand CancelCommand { get; }
 
         public EditCompetitionViewModel()
         {
             _navigationService = App.NavigationService;
             _competitionService = new CompetitionService();
 
-            SaveCommand = new RelayCommand(async () => await SaveCompetitionAsync());
-            CancelCommand = new RelayCommand(() => _navigationService.GoBack());
+            SaveCommand = new AsyncRelayCommand(
+                execute: async () => await SaveCompetitionAsync(),
+                canExecute: () => !string.IsNullOrWhiteSpace(Name) &&
+                                 IsValidTimeFormat(StartTime) &&
+                                 IsValidTimeFormat(EndTime));
+
+            CancelCommand = new RelayCommand(() => _navigationService.NavigateTo(new CompetitionsPage()));
         }
 
         public void LoadCompetitionData(CompetitionDto competition)
@@ -141,25 +146,44 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (_isEditMode)
                 {
                     var result = await _competitionService.UpdateCompetitionAsync(_competitionId, dto);
-                    MessageBox.Show(result.Message);
-                    if (result.Success)
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        _navigationService.NavigateTo(new CompetitionsPage());
-                    }
+                        MessageBox.Show(result.Message,
+                            result.Success ? "Успешно" : "Ошибка",
+                            MessageBoxButton.OK,
+                            result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                        if (result.Success)
+                        {
+                            _navigationService.NavigateTo(new CompetitionsPage());
+                        }
+                    });
                 }
                 else
                 {
                     var result = await _competitionService.CreateCompetitionAsync(dto);
-                    MessageBox.Show(result.Message);
-                    if (result.Success)
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        _navigationService.NavigateTo(new CompetitionsPage());
-                    }
+                        MessageBox.Show(result.Message,
+                            result.Success ? "Успешно" : "Ошибка",
+                            MessageBoxButton.OK,
+                            result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                        if (result.Success)
+                        {
+                            _navigationService.NavigateTo(new CompetitionsPage());
+                        }
+                    });
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Ошибка при сохранении: {ex.Message}";
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ErrorMessage = $"Ошибка при сохранении: {ex.Message}";
+                });
             }
         }
 
@@ -200,6 +224,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private bool IsValidTimeFormat(string time)
         {
             return TimeSpan.TryParse(time, out _);
+        }
+
+        protected override void DisposeManagedResources()
+        {
+            base.DisposeManagedResources();
+
+            Name = null;
+            Description = null;
+            ErrorMessage = null;
+            StartTime = null;
+            EndTime = null;
+
+            if (_competitionService is IDisposable disposable)
+                disposable.Dispose();
         }
     }
 }
