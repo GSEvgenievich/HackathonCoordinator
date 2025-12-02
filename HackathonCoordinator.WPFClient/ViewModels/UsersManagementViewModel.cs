@@ -2,66 +2,66 @@
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
-using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
-    public class UsersManagementViewModel : INotifyPropertyChanged
+    public class UsersManagementViewModel : BaseViewModel
     {
         private readonly UserService _userService;
         private readonly NavigationService _navigationService;
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private ObservableCollection<UserDto> _allUsers = new();
         public ObservableCollection<UserDto> AllUsers
         {
             get => _allUsers;
-            set { _allUsers = value; OnPropertyChanged(); }
+            set
+            {
+                SetProperty(ref _allUsers, value);
+                FilterUsers();
+                UpdateStatistics();
+            }
         }
 
         private ObservableCollection<UserDto> _filteredUsers = new();
         public ObservableCollection<UserDto> FilteredUsers
         {
             get => _filteredUsers;
-            set { _filteredUsers = value; OnPropertyChanged(); }
+            set => SetProperty(ref _filteredUsers, value);
         }
 
         private string _searchText = "";
         public string SearchText
         {
             get => _searchText;
-            set { _searchText = value; OnPropertyChanged(); FilterUsers(); }
+            set
+            {
+                SetProperty(ref _searchText, value);
+                FilterUsers();
+            }
         }
 
         private UserDto _userToDelete;
         public UserDto UserToDelete
         {
             get => _userToDelete;
-            set { _userToDelete = value; OnPropertyChanged(); }
+            set => SetProperty(ref _userToDelete, value);
         }
 
         private bool _showDeleteDialog;
         public bool ShowDeleteDialog
         {
             get => _showDeleteDialog;
-            set { _showDeleteDialog = value; OnPropertyChanged(); }
+            set => SetProperty(ref _showDeleteDialog, value);
         }
 
-        // Статистика
-        public int TotalUsersCount => AllUsers.Count;
-        public int UsersInTeamsCount => AllUsers.Count(u => u.TeamId.HasValue);
-        public int UsersWithoutTeamCount => AllUsers.Count(u => !u.TeamId.HasValue);
-        public bool HasNoUsers => !FilteredUsers.Any();
+        public int TotalUsersCount => AllUsers?.Count ?? 0;
+        public int UsersInTeamsCount => AllUsers?.Count(u => u.TeamId.HasValue) ?? 0;
+        public int UsersWithoutTeamCount => AllUsers?.Count(u => !u.TeamId.HasValue) ?? 0;
+        public bool HasNoUsers => !(FilteredUsers?.Any() ?? false);
 
-        // Фильтры
         public ObservableCollection<UserListStatusFilter> StatusFilters { get; } = new()
         {
             new UserListStatusFilter { Id = 0, Name = "Все участники" },
@@ -75,84 +75,135 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public UserListStatusFilter SelectedStatusFilter
         {
             get => _selectedStatusFilter;
-            set { _selectedStatusFilter = value; OnPropertyChanged(); FilterUsers(); }
+            set
+            {
+                SetProperty(ref _selectedStatusFilter, value);
+                FilterUsers();
+            }
         }
 
+        // AsyncRelayCommand для операций с API
         public ICommand BackCommand { get; }
         public ICommand DeleteUserCommand { get; }
         public ICommand ViewUserCommand { get; }
         public ICommand ResetFiltersCommand { get; }
         public ICommand ConfirmDeleteCommand { get; }
         public ICommand CancelDeleteCommand { get; }
+        public ICommand RefreshCommand { get; }
 
         public UsersManagementViewModel()
         {
             _userService = new UserService();
             _navigationService = App.NavigationService;
 
-            BackCommand = new RelayCommand(() => _navigationService.GoBack());
-            DeleteUserCommand = new RelayCommand<UserDto>(user => ShowDeleteConfirmation(user));
+            BackCommand = new RelayCommand(GoBack);
+
+            // AsyncRelayCommand для удаления пользователя
+            DeleteUserCommand = new AsyncRelayCommand<UserDto>(
+                execute: async (user) => await DeleteUserAsync(user),
+                canExecute: (user) => user != null);
+
             ViewUserCommand = new RelayCommand<UserDto>(user => ViewUserDetails(user));
             ResetFiltersCommand = new RelayCommand(ResetFilters);
-            ConfirmDeleteCommand = new RelayCommand(async () => await ExecuteDeleteUserAsync());
+
+            // AsyncRelayCommand для подтверждения удаления
+            ConfirmDeleteCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteDeleteUserAsync(),
+                canExecute: () => UserToDelete != null);
+
             CancelDeleteCommand = new RelayCommand(() => CancelDelete());
+
+            // AsyncRelayCommand для обновления
+            RefreshCommand = new AsyncRelayCommand(
+                execute: async () => await LoadUsersAsync(),
+                canExecute: () => true);
 
             SelectedStatusFilter = StatusFilters[0];
             LoadUsersAsync();
         }
 
-        private async void LoadUsersAsync()
+        private void GoBack()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                    {
+                        mainViewModel.OpenMainPage();
+                    }
+                }
+            });
+        }
+
+        private async Task LoadUsersAsync()
         {
             try
             {
                 var result = await _userService.GetAllUsersAsync();
-                if (result.Success)
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    AllUsers = new ObservableCollection<UserDto>(result.Data);
-                    FilterUsers();
-                    UpdateStatistics();
-                }
-                else
-                {
-                    MessageBox.Show("Ошибка загрузки пользователей: " + result.Message);
-                }
+                    if (result.Success)
+                    {
+                        AllUsers = new ObservableCollection<UserDto>(result.Data);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка загрузки пользователей: {result.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки пользователей: {ex.Message}\n\nПроверьте подключение к серверу.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
+        }
+
+        private async Task DeleteUserAsync(UserDto user)
+        {
+            if (user == null) return;
+
+            UserToDelete = user;
+            ShowDeleteDialog = true;
         }
 
         private void FilterUsers()
         {
-            if (AllUsers == null) return;
-
-            var filtered = AllUsers.AsEnumerable();
-
-            // Поиск
-            if (!string.IsNullOrWhiteSpace(SearchText))
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                var searchLower = SearchText.ToLower();
-                filtered = filtered.Where(u =>
-                    u.Username.ToLower().Contains(searchLower) ||
-                    u.Email.ToLower().Contains(searchLower));
-            }
+                if (AllUsers == null) return;
 
-            // Фильтр по статусу
-            if (SelectedStatusFilter != null)
-            {
-                filtered = SelectedStatusFilter.Id switch
+                var filtered = AllUsers.AsEnumerable();
+
+                if (!string.IsNullOrWhiteSpace(SearchText))
                 {
-                    1 => filtered.Where(u => u.TeamId.HasValue), // В командах
-                    2 => filtered.Where(u => !u.TeamId.HasValue), // Без команды
-                    3 => filtered.Where(u => !string.IsNullOrEmpty(u.GitHubUsername)), // С GitHub
-                    4 => filtered.Where(u => u.RoleId == 1), // Капитаны
-                    _ => filtered // Все
-                };
-            }
+                    var searchLower = SearchText.ToLower();
+                    filtered = filtered.Where(u =>
+                        u.Username.ToLower().Contains(searchLower) ||
+                        u.Email.ToLower().Contains(searchLower));
+                }
 
-            FilteredUsers = new ObservableCollection<UserDto>(filtered);
-            OnPropertyChanged(nameof(HasNoUsers));
+                if (SelectedStatusFilter != null)
+                {
+                    filtered = SelectedStatusFilter.Id switch
+                    {
+                        1 => filtered.Where(u => u.TeamId.HasValue),
+                        2 => filtered.Where(u => !u.TeamId.HasValue),
+                        3 => filtered.Where(u => !string.IsNullOrEmpty(u.GitHubUsername)),
+                        4 => filtered.Where(u => u.RoleId == 1),
+                        _ => filtered
+                    };
+                }
+
+                FilteredUsers = new ObservableCollection<UserDto>(filtered);
+                OnPropertyChanged(nameof(HasNoUsers));
+            });
         }
 
         private void UpdateStatistics()
@@ -168,14 +219,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             SelectedStatusFilter = StatusFilters[0];
         }
 
-        private void ShowDeleteConfirmation(UserDto user)
-        {
-            if (user == null) return;
-
-            UserToDelete = user;
-            ShowDeleteDialog = true;
-        }
-
         private void CancelDelete()
         {
             ShowDeleteDialog = false;
@@ -189,43 +232,85 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 var result = await _userService.DeleteUserAsync(UserToDelete.Id);
-                MessageBox.Show(result.Message);
 
-                if (result.Success)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    // Удаляем пользователя из списка
-                    AllUsers.Remove(UserToDelete);
-                    FilterUsers();
-                    UpdateStatistics();
-                }
+                    MessageBox.Show(result.Message,
+                        result.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
 
-                ShowDeleteDialog = false;
-                UserToDelete = null;
+                    if (result.Success)
+                    {
+                        AllUsers.Remove(UserToDelete);
+                        FilterUsers();
+                        UpdateStatistics();
+                    }
+
+                    ShowDeleteDialog = false;
+                    UserToDelete = null;
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка удаления: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка удаления пользователя: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private void ViewUserDetails(UserDto user)
         {
-            if (user != null)
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                MessageBox.Show($"Детали пользователя:\n\n" +
-                              $"Имя: {user.Username}\n" +
-                              $"Email: {user.Email}\n" +
-                              $"Роль: {user.RoleName}\n" +
-                              $"GitHub: {user.GitHubUsername ?? "Не привязан"}\n" +
-                              $"Команда: {user.TeamName ?? "Не в команде"}",
-                              "Информация о пользователе");
-            }
+                if (user != null)
+                {
+                    MessageBox.Show($"Детали пользователя:\n\n" +
+                                  $"Имя: {user.Username}\n" +
+                                  $"Email: {user.Email}\n" +
+                                  $"Роль: {user.RoleName}\n" +
+                                  $"GitHub: {user.GitHubUsername ?? "Не привязан"}\n" +
+                                  $"Команда: {user.TeamName ?? "Не в команде"}",
+                                  "Информация о пользователе");
+                }
+            });
+        }
+
+        protected override void DisposeManagedResources()
+        {
+            base.DisposeManagedResources();
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                AllUsers?.Clear();
+                FilteredUsers?.Clear();
+                StatusFilters?.Clear();
+            });
+
+            SearchText = null;
+            UserToDelete = null;
+
+            if (_userService is IDisposable disposable)
+                disposable.Dispose();
         }
     }
 
-    public class UserListStatusFilter
+    public class UserListStatusFilter : BaseViewModel
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
+        private int _id;
+        public int Id
+        {
+            get => _id;
+            set => SetProperty(ref _id, value);
+        }
+
+        private string _name;
+        public string Name
+        {
+            get => _name;
+            set => SetProperty(ref _name, value);
+        }
     }
 }

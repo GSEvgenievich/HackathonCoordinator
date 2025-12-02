@@ -3,23 +3,20 @@ using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
+using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
-    public class TaskDetailsViewModel : INotifyPropertyChanged
+    public class TaskDetailsViewModel : BaseViewModel
     {
         private readonly NavigationService _navigationService;
         private readonly UserService _userService;
         private readonly TaskService _taskService;
         private readonly TeamService _teamService;
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private TaskDetailsDto _task;
         public TaskDetailsDto Task
@@ -27,8 +24,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _task;
             set
             {
-                _task = value;
-                OnPropertyChanged();
+                SetProperty(ref _task, value);
                 OnPropertyChanged(nameof(DisplayAssignedTo));
                 OnPropertyChanged(nameof(DisplayGitHubBranch));
             }
@@ -40,24 +36,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _currentUser;
             set
             {
-                _currentUser = value;
-                OnPropertyChanged();
+                SetProperty(ref _currentUser, value);
                 OnPropertyChanged(nameof(IsMyTask));
+                OnPropertyChanged(nameof(CanOpenChat));
             }
         }
-        private bool _showAssignmentDialog;
-        private MemberDto _selectedAssignee;
 
+        private bool _showAssignmentDialog;
         public bool ShowAssignmentDialog
         {
             get => _showAssignmentDialog;
-            set { _showAssignmentDialog = value; OnPropertyChanged(); }
+            set => SetProperty(ref _showAssignmentDialog, value);
         }
 
+        private MemberDto _selectedAssignee;
         public MemberDto SelectedAssignee
         {
             get => _selectedAssignee;
-            set { _selectedAssignee = value; OnPropertyChanged(); }
+            set => SetProperty(ref _selectedAssignee, value);
         }
 
         public string DisplayAssignedTo =>
@@ -76,20 +72,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool CanConfirmCompletion => Task?.CanConfirmCompletion ?? false;
         public bool CanRejectCompletion => Task?.CanRejectCompletion ?? false;
         public bool CanCancelTaskAsCaptain => Task?.CanCancelTaskAsCaptain ?? false;
-        public bool HasChat => Task?.HasChat ?? false;
+        public bool CanOpenChat => IsMyTask || CurrentUser?.RoleId == 1 || CurrentUser?.RoleId == 3;
 
-        public RelayCommand BackCommand { get; }
-        public RelayCommand EditTaskCommand { get; }
-        public RelayCommand OpenAssignmentDialogCommand { get; }
-        public RelayCommand AssignTaskCommand { get; }
-        public RelayCommand CancelAssignmentCommand { get; }
-        public RelayCommand OpenVotingCommand { get; }
-        public RelayCommand CompleteTaskCommand { get; }
-        public RelayCommand CancelTaskCommand { get; }
-        public RelayCommand OpenTaskChatCommand { get; }
-        public RelayCommand ConfirmCompletionCommand { get; }
-        public RelayCommand RejectCompletionCommand { get; }
-        public RelayCommand CancelTaskAsCaptainCommand { get; }
+        // AsyncRelayCommand для операций с API
+        public ICommand BackCommand { get; }
+        public ICommand EditTaskCommand { get; }
+        public ICommand OpenAssignmentDialogCommand { get; }
+        public ICommand AssignTaskCommand { get; }
+        public ICommand CancelAssignmentCommand { get; }
+        public ICommand OpenVotingCommand { get; }
+        public ICommand CompleteTaskCommand { get; }
+        public ICommand CancelTaskCommand { get; }
+        public ICommand OpenTaskChatCommand { get; }
+        public ICommand ConfirmCompletionCommand { get; }
+        public ICommand RejectCompletionCommand { get; }
+        public ICommand CancelTaskAsCaptainCommand { get; }
 
         public TaskDetailsViewModel()
         {
@@ -101,41 +98,108 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             BackCommand = new RelayCommand(BackToTeam);
             EditTaskCommand = new RelayCommand(EditTask);
             OpenAssignmentDialogCommand = new RelayCommand(OpenAssignmentDialog);
-            AssignTaskCommand = new RelayCommand(async () => await AssignTaskAsync());
+
+            // AsyncRelayCommand для назначения задачи
+            AssignTaskCommand = new AsyncRelayCommand(
+                execute: async () => await AssignTaskAsync(),
+                canExecute: () => Task != null && SelectedAssignee != null && CanAssignTask);
+
             CancelAssignmentCommand = new RelayCommand(CancelAssignment);
             OpenVotingCommand = new RelayCommand(OpenVotingDialog);
-            CompleteTaskCommand = new RelayCommand(async () => await CompleteTaskAsync());
-            CancelTaskCommand = new RelayCommand(async () => await CancelTaskAsync());
-            OpenTaskChatCommand = new RelayCommand(async () => await OpenTaskChat());
-            ConfirmCompletionCommand = new RelayCommand(async () => await ConfirmCompletionAsync());
-            RejectCompletionCommand = new RelayCommand(async () => await RejectCompletionAsync());
-            CancelTaskAsCaptainCommand = new RelayCommand(async () => await CancelTaskAsCaptainAsync());
+
+            // AsyncRelayCommand для завершения задачи
+            CompleteTaskCommand = new AsyncRelayCommand(
+                execute: async () => await CompleteTaskAsync(),
+                canExecute: () => Task != null && CanCompleteTask);
+
+            // AsyncRelayCommand для отмены задачи
+            CancelTaskCommand = new AsyncRelayCommand(
+                execute: async () => await CancelTaskAsync(),
+                canExecute: () => Task != null && CanCancelTask);
+
+            // AsyncRelayCommand для открытия чата задачи
+            OpenTaskChatCommand = new AsyncRelayCommand(
+                execute: async () => await OpenTaskChat(),
+                canExecute: () => Task?.TaskChatId != null && CanOpenChat);
+
+            // AsyncRelayCommand для подтверждения завершения
+            ConfirmCompletionCommand = new AsyncRelayCommand(
+                execute: async () => await ConfirmCompletionAsync(),
+                canExecute: () => Task != null && CanConfirmCompletion);
+
+            // AsyncRelayCommand для отклонения завершения
+            RejectCompletionCommand = new AsyncRelayCommand(
+                execute: async () => await RejectCompletionAsync(),
+                canExecute: () => Task != null && CanRejectCompletion);
+
+            // AsyncRelayCommand для отмены задачи капитаном
+            CancelTaskAsCaptainCommand = new AsyncRelayCommand(
+                execute: async () => await CancelTaskAsCaptainAsync(),
+                canExecute: () => Task != null && CanCancelTaskAsCaptain);
 
             LoadCurrentUser();
         }
 
         private void BackToTeam()
         {
-            if (CurrentUser.RoleId != 3)
-                _navigationService.NavigateTo(new TeamPage());
-            else
-                _navigationService.NavigateTo(new TeamPage(Task.TeamId));
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (CurrentUser?.RoleId != 3)
+                    _navigationService.NavigateTo(new TeamPage());
+                else
+                    _navigationService.NavigateTo(new TeamPage(Task?.TeamId));
+            });
         }
 
         private async void LoadCurrentUser()
         {
-            var user = await _userService.GetCurrentUserAsync();
-            CurrentUser = user.Data;
+            try
+            {
+                var user = await _userService.GetCurrentUserAsync();
+                CurrentUser = user.Data;
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки пользователя: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
         }
 
         public async void LoadTaskData(int taskId)
         {
-            var task = await _taskService.GetTaskDetailsAsync(taskId);
-            if (task.Success)
+            try
             {
-                Task = task.Data;
-                await LoadAvailableAssignees();
-                UpdatePermissions();
+                var task = await _taskService.GetTaskDetailsAsync(taskId);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (task.Success)
+                    {
+                        Task = task.Data;
+                        UpdatePermissions();
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка загрузки задачи: {task.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
+
+                if (task.Success)
+                {
+                    await LoadAvailableAssignees();
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки задачи: {ex.Message}\n\nПроверьте подключение к серверу.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
@@ -143,19 +207,31 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (Task?.TeamId == null) return;
 
-            var team = await _teamService.GetCurrentTeamAsync();
-            if (team.Success)
+            try
             {
-                if (team.Data.Members != null)
-                {
-                    AvailableAssignees.Clear();
-                    foreach (var member in team.Data.Members)
-                    {
-                        AvailableAssignees.Add(member);
-                    }
+                var team = await _teamService.GetCurrentTeamAsync();
 
-                    SelectedAssignee = AvailableAssignees.FirstOrDefault();
-                }
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (team.Success && team.Data.Members != null)
+                    {
+                        AvailableAssignees.Clear();
+                        foreach (var member in team.Data.Members)
+                        {
+                            AvailableAssignees.Add(member);
+                        }
+
+                        SelectedAssignee = AvailableAssignees.FirstOrDefault();
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки участников команды: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
@@ -169,14 +245,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OnPropertyChanged(nameof(CanConfirmCompletion));
             OnPropertyChanged(nameof(CanRejectCompletion));
             OnPropertyChanged(nameof(CanCancelTaskAsCaptain));
-            OnPropertyChanged(nameof(HasChat));
+            OnPropertyChanged(nameof(CanOpenChat));
         }
 
         private void EditTask()
         {
             if (Task != null)
             {
-                _navigationService.NavigateTo(new EditTaskPage(Task.Id, false));
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    _navigationService.NavigateTo(new EditTaskPage(Task.Id, false));
+                });
             }
         }
 
@@ -193,154 +272,289 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task AssignTaskAsync()
         {
-            if (Task == null || SelectedAssignee == null)
+            try
             {
-                MessageBox.Show("Выберите исполнителя для задачи");
-                return;
+                var result = await _taskService.AssignTaskAsync(Task.Id, SelectedAssignee.Id);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show(result.Message,
+                        result.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                    if (result.Success)
+                    {
+                        ShowAssignmentDialog = false;
+                        LoadTaskData(Task.Id);
+                    }
+                });
             }
-
-            var result = await _taskService.AssignTaskAsync(Task.Id, SelectedAssignee.Id);
-            MessageBox.Show(result.Message);
-
-            if (result.Success)
+            catch (Exception ex)
             {
-                ShowAssignmentDialog = false;
-                // Обновляем данные задачи
-                LoadTaskData(Task.Id);
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка назначения задачи: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private void OpenVotingDialog()
         {
-            MessageBox.Show("Функция голосования будет реализована в следующей версии");
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show("Функция голосования будет реализована в следующей версии", "Информация",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            });
         }
 
         private async Task CompleteTaskAsync()
         {
-            if (Task == null) return;
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите запросить завершение этой задачи?",
+                    "Подтверждение",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите запросить завершение этой задачи?",
-                "Подтверждение",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
 
-            if (result == MessageBoxResult.Yes)
+            try
             {
                 var completionResult = await _taskService.RequestCompletionAsync(Task.Id);
-                MessageBox.Show(completionResult.Message);
 
-                if (completionResult.Success)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    LoadTaskData(Task.Id);
-                }
+                    MessageBox.Show(completionResult.Message,
+                        completionResult.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        completionResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                    if (completionResult.Success)
+                    {
+                        LoadTaskData(Task.Id);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка запроса завершения задачи: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private async Task CancelTaskAsync()
         {
-            if (Task == null) return;
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите запросить отмену этой задачи?",
+                    "Подтверждение",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите запросить отмену этой задачи?",
-                "Подтверждение",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
 
-            if (result == MessageBoxResult.Yes)
+            try
             {
                 var cancellationResult = await _taskService.RequestCancellationAsync(Task.Id);
-                MessageBox.Show(cancellationResult.Message);
 
-                if (cancellationResult.Success)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    LoadTaskData(Task.Id);
-                }
+                    MessageBox.Show(cancellationResult.Message,
+                        cancellationResult.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        cancellationResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                    if (cancellationResult.Success)
+                    {
+                        LoadTaskData(Task.Id);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка запроса отмены задачи: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private async Task ConfirmCompletionAsync()
         {
-            if (Task == null) return;
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите подтвердить завершение этой задачи?",
+                    "Подтверждение завершения",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите подтвердить завершение этой задачи?",
-                "Подтверждение завершения",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
 
-            if (result == MessageBoxResult.Yes)
+            try
             {
                 var completionResult = await _taskService.ConfirmCompletionAsync(Task.Id);
-                MessageBox.Show(completionResult.Message);
 
-                if (completionResult.Success)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    LoadTaskData(Task.Id);
-                }
+                    MessageBox.Show(completionResult.Message,
+                        completionResult.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        completionResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                    if (completionResult.Success)
+                    {
+                        LoadTaskData(Task.Id);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка подтверждения завершения: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private async Task RejectCompletionAsync()
         {
-            if (Task == null) return;
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите отклонить завершение этой задачи? Задача вернется в работу.",
+                    "Отклонение завершения",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите отклонить завершение этой задачи? Задача вернется в работу.",
-                "Отклонение завершения",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
 
-            if (result == MessageBoxResult.Yes)
+            try
             {
                 var rejectionResult = await _taskService.RejectCompletionAsync(Task.Id);
-                MessageBox.Show(rejectionResult.Message);
 
-                if (rejectionResult.Success)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    LoadTaskData(Task.Id);
-                }
+                    MessageBox.Show(rejectionResult.Message,
+                        rejectionResult.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        rejectionResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                    if (rejectionResult.Success)
+                    {
+                        LoadTaskData(Task.Id);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка отклонения завершения: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private async Task CancelTaskAsCaptainAsync()
         {
-            if (Task == null) return;
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите отменить эту задачу?",
+                    "Отмена задачи",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+            });
 
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите отменить эту задачу?",
-                "Отмена задачи",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes) return;
 
-            if (result == MessageBoxResult.Yes)
+            try
             {
                 var cancellationResult = await _taskService.CancelTaskAsync(Task.Id);
-                MessageBox.Show(cancellationResult.Message);
 
-                if (cancellationResult.Success)
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    LoadTaskData(Task.Id);
-                }
+                    MessageBox.Show(cancellationResult.Message,
+                        cancellationResult.Success ? "Успешно" : "Ошибка",
+                        MessageBoxButton.OK,
+                        cancellationResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                    if (cancellationResult.Success)
+                    {
+                        LoadTaskData(Task.Id);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка отмены задачи: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
         }
 
         private async Task OpenTaskChat()
         {
-            if (Task?.TaskChatId != null)
+            try
             {
                 var chatPage = new ChatPage();
                 var viewModel = chatPage.DataContext as ChatViewModel;
                 if (viewModel != null)
                 {
                     await viewModel.LoadTaskChatAsync(Task.Id);
-                    _navigationService.NavigateTo(chatPage);
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _navigationService.NavigateTo(chatPage);
+                    });
                 }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Чат задачи не найден");
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка открытия чата задачи: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
+        }
+
+        protected override void DisposeManagedResources()
+        {
+            base.DisposeManagedResources();
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                Task = null;
+                CurrentUser = null;
+                SelectedAssignee = null;
+                AvailableAssignees?.Clear();
+            });
+
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
+
+            if (_taskService is IDisposable taskDisposable)
+                taskDisposable.Dispose();
+
+            if (_teamService is IDisposable teamDisposable)
+                teamDisposable.Dispose();
         }
     }
 }

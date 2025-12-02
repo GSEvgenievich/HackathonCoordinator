@@ -3,6 +3,9 @@ using System.Text;
 
 namespace HackathonCoordinator.WebAPI.Services
 {
+    /// <summary>
+    /// Сервис для шифрования и дешифрования данных с использованием AES
+    /// </summary>
     public class AesEncryptionService : IEncryptionService
     {
         private readonly byte[] _key;
@@ -10,17 +13,21 @@ namespace HackathonCoordinator.WebAPI.Services
 
         public AesEncryptionService(IConfiguration configuration)
         {
-            // Получаем ключ из конфигурации
             var encryptionKey = configuration["Encryption:Key"] ??
-                               throw new ArgumentException("Encryption key not configured");
+                               throw new ArgumentException("Ключ шифрования не настроен");
 
-            _key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32)); // 256-bit key
-            _iv = Encoding.UTF8.GetBytes("1234567890123456"); // 128-bit IV
+            // Генерация 256-битного ключа из конфигурации
+            _key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32));
+            _iv = Encoding.UTF8.GetBytes("1234567890123456"); // 128-битный вектор инициализации
         }
 
+        /// <summary>
+        /// Шифрование текста
+        /// </summary>
         public string Encrypt(string plainText)
         {
-            if (string.IsNullOrEmpty(plainText)) return plainText;
+            if (string.IsNullOrEmpty(plainText))
+                return plainText;
 
             using var aes = Aes.Create();
             aes.Key = _key;
@@ -39,9 +46,13 @@ namespace HackathonCoordinator.WebAPI.Services
             return Convert.ToBase64String(ms.ToArray());
         }
 
+        /// <summary>
+        /// Дешифрование текста
+        /// </summary>
         public string Decrypt(string encryptedText)
         {
-            if (string.IsNullOrEmpty(encryptedText)) return encryptedText;
+            if (string.IsNullOrEmpty(encryptedText))
+                return encryptedText;
 
             using var aes = Aes.Create();
             aes.Key = _key;

@@ -4,7 +4,6 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
-using Org.BouncyCastle.Bcpg;
 using System.Windows;
 using System.Windows.Input;
 
@@ -16,8 +15,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private readonly TeamService _teamService;
         private readonly UserService _userService;
         private readonly AuthService _authService;
-        private HubConnection _notificationHubConnection;
 
+        private HubConnection _notificationHubConnection;
         private readonly string[] _themes = { "Light", "Dark", "Summer", "Spring", "Winter", "Autumn" };
         private int _currentThemeIndex = 0;
 
@@ -27,15 +26,16 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _isOrganizer;
             set => SetProperty(ref _isOrganizer, value);
         }
+
         private bool _notificationHubConnected = false;
         private int _unreadNotificationsCount;
+
         public int UnreadNotificationsCount
         {
             get => _unreadNotificationsCount;
             set
             {
                 SetProperty(ref _unreadNotificationsCount, value);
-                OnPropertyChanged(nameof(UnreadNotificationsCount));
                 OnPropertyChanged(nameof(HasUnreadNotifications));
                 OnPropertyChanged(nameof(NotificationsButtonText));
             }
@@ -47,17 +47,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _username;
             set => SetProperty(ref _username, value);
         }
+
+        // Вычисляемые свойства
         public bool HasUnreadNotifications => UnreadNotificationsCount > 0;
-        public string NotificationsButtonText => HasUnreadNotifications ?
-            $"🔔 ({UnreadNotificationsCount})" : "🔔";
+        public string NotificationsButtonText => HasUnreadNotifications
+            ? $"🔔 ({UnreadNotificationsCount})"
+            : "🔔";
         public string CurrentThemeName => _themes[_currentThemeIndex];
 
+        // Команды - ВСЕ асинхронные команды используем AsyncRelayCommand
         public ICommand OpenProfileCommand { get; }
         public ICommand OpenMainPageCommand { get; }
         public ICommand ToggleThemeCommand { get; }
         public ICommand LogoutCommand { get; }
         public ICommand OpenUsersManagementCommand { get; }
-        public ICommand OpenChatsCommand {  get; }
+        public ICommand OpenChatsCommand { get; }
         public ICommand OpenNotificationsCommand { get; }
 
         public MainWindowViewModel()
@@ -67,17 +71,129 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
             _authService = new AuthService();
 
+            // Инициализация команд
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
-            OpenNotificationsCommand = new RelayCommand(() => _navigationService.NavigateTo(new NotificationsPage()));
-            OpenMainPageCommand = new RelayCommand(OpenMainPage);
-            OpenChatsCommand = new RelayCommand(() => _navigationService.NavigateTo(new ChatsPage()));
-            OpenProfileCommand = new RelayCommand(() => _navigationService.NavigateTo(new ProfilePage()));
-            LogoutCommand = new RelayCommand(ExecuteLogout);
-            OpenUsersManagementCommand = new RelayCommand(() => ExecuteOpenUsersManagement());
+
+            // Асинхронные команды используем AsyncRelayCommand
+            OpenNotificationsCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteOpenNotificationsAsync(),
+                canExecute: () => _navigationService != null);
+
+            OpenMainPageCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteOpenMainPageAsync(),
+                canExecute: () => _navigationService != null);
+
+            OpenChatsCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteOpenChatsAsync(),
+                canExecute: () => _navigationService != null);
+
+            OpenProfileCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteOpenProfileAsync(),
+                canExecute: () => _navigationService != null);
+
+            LogoutCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteLogoutAsync(),
+                canExecute: () => true);
+
+            OpenUsersManagementCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteOpenUsersManagementAsync(),
+                canExecute: () => IsOrganizer && _navigationService != null);
 
             InitializeNotificationsSignalR();
 
-            Application.Current.Exit += (s, e) => DisposeNotificationHub();
+            // Очистка ресурсов при выходе
+            Application.Current.Exit += async (s, e) => await DisposeNotificationHub();
+        }
+
+        private async Task ExecuteOpenNotificationsAsync()
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _navigationService.NavigateTo(new NotificationsPage());
+            });
+        }
+
+        private async Task ExecuteOpenMainPageAsync()
+        {
+            try
+            {
+                var teamId = await _teamService.GetCurrentTeamIdAsync();
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (!teamId.Success || teamId.Data == 0)
+                        _navigationService.NavigateTo(new CompetitionsPage());
+                    else
+                        _navigationService.NavigateTo(new TeamPage());
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки главной страницы: {ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _navigationService.NavigateTo(new CompetitionsPage());
+                });
+            }
+        }
+
+        private async Task ExecuteOpenChatsAsync()
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _navigationService.NavigateTo(new ChatsPage());
+            });
+        }
+
+        private async Task ExecuteOpenProfileAsync()
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _navigationService.NavigateTo(new ProfilePage());
+            });
+        }
+
+        private async Task ExecuteOpenUsersManagementAsync()
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _navigationService.NavigateTo(new UsersManagementPage());
+            });
+        }
+
+        private async Task ExecuteLogoutAsync()
+        {
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    "Вы уверены, что хотите выйти?",
+                    "Подтверждение выхода",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    await DisposeNotificationHub();
+                    _authService.Logout();
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _navigationService.NavigateTo(new AuthorizationPage());
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        MessageBox.Show($"Ошибка при выходе: {ex.Message}",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                }
+            }
         }
 
         private async void LoadUnreadNotificationsCount()
@@ -86,6 +202,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var notificationService = new NotificationService();
                 var response = await notificationService.GetUnreadCountAsync();
+
                 if (response.Success)
                 {
                     UnreadNotificationsCount = response.Data;
@@ -120,6 +237,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 await _notificationHubConnection.StartAsync();
                 _notificationHubConnected = true;
+
                 await _notificationHubConnection.InvokeAsync("SubscribeToUserNotifications");
                 LoadUnreadNotificationsCount();
 
@@ -138,7 +256,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 _notificationHubConnected = false;
                 System.Diagnostics.Debug.WriteLine("Соединение с уведомлениями разорвано");
 
-                // Пытаемся переподключиться через 5 секунд
                 await Task.Delay(5000);
                 InitializeNotificationsSignalR();
             };
@@ -187,7 +304,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public async void CheckUserRole()
         {
             var user = await _userService.GetCurrentUserAsync();
-            IsOrganizer = user.Data.RoleId == 3; 
+            IsOrganizer = user.Data.RoleId == 3;
             OnPropertyChanged(nameof(IsOrganizer));
         }
 
@@ -196,11 +313,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _currentThemeIndex = (_currentThemeIndex + 1) % _themes.Length;
             App.SwitchTheme(_themes[_currentThemeIndex]);
             OnPropertyChanged(nameof(CurrentThemeName));
-        }
-
-        private void ExecuteOpenUsersManagement()
-        {
-            App.NavigationService.NavigateTo(new UsersManagementPage());
         }
 
         public async void GetUsername()
@@ -216,7 +328,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private async void OpenMainPage()
+        public async void OpenMainPage()
         {
             var teamId = await _teamService.GetCurrentTeamIdAsync();
 
@@ -226,17 +338,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 _navigationService.NavigateTo(new TeamPage());
         }
 
-        private async void ExecuteLogout()
+        protected override void DisposeManagedResources()
         {
-            var result = MessageBox.Show("Вы уверены, что хотите выйти?", "Подтверждение выхода",
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            base.DisposeManagedResources();
 
-            if (result == MessageBoxResult.Yes)
-            {
-                await DisposeNotificationHub();
-                _authService.Logout();
-                _navigationService.NavigateTo(new AuthorizationPage());
-            }
+            if (_teamService is IDisposable teamDisposable)
+                teamDisposable.Dispose();
+
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
+
+            if (_authService is IDisposable authDisposable)
+                authDisposable.Dispose();
+
+            _notificationHubConnection?.DisposeAsync();
         }
     }
 }

@@ -1,14 +1,16 @@
 ﻿using HackathonCoordinator.ServiceLayer.Storages;
 using Newtonsoft.Json;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
-    public abstract class BaseService
+    public abstract class BaseService : IDisposable
     {
         protected readonly HttpClient _client;
         protected const string BaseUrl = "http://localhost:5046/api/";
+        private bool _disposed = false;
 
         protected BaseService()
         {
@@ -85,5 +87,15 @@ namespace HackathonCoordinator.ServiceLayer.Services
             var json = JsonConvert.SerializeObject(data);
             return new StringContent(json, Encoding.UTF8, "application/json");
         }
+
+        public virtual void Dispose()
+        {
+            if (!_disposed)
+            {
+                _client?.Dispose();
+                _disposed = true;
+            }
+        }
+
     }
 }

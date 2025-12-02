@@ -3,9 +3,11 @@ using System.Runtime.CompilerServices;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
-    public abstract class BaseViewModel : INotifyPropertyChanged
+    public abstract class BaseViewModel : INotifyPropertyChanged, IDisposable
     {
         public event PropertyChangedEventHandler PropertyChanged;
+
+        private bool _disposed = false;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
@@ -19,6 +21,44 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             field = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+
+        // Метод для очистки управляемых ресурсов (переопределяется в наследниках)
+        protected virtual void DisposeManagedResources()
+        {
+        }
+
+        // Метод для очистки неуправляемых ресурсов (переопределяется в наследниках)
+        protected virtual void DisposeUnmanagedResources()
+        {
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Очистка управляемых ресурсов
+                    DisposeManagedResources();
+                }
+
+                // Очистка неуправляемых ресурсов
+                DisposeUnmanagedResources();
+
+                _disposed = true;
+            }
+        }
+
+        ~BaseViewModel()
+        {
+            Dispose(false);
         }
     }
 }

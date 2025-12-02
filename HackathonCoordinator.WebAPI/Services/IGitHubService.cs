@@ -2,30 +2,102 @@
 
 namespace HackathonCoordinator.WebAPI.Services
 {
+    /// <summary>
+    /// Интерфейс для работы с GitHub API
+    /// </summary>
     public interface IGitHubService
     {
-        // OAuth авторизация
+        // --- OAuth авторизация ---
+
+        /// <summary>
+        /// Обмен кода авторизации на access token
+        /// </summary>
         Task<GitHubAuthResult> ExchangeCodeAsync(string code);
+
+        /// <summary>
+        /// Получение URL для авторизации через GitHub
+        /// </summary>
         string GetAuthorizationUrl(string state);
 
-        // Работа с репозиториями
-        Task<GitHubRepoResult> CreateRepositoryAsync(string accessToken, string repoName, string description, bool isPrivate);
-        Task<bool> RepositoryExistsAsync(string accessToken, string owner, string repoName);
+        // --- Работа с репозиториями ---
 
-        // Работа с ветками
-        Task<GitHubBranchResult> CreateBranchAsync(string accessToken, string owner, string repoName, string branchName);
-        Task<bool> BranchExistsAsync(string accessToken, string owner, string repoName, string branchName);
-        Task<string> GetDefaultBranchAsync(string accessToken, string owner, string repoName);
-        Task<string> GetBaseShaAsync(string accessToken, string owner, string repoName, string branch);
+        /// <summary>
+        /// Создание нового репозитория на GitHub
+        /// </summary>
+        Task<GitHubRepoResult> CreateRepositoryAsync(
+            string accessToken,
+            string repoName,
+            string description,
+            bool isPrivate);
 
-        // Валидация
+        /// <summary>
+        /// Проверка существования репозитория
+        /// </summary>
+        Task<bool> RepositoryExistsAsync(
+            string accessToken,
+            string owner,
+            string repoName);
+
+        // --- Работа с ветками ---
+
+        /// <summary>
+        /// Создание новой ветки в репозитории
+        /// </summary>
+        Task<GitHubBranchResult> CreateBranchAsync(
+            string accessToken,
+            string owner,
+            string repoName,
+            string branchName);
+
+        /// <summary>
+        /// Проверка существования ветки
+        /// </summary>
+        Task<bool> BranchExistsAsync(
+            string accessToken,
+            string owner,
+            string repoName,
+            string branchName);
+
+        /// <summary>
+        /// Получение названия основной ветки репозитория
+        /// </summary>
+        Task<string> GetDefaultBranchAsync(
+            string accessToken,
+            string owner,
+            string repoName);
+
+        /// <summary>
+        /// Получение SHA коммита для указанной ветки
+        /// </summary>
+        Task<string> GetBaseShaAsync(
+            string accessToken,
+            string owner,
+            string repoName,
+            string branch);
+
+        // --- Валидация ---
+
+        /// <summary>
+        /// Проверка корректности названия репозитория
+        /// </summary>
         bool IsValidRepoName(string repoName);
+
+        /// <summary>
+        /// Проверка корректности названия ветки
+        /// </summary>
         bool IsValidBranchName(string branchName);
 
-        // Получение информации о пользователе
+        // --- Получение информации о пользователе ---
+
+        /// <summary>
+        /// Получение информации о пользователе GitHub
+        /// </summary>
         Task<GitHubUserInfo> GetUserInfoAsync(string accessToken);
     }
 
+    /// <summary>
+    /// Результат авторизации через GitHub OAuth
+    /// </summary>
     public class GitHubAuthResult
     {
         public bool Success { get; set; }
@@ -34,6 +106,9 @@ namespace HackathonCoordinator.WebAPI.Services
         public string ErrorMessage { get; set; }
     }
 
+    /// <summary>
+    /// Результат создания репозитория на GitHub
+    /// </summary>
     public class GitHubRepoResult
     {
         public bool Success { get; set; }
@@ -43,6 +118,9 @@ namespace HackathonCoordinator.WebAPI.Services
         public string ErrorMessage { get; set; }
     }
 
+    /// <summary>
+    /// Результат создания ветки на GitHub
+    /// </summary>
     public class GitHubBranchResult
     {
         public bool Success { get; set; }
@@ -50,6 +128,9 @@ namespace HackathonCoordinator.WebAPI.Services
         public string ErrorMessage { get; set; }
     }
 
+    /// <summary>
+    /// Информация о пользователе GitHub
+    /// </summary>
     public class GitHubUserInfo
     {
         [JsonPropertyName("login")]

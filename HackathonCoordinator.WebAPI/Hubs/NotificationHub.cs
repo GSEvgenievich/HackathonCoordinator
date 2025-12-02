@@ -1,10 +1,12 @@
-﻿// Hubs/NotificationHub.cs
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
 namespace HackathonCoordinator.WebAPI.Hubs
 {
+    /// <summary>
+    /// SignalR хаб для уведомлений
+    /// </summary>
     [Authorize]
     public class NotificationHub : Hub
     {
@@ -44,6 +46,9 @@ namespace HackathonCoordinator.WebAPI.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"user-{userId}");
         }
 
+        /// <summary>
+        /// Получение ID текущего пользователя из claims
+        /// </summary>
         private int GetUserId()
         {
             var idClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier);

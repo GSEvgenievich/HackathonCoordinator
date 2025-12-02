@@ -22,15 +22,26 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<ApiResponse<List<IconDto>>>> GetIcons()
         {
-            var icons = await _context.ProfileIcons
-                .Select(i => new IconDto
-                {
-                    Id = i.Id,
-                    Name = i.Name
-                })
-                .ToListAsync();
+            try
+            {
+                var icons = await _context.ProfileIcons
+                    .Select(i => new IconDto
+                    {
+                        Id = i.Id,
+                        Name = i.Name
+                    })
+                    .ToListAsync();
 
-            return HandleResult(icons);
+                return HandleResult(icons);
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleError<List<IconDto>>("Ошибка базы данных при получении иконок");
+            }
+            catch (Exception ex)
+            {
+                return HandleError<List<IconDto>>("Внутренняя ошибка сервера при получении иконок");
+            }
         }
     }
 }

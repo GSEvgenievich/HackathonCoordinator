@@ -3,8 +3,12 @@ using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
+using Microsoft.Win32;
+using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
@@ -56,13 +60,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public int FilteredCompetitionsCount => FilteredCompetitions?.Count ?? 0;
         public bool HasNoCompetitions => Competitions?.Count == 0;
         public bool HasNoFilteredCompetitions => FilteredCompetitions?.Count == 0 && !HasNoCompetitions;
-
         public bool IsOrganizer { get; private set; }
 
-        public RelayCommand AddCompetitionCommand { get; }
-        public RelayCommand<CompetitionDto> SelectCompetitionCommand { get; }
-        public RelayCommand<CompetitionDto> ExportCompetitionCommand { get; }
-        public RelayCommand<CompetitionDto> EditCompetitionCommand { get; }
+        // Все команды, которые обращаются к API, делаем асинхронными
+        public ICommand AddCompetitionCommand { get; }
+        public ICommand SelectCompetitionCommand { get; }
+        public ICommand ExportCompetitionCommand { get; }
+        public ICommand EditCompetitionCommand { get; }
+        public ICommand RefreshCommand { get; }
 
         public CompetitionsViewModel()
         {
@@ -71,16 +76,137 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _competitionService = new CompetitionService();
             _userService = new UserService();
 
-            AddCompetitionCommand = new RelayCommand(() => AddCompetition());
-            SelectCompetitionCommand = new RelayCommand<CompetitionDto>(SelectCompetition);
-            EditCompetitionCommand = new RelayCommand<CompetitionDto>(EditCompetition);
-            ExportCompetitionCommand = new RelayCommand<CompetitionDto>(async (competition) => await ExportCompetitionAsync(competition));
+            // Простые команды навигации
+            AddCompetitionCommand = new RelayCommand(
+                () => _navigationService.NavigateTo(new EditCompetitionPage(null)));
+
+            SelectCompetitionCommand = new RelayCommand<CompetitionDto>(
+                competition => ExecuteSelectCompetition(competition),
+                competition => competition != null);
+
+            EditCompetitionCommand = new RelayCommand<CompetitionDto>(
+                competition => _navigationService.NavigateTo(new EditCompetitionPage(competition)),
+                competition => competition != null && IsOrganizer);
+
+            // Асинхронные команды с операциями
+            ExportCompetitionCommand = new AsyncRelayCommand<CompetitionDto>(
+                execute: async (competition) => await ExecuteExportCompetitionAsync(competition),
+                canExecute: (competition) => competition != null && IsOrganizer);
+
+            RefreshCommand = new AsyncRelayCommand(
+                execute: async () => await LoadCompetitionsAsync(),
+                canExecute: () => true);
 
             InitializeStatusFilters();
-            LoadCompetitionsAsync();
+            LoadCompetitionsAsync(); // Запускаем при создании
             CheckUserRole();
         }
 
+        private void ExecuteSelectCompetition(CompetitionDto competition)
+        {
+            if (competition != null)
+            {
+                _navigationService.NavigateTo(new CompetitionDetailsPage(competition));
+            }
+        }
+
+        private async Task ExecuteExportCompetitionAsync(CompetitionDto competition)
+        {
+            try
+            {
+                var exportDataResponse = await _competitionService.GetCompetitionExportDataAsync(competition.Id);
+
+                if (exportDataResponse.Success)
+                {
+                    var saveFileDialog = new SaveFileDialog
+                    {
+                        FileName = exportDataResponse.Data.SuggestedFileName,
+                        Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
+                        DefaultExt = ".xlsx"
+                    };
+
+                    if (saveFileDialog.ShowDialog() == true)
+                    {
+                        var success = await _excelExportService.ExportCompetitionToExcelAsync(
+                            exportDataResponse.Data, saveFileDialog.FileName);
+
+                        if (success)
+                        {
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                MessageBox.Show($"Данные соревнования успешно экспортированы в Excel файл:\n{saveFileDialog.FileName}",
+                                    "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information);
+                            });
+                        }
+                    }
+                }
+                else
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        MessageBox.Show("Ошибка при получении данных для экспорта", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка экспорта: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+
+        private async Task LoadCompetitionsAsync()
+        {
+            try
+            {
+                var competitionsResponse = await _competitionService.GetCompetitionsAsync();
+
+                if (!competitionsResponse.Success)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        MessageBox.Show($"Ошибка загрузки соревнований: {competitionsResponse.Message}", "Ошибка");
+                    });
+                }
+                else
+                {
+                    Competitions = new ObservableCollection<CompetitionDto>(competitionsResponse.Data);
+                }
+
+                ApplyFilter();
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки соревнований: {ex.Message}", "Ошибка");
+                });
+            }
+        }
+
+        private async void CheckUserRole()
+        {
+            try
+            {
+                var user = await _userService.GetCurrentUserAsync();
+                IsOrganizer = user.Data.RoleId == 3; // 3 = Organizer
+                OnPropertyChanged(nameof(IsOrganizer));
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка проверки роли: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                });
+            }
+        }
+
+        // Остальные методы без изменений...
         private void InitializeStatusFilters()
         {
             StatusFilters = new ObservableCollection<StatusFilter>
@@ -126,97 +252,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             };
         }
 
-        private async void LoadCompetitionsAsync()
+        protected override void DisposeManagedResources()
         {
-            try
-            {
-                // Асинхронное получение списка соревнований из сервиса
-                var competitionsResponse = await _competitionService.GetCompetitionsAsync();
+            base.DisposeManagedResources();
 
-                if (!competitionsResponse.Success)
-                {
-                    MessageBox.Show($"Ошибка загрузки соревнований: {competitionsResponse.Message}", "Ошибка");
-                }
-                else
-                {
-                    Competitions = new ObservableCollection<CompetitionDto>(competitionsResponse.Data);
-                }
+            Competitions?.Clear();
+            FilteredCompetitions?.Clear();
+            StatusFilters?.Clear();
 
-                ApplyFilter();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка загрузки соревнований: {ex.Message}", "Ошибка");
-            }
-        }
+            if (_competitionService is IDisposable compDisposable)
+                compDisposable.Dispose();
 
-        private async void CheckUserRole()
-        {
-            var user = await _userService.GetCurrentUserAsync();
-            IsOrganizer = user.Data.RoleId == 3; // 3 = Organizer
-            OnPropertyChanged(nameof(IsOrganizer));
-        }
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
 
-        private void AddCompetition()
-        {
-            _navigationService.NavigateTo(new EditCompetitionPage(null));
-        }
-
-        private void SelectCompetition(CompetitionDto competition)
-        {
-            if (competition != null)
-            {
-                _navigationService.NavigateTo(new CompetitionDetailsPage(competition));
-            }
-        }
-
-        private void EditCompetition(CompetitionDto competition)
-        {
-            if (competition != null)
-            {
-                _navigationService.NavigateTo(new EditCompetitionPage(competition));
-            }
-        }
-
-        private async Task ExportCompetitionAsync(CompetitionDto competition)
-        {
-            if (competition == null) return;
-
-            try
-            {
-                var exportDataResponce = await _competitionService.GetCompetitionExportDataAsync(competition.Id);
-
-                if (exportDataResponce.Success)
-                {
-                    var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-                    {
-                        FileName = exportDataResponce.Data.SuggestedFileName,
-                        Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
-                        DefaultExt = ".xlsx"
-                    };
-
-                    if (saveFileDialog.ShowDialog() == true)
-                    {
-                        var success = await _excelExportService.ExportCompetitionToExcelAsync(exportDataResponce.Data, saveFileDialog.FileName);
-
-                        if (success)
-                        {
-                            MessageBox.Show($"Данные соревнования успешно экспортированы в Excel файл:\n{saveFileDialog.FileName}",
-                                "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information);
-                        }
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Ошибка при получении данных для экспорта", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка экспорта: {ex.Message}", "Ошибка",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            if (_excelExportService is IDisposable excelDisposable)
+                excelDisposable.Dispose();
         }
     }
 
@@ -235,4 +286,3 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         Upcoming
     }
 }
-

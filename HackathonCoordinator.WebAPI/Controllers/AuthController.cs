@@ -30,22 +30,38 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<ApiResponse>> Register([FromBody] RegisterDto dto)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == dto.Email || u.Login == dto.Login))
-                return HandleError("Пользователь с таким логином или email уже существует");
-
-            var user = new User
+            try
             {
-                Username = dto.Username,
-                Login = dto.Login,
-                Email = dto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                RoleId = 2
-            };
+                // Проверка существования пользователя
+                if (await _context.Users.AnyAsync(u => u.Email == dto.Email || u.Login == dto.Login))
+                    return HandleError("Пользователь с таким логином или email уже существует");
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                var user = new User
+                {
+                    Username = dto.Username,
+                    Login = dto.Login,
+                    Email = dto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                    RoleId = (int)Roles.Member // По умолчанию выдаётся роль участника
+                };
 
-            return HandleSuccess("Регистрация успешно завершена");
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                return HandleSuccess("Регистрация успешно завершена");
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleError("Ошибка базы данных при регистрации пользователя");
+            }
+            catch (ArgumentNullException ex)
+            {
+                return HandleError("Некорректные данные пользователя");
+            }
+            catch (Exception ex)
+            {
+                return HandleError("Внутренняя ошибка сервера при регистрации");
+            }
         }
 
         /// <summary>
@@ -54,15 +70,34 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<LoginResponseDto>>> Login([FromBody] LoginDto dto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Login == dto.Login);
+            try
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Login == dto.Login);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                return HandleError<LoginResponseDto>("Неверный логин или пароль");
+                if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+                    return HandleError<LoginResponseDto>("Неверный логин или пароль");
 
-            var token = GenerateJwtToken(user);
-            var response = new LoginResponseDto { Token = token, Username = user.Username };
+                var token = GenerateJwtToken(user);
+                var response = new LoginResponseDto
+                {
+                    Token = token,
+                    Username = user.Username
+                };
 
-            return HandleResult(response, "Авторизация успешна");
+                return HandleResult(response, "Авторизация успешна");
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleError<LoginResponseDto>("Ошибка базы данных при авторизации");
+            }
+            catch (ArgumentNullException ex)
+            {
+                return HandleError<LoginResponseDto>("Некорректные данные для входа");
+            }
+            catch (Exception ex)
+            {
+                return HandleError<LoginResponseDto>("Внутренняя ошибка сервера при авторизации");
+            }
         }
 
         /// <summary>
@@ -72,29 +107,54 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [Authorize]
         public ActionResult<ApiResponse> ValidateToken()
         {
-            return HandleSuccess("Token is valid");
+            try
+            {
+                return HandleSuccess("Token is valid");
+            }
+            catch (SecurityTokenException ex)
+            {
+                return HandleUnauthorized("Недопустимый токен");
+            }
+            catch (Exception ex)
+            {
+                return HandleError("Ошибка при валидации токена");
+            }
         }
 
+        /// <summary>
+        /// Генерация JWT токена для пользователя
+        /// </summary>
         private string GenerateJwtToken(User user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
+            try
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.RoleId.ToString())
-            };
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(Convert.ToDouble(_config["Jwt:ExpireMinutes"])),
-                signingCredentials: creds);
+                var claims = new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.Role, user.RoleId.ToString())
+                };
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                var token = new JwtSecurityToken(
+                    issuer: _config["Jwt:Issuer"],
+                    audience: _config["Jwt:Audience"],
+                    claims: claims,
+                    expires: DateTime.Now.AddMinutes(Convert.ToDouble(_config["Jwt:ExpireMinutes"])),
+                    signingCredentials: creds);
+
+                return new JwtSecurityTokenHandler().WriteToken(token);
+            }
+            catch (ArgumentNullException ex)
+            {
+                throw new Exception("Отсутствуют настройки JWT в конфигурации");
+            }
+            catch (FormatException ex)
+            {
+                throw new Exception("Некорректный формат настроек JWT");
+            }
         }
     }
 }

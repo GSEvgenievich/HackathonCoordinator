@@ -6,81 +6,73 @@ using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
-    public class ChatViewModel : INotifyPropertyChanged
+    public class ChatViewModel : BaseViewModel
     {
         private readonly ChatService _chatService;
         private readonly UserService _userService;
         private readonly NavigationService _navigationService;
+
         private HubConnection _hubConnection;
-        private bool _isConnected;
-        private bool _disposed = false;
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        private void OnPropertyChanged([CallerMemberName] string name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
         private ChatDto _currentChat;
+        private UserDto _currentUser;
+
+        private bool _isConnected;
+        private bool _isCaptain;
+        private bool _isLoading;
+        private string _chatTitle = "";
+        private string _newMessageText = "";
+
         public ChatDto CurrentChat
         {
             get => _currentChat;
             set
             {
-                // Покидаем предыдущий чат перед установкой нового
                 if (_currentChat != null && _isConnected)
                 {
                     _ = LeaveCurrentChatAsync();
                 }
 
-                _currentChat = value;
-                OnPropertyChanged();
+                SetProperty(ref _currentChat, value);
             }
         }
 
-        private string _newMessageText = "";
+        public UserDto CurrentUser
+        {
+            get => _currentUser;
+            set => SetProperty(ref _currentUser, value);
+        }
+
         public string NewMessageText
         {
             get => _newMessageText;
             set
             {
-                _newMessageText = value;
-                OnPropertyChanged();
+                SetProperty(ref _newMessageText, value);
                 OnPropertyChanged(nameof(CanSendMessage));
             }
         }
 
-        private bool _isCaptain;
         public bool IsCaptain
         {
             get => _isCaptain;
-            set { _isCaptain = value; OnPropertyChanged(); }
+            set => SetProperty(ref _isCaptain, value);
         }
 
-        private bool _isLoading;
         public bool IsLoading
         {
             get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
+            set => SetProperty(ref _isLoading, value);
         }
 
-        private string _chatTitle;
         public string ChatTitle
         {
             get => _chatTitle;
-            set { _chatTitle = value; OnPropertyChanged(); }
-        }
-
-        private UserDto _currentUser;
-        public UserDto CurrentUser
-        {
-            get => _currentUser;
-            set { _currentUser = value; OnPropertyChanged(); }
+            set => SetProperty(ref _chatTitle, value);
         }
 
         public bool CanSendMessage => !string.IsNullOrWhiteSpace(NewMessageText) && !IsLoading && _isConnected;
@@ -89,6 +81,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ObservableCollection<MessageDto> Messages { get; } = new();
         public ObservableCollection<ChatParticipantDto> Participants { get; } = new();
 
+        // AsyncRelayCommand для всех операций
         public ICommand SendMessageCommand { get; }
         public ICommand BackCommand { get; }
         public ICommand EditMessageCommand { get; }
@@ -100,11 +93,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
             _navigationService = App.NavigationService;
 
-            SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(),
-                () => CanSendMessage);
+            // AsyncRelayCommand для отправки сообщений
+            SendMessageCommand = new AsyncRelayCommand(
+                execute: async () => await SendMessageAsync(),
+                canExecute: () => CanSendMessage);
+
             BackCommand = new RelayCommand(GoBack);
-            EditMessageCommand = new RelayCommand<MessageDto>(async (msg) => await EditMessageAsync(msg));
-            DeleteMessageCommand = new RelayCommand<MessageDto>(async (msg) => await DeleteMessageAsync(msg));
+
+            // AsyncRelayCommand для редактирования сообщений
+            EditMessageCommand = new AsyncRelayCommand<MessageDto>(
+                execute: async (msg) => await EditMessageAsync(msg),
+                canExecute: (msg) => msg != null && msg.IsMyMessage);
+
+            // AsyncRelayCommand для удаления сообщений
+            DeleteMessageCommand = new AsyncRelayCommand<MessageDto>(
+                execute: async (msg) => await DeleteMessageAsync(msg),
+                canExecute: (msg) => msg != null && msg.IsMyMessage);
 
             InitializeSignalR();
             LoadCurrentUser();
@@ -122,11 +126,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка загрузки пользователя: {ex.Message}");
+                await ShowErrorAsync($"Ошибка загрузки пользователя: {ex.Message}");
             }
         }
 
-        private async void InitializeSignalR()
+        private void InitializeSignalR()
         {
             var baseUrl = "http://localhost:5046";
 
@@ -141,7 +145,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             SetupConnectionEvents();
             SetupSignalREvents();
 
-            await ConnectToHubAsync();
+            _ = ConnectToHubAsync();
         }
 
         private TimeSpan[] GetReconnectDelays() => new[]
@@ -190,7 +194,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка подключения к чату: {ex.Message}");
+                await ShowErrorAsync($"Ошибка подключения к чату: {ex.Message}");
             }
         }
 
@@ -251,8 +255,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     CurrentChat = chat.Data;
                     ChatTitle = $"💬 Чат команды";
-                    UpdateMessagesAndParticipants();
-                    OnPropertyChanged(nameof(HasNoMessages));
+                    await UpdateMessagesAndParticipantsAsync();
 
                     CheckIfCurrentUserIsCaptain();
 
@@ -261,12 +264,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    ShowError(chat.Message);
+                    await ShowErrorAsync(chat.Message);
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка загрузки чата: {ex.Message}");
+                await ShowErrorAsync($"Ошибка загрузки чата: {ex.Message}");
             }
             finally
             {
@@ -285,22 +288,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     CurrentChat = chat.Data;
                     ChatTitle = $"💬 Чат задачи";
-                    UpdateMessagesAndParticipants();
+                    await UpdateMessagesAndParticipantsAsync();
 
                     CheckIfCurrentUserIsCaptain();
 
-                    // Присоединяемся к чату через SignalR
                     if (_isConnected)
                         await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
                 }
                 else
                 {
-                    ShowError(chat.Message);
+                    await ShowErrorAsync(chat.Message);
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка загрузки чата: {ex.Message}");
+                await ShowErrorAsync($"Ошибка загрузки чата: {ex.Message}");
             }
             finally
             {
@@ -330,7 +332,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    ShowError($"Ошибка присоединения к чату: {ex.Message}");
+                    await ShowErrorAsync($"Ошибка присоединения к чату: {ex.Message}");
                 }
             }
         }
@@ -345,28 +347,30 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    // Логируем, но не показываем пользователю - это не критическая ошибка
                     System.Diagnostics.Debug.WriteLine($"Ошибка выхода из чата: {ex.Message}");
                 }
             }
         }
 
-        private void UpdateMessagesAndParticipants()
+        private async Task UpdateMessagesAndParticipantsAsync()
         {
-            Messages.Clear();
-            foreach (var message in CurrentChat.Messages)
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                Messages.Add(message);
-            }
+                Messages.Clear();
+                foreach (var message in CurrentChat.Messages)
+                {
+                    Messages.Add(message);
+                }
 
-            Participants.Clear();
-            foreach (var participant in CurrentChat.Participants)
-            {
-                Participants.Add(participant);
-            }
+                Participants.Clear();
+                foreach (var participant in CurrentChat.Participants)
+                {
+                    Participants.Add(participant);
+                }
 
-            OnPropertyChanged(nameof(HasNoMessages));
-            ScrollToBottom();
+                OnPropertyChanged(nameof(HasNoMessages));
+                ScrollToBottom();
+            });
         }
 
         private async Task SendMessageAsync()
@@ -381,80 +385,94 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var result = await _chatService.SendMessageAsync(CurrentChat.Id, messageText);
                 if (!result.Success)
                 {
-                    ShowError(result.Message);
-                    NewMessageText = messageText; // Возвращаем текст если ошибка
+                    await ShowErrorAsync(result.Message);
+                    NewMessageText = messageText;
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка отправки сообщения: {ex.Message}");
-                NewMessageText = messageText; // Возвращаем текст если ошибка
+                await ShowErrorAsync($"Ошибка отправки сообщения: {ex.Message}");
+                NewMessageText = messageText;
             }
         }
 
         private async Task EditMessageAsync(MessageDto message)
         {
-            if (!message.IsMyMessage) return;
-
-            var newText = Microsoft.VisualBasic.Interaction.InputBox(
-                "Редактировать сообщение:",
-                "Редактирование",
-                message.Text);
+            var newText = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return Microsoft.VisualBasic.Interaction.InputBox(
+                    "Редактировать сообщение:",
+                    "Редактирование",
+                    message.Text);
+            });
 
             if (!string.IsNullOrWhiteSpace(newText) && newText != message.Text)
             {
-                var result = await _chatService.EditMessageAsync(message.Id, newText);
-                if (!result.Success)
+                try
                 {
-                    ShowError(result.Message);
+                    var result = await _chatService.EditMessageAsync(message.Id, newText);
+                    if (!result.Success)
+                    {
+                        await ShowErrorAsync(result.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await ShowErrorAsync($"Ошибка редактирования сообщения: {ex.Message}");
                 }
             }
         }
 
         private async Task DeleteMessageAsync(MessageDto message)
         {
-            if (!message.IsMyMessage)
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                ShowError("Можно удалять только свои сообщения");
-                return;
-            }
-
-            var result = MessageBox.Show(
-                "Вы уверены, что хотите удалить это сообщение?",
-                "Подтверждение удаления",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+                return MessageBox.Show(
+                    "Вы уверены, что хотите удалить это сообщение?",
+                    "Подтверждение удаления",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+            });
 
             if (result == MessageBoxResult.Yes)
             {
-                var deleteResult = await _chatService.DeleteMessageAsync(message.Id);
-                if (!deleteResult.Success)
+                try
                 {
-                    ShowError(deleteResult.Message);
+                    var deleteResult = await _chatService.DeleteMessageAsync(message.Id);
+                    if (!deleteResult.Success)
+                    {
+                        await ShowErrorAsync(deleteResult.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await ShowErrorAsync($"Ошибка удаления сообщения: {ex.Message}");
                 }
             }
         }
 
         private void GoBack()
         {
-            // Покидаем чат перед навигацией
             _ = LeaveCurrentChatAsync();
 
-            if (CurrentChat?.TeamId != null)
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                var targetPage = CurrentUser?.RoleId == 3
-                    ? new TeamPage(CurrentChat.TeamId.Value)
-                    : new TeamPage();
-                _navigationService.NavigateTo(targetPage);
-            }
-            else if (CurrentChat?.TaskId != null)
-            {
-                _navigationService.NavigateTo(new TaskDetailsPage(CurrentChat.TaskId.Value));
-            }
-            else
-            {
-                _navigationService.NavigateTo(new CompetitionsPage());
-            }
+                if (CurrentChat?.TeamId != null)
+                {
+                    var targetPage = CurrentUser?.RoleId == 3
+                        ? new TeamPage(CurrentChat.TeamId.Value)
+                        : new TeamPage();
+                    _navigationService.NavigateTo(targetPage);
+                }
+                else if (CurrentChat?.TaskId != null)
+                {
+                    _navigationService.NavigateTo(new TaskDetailsPage(CurrentChat.TaskId.Value));
+                }
+                else
+                {
+                    _navigationService.NavigateTo(new CompetitionsPage());
+                }
+            });
         }
 
         private void ScrollToBottom()
@@ -462,26 +480,40 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             ScrollToBottomRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        private void ShowError(string message)
+        private async Task ShowErrorAsync(string message)
         {
-            MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            });
         }
 
         public event EventHandler ScrollToBottomRequested;
 
-        public async void Dispose()
+        protected override void DisposeManagedResources()
         {
-            if (!_disposed)
+            base.DisposeManagedResources();
+
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                _disposed = true;
+                Messages?.Clear();
+                Participants?.Clear();
+            });
 
-                await LeaveCurrentChatAsync();
-
-                if (_hubConnection != null)
-                {
-                    await _hubConnection.DisposeAsync();
-                }
+            if (_hubConnection != null)
+            {
+                _hubConnection.Closed -= OnConnectionClosed;
+                _hubConnection.Reconnected -= OnConnectionReconnected;
             }
+
+            _ = LeaveCurrentChatAsync();
+            _hubConnection?.DisposeAsync().GetAwaiter().GetResult();
+
+            if (_chatService is IDisposable chatDisposable)
+                chatDisposable.Dispose();
+
+            if (_userService is IDisposable userDisposable)
+                userDisposable.Dispose();
         }
     }
 }

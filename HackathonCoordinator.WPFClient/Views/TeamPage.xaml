@@ -2,14 +2,9 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
-      xmlns:converters="clr-namespace:HackathonCoordinator.WPFClient.Converters"
       xmlns:behaviors="clr-namespace:HackathonCoordinator.WPFClient.Behaviors"
-      Title="Команда">
-
-    <Page.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <converters:BoolToArrowConverter x:Key="BoolToArrowConverter"/>
-    </Page.Resources>
+      Title="Команда"
+      Unloaded="Page_Unloaded">
 
     <Page.DataContext>
         <vm:TeamViewModel/>
@@ -268,7 +263,7 @@
 
                                                     <!-- Стрелка раскрытия -->
                                                     <TextBlock Grid.Column="1"
-                                                               Text="{Binding IsExpanded, Converter={x:Static converters:BoolToArrowConverter.Instance}}"
+                                                               Text="{Binding IsExpanded, Converter={StaticResource BoolToArrowConverter}}"
                                                                Style="{StaticResource ExpandArrowStyle}"/>
                                                 </Grid>
                                             </Border>
@@ -280,7 +275,7 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <!-- Карточка задачи с выделением моих задач -->
-                                                        <Border Style="{Binding IsMyTask, Converter={x:Static converters:MyTaskBorderConverter.Instance}}">
+                                                        <Border Style="{Binding IsMyTask, Converter={StaticResource MyTaskBorderConverter}}">
                                                             <Border.InputBindings>
                                                                 <MouseBinding Gesture="LeftClick"
                                                                               Command="{Binding DataContext.OpenTaskCommand, 
