@@ -189,7 +189,7 @@ namespace HackathonCoordinator.WebAPI.Services
             {
                 UserId = assignedToUserId,
                 NotificationTypeId = (int)NotificationType.TaskDeadlineApproaching,
-                Title = "Срок задачи истекает",
+                Title = "🚨 Срок задачи истекает!",
                 Message = $"Срок выполнения задачи «{taskTitle}» истекает {deadline:dd.MM.yyyy}",
                 RelatedEntityType = "task",
                 RelatedEntityId = taskId

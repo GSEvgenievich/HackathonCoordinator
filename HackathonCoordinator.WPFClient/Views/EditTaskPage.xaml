@@ -121,11 +121,22 @@
 
                                     <!-- Дедлайн -->
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="📅 Дедлайн"
-                                               Style="{StaticResource StatsHeaderStyle}"
-                                               Margin="0,0,0,8"/>
-                                        <DatePicker SelectedDate="{Binding Deadline}"
-                                                Style="{StaticResource ModernDatePicker}"/>
+                                        <TextBlock Text="📅 Дата окончания *"
+                                                   Style="{StaticResource StatsHeaderStyle}"
+                                                   Margin="0,0,0,8"/>
+
+                                        <!-- Дата -->
+                                        <DatePicker SelectedDate="{Binding DeadlineDate}"
+                                                    Style="{StaticResource ModernDatePicker}"
+                                                    Margin="0,0,0,15"/>
+
+                                        <!-- Время -->
+                                        <TextBlock Text="⏰ Время окончания *"
+                                                   Style="{StaticResource StatsHeaderStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <TextBox Text="{Binding DeadlineTime, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 Tag="HH:mm (например: 18:00)"/>
                                     </StackPanel>
 
                                     <!-- Разделитель -->

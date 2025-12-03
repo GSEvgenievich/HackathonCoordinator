@@ -1,0 +1,59 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: hackathon-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-RootPassword123!}
+      MYSQL_DATABASE: ${DB_NAME:-HackathonCoordinatorDb}
+      MYSQL_USER: ${DB_USER:-hackathon_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-UserPassword123!}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: HackathonCoordinator.WebAPI/Dockerfile
+    container_name: hackathon-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: Server=db;Port=3306;Database=${DB_NAME:-HackathonCoordinatorDb};User=${DB_USER:-hackathon_user};Password=${DB_PASSWORD:-UserPassword123!}
+      JWT__Key: ${JWT_KEY:-hackathon_c00rd_key_super_194_key_inator_13610}
+      JWT__Issuer: ${JWT_ISSUER:-HackathonCoordinator}
+      JWT__Audience: ${JWT_AUDIENCE:-HackathonUsers}
+      JWT__ExpireMinutes: ${JWT_EXPIRE_MINUTES:-120}
+      GitHubOAuth__ClientId: ${GITHUB_CLIENT_ID:-Ov23liqU7rQWZ4H7XlwY}
+      GitHubOAuth__ClientSecret: ${GITHUB_CLIENT_SECRET:-933fd4811789ca8914f2d8b74ed36db9e0d8d404}
+      GitHubOAuth__RedirectUri: ${GITHUB_REDIRECT_URI:-http://localhost:5046/api/oauth/github-callback}
+      Encryption__Key: ${ENCRYPTION_KEY:-1my1-02ro1-irdnaa-56dj8y5td6-key-32-10fa2}
+    ports:
+      - "5046:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: hackathon-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 0
+      UPLOAD_LIMIT: 256M
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+
+volumes:
+  mysql_data:
