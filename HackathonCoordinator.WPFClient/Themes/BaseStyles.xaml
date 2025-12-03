@@ -706,7 +706,7 @@
 
     <Style x:Key="MyTaskCardStyle" TargetType="Border" BasedOn="{StaticResource TaskCardStyle}">
         <Setter Property="BorderBrush" Value="#4CAF50"/>
-        <Setter Property="Background" Value="#F8FFF8"/>
+        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
     </Style>
 
     <Style x:Key="TaskTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyLargeStyle}">

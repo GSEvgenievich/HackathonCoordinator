@@ -55,6 +55,30 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set => SetProperty(ref _selectedAssignee, value);
         }
 
+        private DateTime? _deadlineDate;
+        public DateTime? DeadlineDate
+        {
+            get => _deadlineDate;
+            set
+            {
+                SetProperty(ref _deadlineDate, value);
+                UpdateFullDeadline();
+                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        private string _deadlineTime = "23:59";
+        public string DeadlineTime
+        {
+            get => _deadlineTime;
+            set
+            {
+                SetProperty(ref _deadlineTime, value);
+                UpdateFullDeadline();
+                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
         private DateTime? _deadline;
         public DateTime? Deadline
         {
@@ -194,7 +218,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     // Устанавливаем дефолтные значения
-                    Deadline = DateTime.Today.AddDays(7);
+                    DeadlineDate = DateTime.Today.AddDays(7);
+                    DeadlineTime = "23:59";
+
                     if (TaskTypes.Any())
                         SelectedType = TaskTypes.First();
 
@@ -350,7 +376,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         Description = task.Data.Description ?? "";
                         SelectedType = TaskTypes.FirstOrDefault(t => t.Id == task.Data.TypeId);
                         SelectedAssignee = TeamMembers.FirstOrDefault(m => m.Id == task.Data.AssignedToId);
-                        Deadline = task.Data.Deadline;
+
+                        if (task.Data.Deadline.HasValue)
+                        {
+                            DeadlineDate = task.Data.Deadline.Value.Date;
+                            DeadlineTime = task.Data.Deadline.Value.ToString("HH:mm");
+                        }
+                        else
+                        {
+                            DeadlineDate = DateTime.Today.AddDays(7);
+                            DeadlineTime = "23:59";
+                        }
+
                         GitHubBranchName = task.Data.GitHubBranchName ?? "";
 
                         HasExistingBranch = !string.IsNullOrEmpty(task.Data.GitHubBranchName);
@@ -371,6 +408,25 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     ErrorMessage = $"Ошибка загрузки задачи: {ex.Message}";
                 });
             }
+        }
+
+        /// <summary>
+        /// Обновление полного дедлайна на основе даты и времени
+        /// </summary>
+        private void UpdateFullDeadline()
+        {
+            if (!DeadlineDate.HasValue)
+            {
+                Deadline = null;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(DeadlineTime) || !TimeSpan.TryParse(DeadlineTime, out var time))
+            {
+                time = new TimeSpan(23, 59, 0);
+            }
+
+            Deadline = DeadlineDate.Value.Date.Add(time);
         }
 
         /// <summary>
@@ -581,6 +637,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 errorMessage = "Описание задачи не должно превышать 1000 символов";
             }
+            else if (DeadlineDate.HasValue)
+            {
+                if (!IsValidTimeFormat(DeadlineTime))
+                {
+                    errorMessage = "Время должно быть в формате HH:mm (например: 14:30)";
+                }
+                // Проверка что дедлайн не в прошлом
+                else if (Deadline.HasValue && Deadline.Value < DateTime.Now)
+                {
+                    errorMessage = "Дедлайн не может быть в прошлом";
+                }
+            }
             else if (HasGitHubRepo && !string.IsNullOrWhiteSpace(GitHubBranchName))
             {
                 if (!IsValidBranchName(GitHubBranchName))
@@ -610,6 +678,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
 
             return string.IsNullOrEmpty(errorMessage);
+        }
+
+        /// <summary>
+        /// Проверка валидности формата времени
+        /// </summary>
+        private bool IsValidTimeFormat(string time)
+        {
+            if (string.IsNullOrWhiteSpace(time))
+                return false;
+
+            return Regex.IsMatch(time, @"^([01]?[0-9]|2[0-3]):[0-5][0-9]$");
         }
 
         /// <summary>

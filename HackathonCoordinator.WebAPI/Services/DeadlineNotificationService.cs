@@ -33,8 +33,8 @@ namespace HackathonCoordinator.WebAPI.Services
                     await CheckExpiredDeadlinesAsync();
                     await CheckApproachingDeadlinesAsync();
 
-                    // Проверка каждые 30 минут
-                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
+                    // Проверка каждые 15 минут
+                    await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -112,7 +112,7 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Проверка приближающихся дедлайнов (за 24 часа)
+        /// Проверка приближающихся дедлайнов (за 1 час)
         /// </summary>
         private async Task CheckApproachingDeadlinesAsync()
         {
@@ -120,7 +120,7 @@ namespace HackathonCoordinator.WebAPI.Services
             var context = scope.ServiceProvider.GetRequiredService<HackathonCoordinatorContext>();
             var notificationHelper = scope.ServiceProvider.GetRequiredService<NotificationHelperService>();
 
-            var approachingDeadline = DateTime.Now.AddHours(24); // За 24 часа
+            var approachingDeadline = DateTime.Now.AddHours(1); // За 1 час
             var approachingTasks = await context.Tasks
                 .Include(t => t.AssignedTo)
                 .Where(t => t.Deadline.HasValue &&

@@ -184,7 +184,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             TransferLeadershipCommand = new RelayCommand(
                 () => ExecuteTransferLeadership(),
-                () => IsCaptain && Members.Count > 1);
+                () => IsCaptain || IsOrganizer && Members.Count > 0);
 
             CancelTransferCommand = new RelayCommand(
                 () => ExecuteCancelTransfer());
