@@ -10,8 +10,4 @@
     <PackageReference Include="ClosedXML" Version="0.105.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\HackathonCoordinator.WebAPI\HackathonCoordinator.WebAPI.csproj" />
-  </ItemGroup>
-
 </Project>

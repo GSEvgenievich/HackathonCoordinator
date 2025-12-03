@@ -41,7 +41,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             // AsyncRelayCommand для асинхронного входа
             LoginCommand = new AsyncRelayCommand(
                 execute: async () => await ExecuteLoginAsync(),
-                canExecute: () => !string.IsNullOrWhiteSpace(Login) && !string.IsNullOrWhiteSpace(Password));
+                canExecute: () => true);
 
             // Простая навигация - можно оставить RelayCommand
             NavigateToRegistrationCommand = new RelayCommand(

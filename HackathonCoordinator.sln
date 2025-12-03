@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.WebAPI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.ServiceLayer", "HackathonCoordinator.ServiceLayer\HackathonCoordinator.ServiceLayer.csproj", "{1DAD88D4-9F7C-4D28-BC4A-29FA3099655A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.Tests", "HackathonCoordinator.Tests\HackathonCoordinator.Tests.csproj", "{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{1DAD88D4-9F7C-4D28-BC4A-29FA3099655A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1DAD88D4-9F7C-4D28-BC4A-29FA3099655A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1DAD88D4-9F7C-4D28-BC4A-29FA3099655A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
