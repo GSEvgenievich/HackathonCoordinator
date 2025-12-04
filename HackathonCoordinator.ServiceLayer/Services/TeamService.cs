@@ -1,5 +1,4 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using Newtonsoft.Json;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
