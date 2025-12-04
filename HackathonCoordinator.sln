@@ -9,6 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.WebAPI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.ServiceLayer", "HackathonCoordinator.ServiceLayer\HackathonCoordinator.ServiceLayer.csproj", "{1DAD88D4-9F7C-4D28-BC4A-29FA3099655A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{2F3E3EE3-F6FE-4DD4-A38E-9E3442510D39}"
+	ProjectSection(SolutionItems) = preProject
+		.env = .env
+		docker-compose.yml = docker-compose.yml
+		init.sql = init.sql
+	EndProjectSection
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.Tests", "HackathonCoordinator.Tests\HackathonCoordinator.Tests.csproj", "{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}"
 EndProject
 Global

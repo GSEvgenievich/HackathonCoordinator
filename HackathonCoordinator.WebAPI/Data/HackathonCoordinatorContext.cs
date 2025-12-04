@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using HackathonCoordinator.WebAPI.Models;
+﻿using HackathonCoordinator.WebAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Task = HackathonCoordinator.WebAPI.Models.Task;
 using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
@@ -19,43 +17,38 @@ public partial class HackathonCoordinatorContext : DbContext
     }
 
     public virtual DbSet<Chat> Chats { get; set; }
-
     public virtual DbSet<ChatType> ChatTypes { get; set; }
-
     public virtual DbSet<Competition> Competitions { get; set; }
-
     public virtual DbSet<Message> Messages { get; set; }
-
     public virtual DbSet<Notification> Notifications { get; set; }
-
     public virtual DbSet<NotificationType> NotificationTypes { get; set; }
-
     public virtual DbSet<ProfileIcon> ProfileIcons { get; set; }
-
     public virtual DbSet<Role> Roles { get; set; }
-
     public virtual DbSet<Task> Tasks { get; set; }
-
     public virtual DbSet<TaskStatus> TaskStatuses { get; set; }
-
     public virtual DbSet<TaskType> TaskTypes { get; set; }
-
     public virtual DbSet<Team> Teams { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=localhost;Database=HackathonCoordinatorDb;Trusted_Connection=True;TrustServerCertificate=True;");
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            // Эта строка только для разработки вне Docker
+            var connectionString = "Server=localhost;Port=3306;Database=HackathonCoordinatorDb;User=root;Password=root;";
+            optionsBuilder.UseMySQL(connectionString)
+                .EnableSensitiveDataLogging()
+                .EnableDetailedErrors();
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Chat>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Chats__3214EC0723074ED1");
-
+            entity.HasKey(e => e.Id);
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Name).HasMaxLength(150);
 
@@ -73,7 +66,7 @@ public partial class HackathonCoordinatorContext : DbContext
         modelBuilder.Entity<Competition>(entity =>
         {
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.EndDate).HasColumnType("datetime");
@@ -88,11 +81,10 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Message>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Messages__3214EC07CA949DD0");
-
+            entity.HasKey(e => e.Id);
             entity.Property(e => e.EditedAt).HasColumnType("datetime");
             entity.Property(e => e.SentAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.IsEdited)
                 .HasDefaultValue(false);
@@ -109,10 +101,9 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Notification>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC07CE823C32");
-
+            entity.HasKey(e => e.Id);
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.IsRead)
                 .HasDefaultValue(false);
@@ -132,10 +123,8 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<NotificationType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC07C4B8AEF3");
-
-            entity.HasIndex(e => e.Name, "UQ__Notifica__737584F66F727CA5").IsUnique();
-
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Category).HasMaxLength(15);
             entity.Property(e => e.Icon).HasMaxLength(10);
             entity.Property(e => e.Name).HasMaxLength(100);
@@ -143,26 +132,22 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<ProfileIcon>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ProfileI__3214EC07ADEC564C");
-
+            entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC074348EF0D");
-
-            entity.HasIndex(e => e.Name, "UQ__Roles__737584F652306A2F").IsUnique();
-
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(25);
         });
 
         modelBuilder.Entity<Task>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC071FB6BCF1");
-
+            entity.HasKey(e => e.Id);
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.IsDeadlineNotified)
                 .HasDefaultValue(false);
@@ -200,30 +185,24 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<TaskStatus>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__TaskStat__3214EC07DC23AB14");
-
-            entity.HasIndex(e => e.Name, "UQ__TaskStat__737584F6DC5F6AFF").IsUnique();
-
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<TaskType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__TaskType__3214EC0716EA65CE");
-
-            entity.HasIndex(e => e.Name, "UQ__TaskType__737584F66BFDEB08").IsUnique();
-
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Team>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Teams__3214EC073AAA9ED0");
-
-            entity.HasIndex(e => e.InviteCode, "UQ__Teams__B8659E398D2885DB").IsUnique();
-
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.InviteCode).IsUnique();
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.GitRepoName).HasMaxLength(100);
             entity.Property(e => e.InviteCode).HasMaxLength(36);
@@ -242,10 +221,8 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC073975C412");
-
-            entity.HasIndex(e => e.Email, "UQ__Users__A9D1053498E69DD7").IsUnique();
-
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.Email).HasMaxLength(150);
             entity.Property(e => e.GitHubAccessToken).HasMaxLength(255);
             entity.Property(e => e.GitHubAvatarUrl).HasMaxLength(255);
