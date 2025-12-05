@@ -75,6 +75,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 SetProperty(ref _errorMessage, value);
                 OnPropertyChanged(nameof(HasErrorMessage));
+                ScrollToBottom();
             }
         }
 
@@ -225,6 +226,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             return TimeSpan.TryParse(time, out _);
         }
+
+        private void ScrollToBottom()
+        {
+            ScrollToBottomRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public event EventHandler ScrollToBottomRequested;
 
         protected override void DisposeManagedResources()
         {

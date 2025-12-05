@@ -25,6 +25,8 @@ namespace HackathonCoordinator.WPFClient.Views
                     viewModel.InitializeForCreate(_id);
                 else
                     viewModel.InitializeForEdit(_id);
+
+                viewModel.ScrollToBottomRequested += ViewModel_ScrollToBottomRequested;
             }
         }
 
@@ -33,6 +35,25 @@ namespace HackathonCoordinator.WPFClient.Views
             if (DataContext is EditTaskViewModel viewModel)
             {
                 viewModel.Dispose();
+                viewModel.ScrollToBottomRequested -= ViewModel_ScrollToBottomRequested;
+            }
+        }
+
+        private void ViewModel_ScrollToBottomRequested(object sender, System.EventArgs e)
+        {
+            // Прокручиваем к низу когда ViewModel запрашивает
+            ScrollToBottom();
+        }
+
+        private void ScrollToBottom()
+        {
+            if (MainScrollViewer != null)
+            {
+                // Небольшая задержка чтобы UI успел обновиться
+                Dispatcher.BeginInvoke(() =>
+                {
+                    MainScrollViewer.ScrollToEnd();
+                });
             }
         }
     }

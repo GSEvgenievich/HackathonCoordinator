@@ -10,7 +10,7 @@
     </Page.DataContext>
 
     <Grid Margin="30">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="MainScrollViewer" VerticalScrollBarVisibility="Auto">
             <StackPanel>
                 <!-- Заголовок страницы -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">

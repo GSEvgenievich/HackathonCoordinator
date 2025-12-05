@@ -4,9 +4,7 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.Win32;
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
@@ -211,11 +209,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             StatusFilters = new ObservableCollection<StatusFilter>
             {
-                new StatusFilter { Id = 0, Name = "Любой статус" },
+                new StatusFilter { Id = 0, Name = "Все соревнования", StatusType = CompetitionStatusType.All },
                 new StatusFilter { Id = 1, Name = "Активные", StatusType = CompetitionStatusType.Active },
                 new StatusFilter { Id = 2, Name = "Завершенные", StatusType = CompetitionStatusType.Completed },
-                new StatusFilter { Id = 3, Name = "Предстоящие", StatusType = CompetitionStatusType.Upcoming },
-                new StatusFilter { Id = 4, Name = "Все соревнования", StatusType = CompetitionStatusType.All }
+                new StatusFilter { Id = 3, Name = "Предстоящие", StatusType = CompetitionStatusType.Upcoming }
             };
 
             SelectedStatusFilter = StatusFilters.First();
