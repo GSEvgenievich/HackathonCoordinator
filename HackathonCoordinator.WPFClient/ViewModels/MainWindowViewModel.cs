@@ -216,7 +216,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public async void InitializeNotificationsSignalR()
         {
-            var baseUrl = "http://localhost:5046";
+            var baseUrl = "https://zip.hhallva.ru";
 
             _notificationHubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/notificationhub", options =>

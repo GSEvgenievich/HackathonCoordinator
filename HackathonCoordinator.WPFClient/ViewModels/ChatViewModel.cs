@@ -110,7 +110,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 execute: async (msg) => await DeleteMessageAsync(msg),
                 canExecute: (msg) => msg != null && msg.IsMyMessage);
 
-            InitializeSignalR();
+            InitializeSignalRAsync();
             LoadCurrentUser();
         }
 
@@ -130,10 +130,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void InitializeSignalR()
+        private async Task InitializeSignalRAsync()
         {
-            var baseUrl = "http://localhost:5046";
-
+            var baseUrl = "https://zip.hhallva.ru";
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/chathub", options =>
                 {
@@ -191,6 +190,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 await _hubConnection.StartAsync();
                 _isConnected = true;
                 OnPropertyChanged(nameof(CanSendMessage));
+                await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
             }
             catch (Exception ex)
             {
@@ -217,6 +217,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 Messages.Add(message);
                 ScrollToBottom();
             });
+        }
+
+        private void OnTest(string str)
+        {
+            MessageBox.Show(str);
         }
 
         private void OnMessageEdited(int messageId, string newText)
@@ -375,6 +380,16 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task SendMessageAsync()
         {
+            try
+            {
+                await _hubConnection.InvokeAsync("TestConnection", "Тестовое сообщение");
+                System.Diagnostics.Debug.WriteLine("✅ TestConnection вызван");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ TestConnection ошибка: {ex.Message}");
+            }
+
             if (!CanSendMessage) return;
 
             var messageText = NewMessageText.Trim();

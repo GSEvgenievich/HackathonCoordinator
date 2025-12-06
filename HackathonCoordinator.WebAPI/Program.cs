@@ -128,6 +128,18 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 52428800;
+
+    // Увеличиваем лимиты для WebSocket
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(5);
+    serverOptions.Limits.Http2.MaxStreamsPerConnection = 100;
+
+    // Явно разрешаем WebSocket
+    serverOptions.AllowSynchronousIO = false;
+});
+
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
 
@@ -155,7 +167,11 @@ app.UseSwaggerUI(c =>
     c.DisplayRequestDuration();
     c.EnableTryItOutByDefault();
 });
-
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(120),
+    AllowedOrigins = { "https://zip.hhallva.ru", "http://localhost:*" }
+});
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
