@@ -370,14 +370,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else if (notification.RelatedEntityType == "team chat" && notification.RelatedEntityId.HasValue)
                 {
-                    var chatPage = new ChatPage();
-                    var viewModel = chatPage.DataContext as ChatViewModel;
+                    var chat = await _chatService.GetTeamChatAsync(notification.RelatedEntityId.Value);
 
-                    if (viewModel != null)
+                    if (chat.Success)
                     {
-                        var chat = await _chatService.GetTeamChatAsync(notification.RelatedEntityId.Value);
+                        var chatPage = new ChatPage();
+                        var viewModel = chatPage.DataContext as ChatViewModel;
 
-                        if (chat.Success)
+                        if (viewModel != null)
                         {
                             await viewModel.LoadTeamChatAsync(chat.Data);
 
@@ -386,23 +386,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                                 _navigationService.NavigateTo(chatPage);
                             });
                         }
-                        else
-                        {
-                            MessageBox.Show($"Ошибка открытия чата команды", "Ошибка",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
                     }
+                    else
+                    {
+                        MessageBox.Show($"Не удалось открыть чат команды:\n{chat.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+
                 }
                 else if (notification.RelatedEntityType == "task chat" && notification.RelatedEntityId.HasValue)
                 {
-                    var chatPage = new ChatPage();
-                    var viewModel = chatPage.DataContext as ChatViewModel;
+                    var chat = await _chatService.GetTaskChatAsync(notification.RelatedEntityId.Value);
 
-                    if (viewModel != null)
+                    if (chat.Success)
                     {
-                        var chat = await _chatService.GetTaskChatAsync(notification.RelatedEntityId.Value);
+                        var chatPage = new ChatPage();
+                        var viewModel = chatPage.DataContext as ChatViewModel;
 
-                        if (chat.Success)
+                        if (viewModel != null)
                         {
                             await viewModel.LoadTaskChatAsync(chat.Data);
 
@@ -411,12 +412,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                                 _navigationService.NavigateTo(chatPage);
                             });
                         }
-                        else
-                        {
-                            MessageBox.Show($"Ошибка открытия чата задачи", "Ошибка",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
                     }
+                    else
+                    {
+                        MessageBox.Show($"Не удалось открыть чат задачи:\n{chat.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+
                 }
             }
             catch (Exception ex)

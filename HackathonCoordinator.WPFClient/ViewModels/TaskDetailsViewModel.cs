@@ -513,13 +513,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             try
             {
-                var chatPage = new ChatPage();
-                var viewModel = chatPage.DataContext as ChatViewModel;
-                if (viewModel != null)
-                {
-                    var chat = await _chatService.GetTaskChatAsync(Task.Id);
+                var chat = await _chatService.GetTaskChatAsync(Task.Id);
 
-                    if (chat.Success)
+                if (chat.Success)
+                {
+                    var chatPage = new ChatPage();
+                    var viewModel = chatPage.DataContext as ChatViewModel;
+                    if (viewModel != null)
                     {
                         await viewModel.LoadTaskChatAsync(chat.Data);
 
@@ -528,12 +528,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                             _navigationService.NavigateTo(chatPage);
                         });
                     }
-                    else
-                    {
-                        MessageBox.Show("Ошибка открытия чата задачи", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
                 }
+                else
+                {
+                    MessageBox.Show($"Не удалось открыть чат задачи:\n{chat.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
             }
             catch (Exception ex)
             {

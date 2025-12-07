@@ -442,28 +442,29 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (CurrentTeam?.ChatId != null)
             {
-                var chatPage = new ChatPage();
-                var viewModel = chatPage.DataContext as ChatViewModel;
-                if (viewModel != null)
-                {
-                    var chat = await _chatService.GetTeamChatAsync(CurrentTeam.Id);
+                var chat = await _chatService.GetTeamChatAsync(CurrentTeam.Id);
 
-                    if (chat.Success)
+                if (chat.Success)
+                {
+                    var chatPage = new ChatPage();
+                    var viewModel = chatPage.DataContext as ChatViewModel;
+                    if (viewModel != null)
                     {
                         await viewModel.LoadTeamChatAsync(chat.Data);
                         _navigationService.NavigateTo(chatPage);
                     }
-                    else
-                    {
-                        MessageBox.Show("Не удалось открыть чат команды", "Ошибка",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
                 }
                 else
                 {
-                    MessageBox.Show("Чат команды не найден");
+                    MessageBox.Show($"Не удалось открыть чат команды:\n{chat.Message}", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
+            else
+            {
+                MessageBox.Show("Чат команды не найден");
+            }
+
         }
 
         private void ExecuteCreateTask()

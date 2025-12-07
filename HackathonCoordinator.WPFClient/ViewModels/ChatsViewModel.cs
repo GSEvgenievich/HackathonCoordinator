@@ -190,7 +190,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show("Не удалось открыть чат команды", "Ошибка",
+                        MessageBox.Show($"Не удалось открыть чат команды:\n{chat.Message}", "Ошибка",
                             MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
@@ -213,7 +213,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show("Не удалось открыть чат задачи", "Ошибка",
+                        MessageBox.Show($"Не удалось открыть чат задачи:\n{chat.Message}", "Ошибка",
                             MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }

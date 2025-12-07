@@ -219,11 +219,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        private void OnTest(string str)
-        {
-            MessageBox.Show(str);
-        }
-
         private void OnMessageEdited(int messageId, string newText)
         {
             Application.Current.Dispatcher.Invoke(() =>
