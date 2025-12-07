@@ -3,9 +3,7 @@ using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
@@ -15,6 +13,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     {
         private readonly NavigationService _navigationService;
         private readonly UserService _userService;
+        private readonly ChatService _chatService;
         private readonly TaskService _taskService;
         private readonly TeamService _teamService;
 
@@ -92,6 +91,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             _navigationService = App.NavigationService;
             _userService = new UserService();
+            _chatService = new ChatService();
             _taskService = new TaskService();
             _teamService = new TeamService();
 
@@ -517,12 +517,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var viewModel = chatPage.DataContext as ChatViewModel;
                 if (viewModel != null)
                 {
-                    await viewModel.LoadTaskChatAsync(Task.Id);
+                    var chat = await _chatService.GetTaskChatAsync(Task.Id);
 
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    if (chat.Success)
                     {
-                        _navigationService.NavigateTo(chatPage);
-                    });
+                        await viewModel.LoadTaskChatAsync(chat.Data);
+
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _navigationService.NavigateTo(chatPage);
+                        });
+                    }
+                    else
+                    {
+                        MessageBox.Show("Ошибка открытия чата задачи", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             }
             catch (Exception ex)

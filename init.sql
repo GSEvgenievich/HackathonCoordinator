@@ -231,12 +231,12 @@ INSERT IGNORE INTO TaskTypes (Id, Name) VALUES
 -- ============================================
 
 INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, ProfileIconId) VALUES
-('Head1', 'admin@hackathon.local', 'q', 
-'$2a$11$4Z1LpSzns9GvCcS1oVZfiuXfpzK94uxmiGrKwEXgp7P6EradwwFjq', 3, 5);
+('Head', 'admin@hackathon.local', 'q', 
+'$2a$11$xfQVw15oDNNUISyzqzItI.uf1STGdTmUgw1S.rNuSd1LpLsZb01UO', 3, 5);
 
 INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, ProfileIconId) VALUES
-('string', 'string@hackathon.local', 'string',
-'$2a$11$OKN4OwK6mYHPsxLGtgxJ3uMfceo4Bj3C/VZbhbaj40iPdZixzRyeO', 2, 3);
+('user', 'user@hackathon.local', 'user',
+'$2a$11$U3sqMY280YhMVfbh2Fwe4.2W.IG5Mcbnid81FWyoE4Feea.FEP4um', 2, 3);
 
 -- ============================================
 -- ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ

@@ -14,6 +14,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     {
         private readonly TeamService _teamService;
         private readonly TaskService _taskService;
+        private readonly ChatService _chatService;
         private readonly UserService _userService;
         private readonly NavigationService _navigationService;
 
@@ -133,6 +134,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             _teamService = new TeamService();
             _userService = new UserService();
+            _chatService = new ChatService();
             _taskService = new TaskService();
             _navigationService = App.NavigationService;
 
@@ -444,13 +446,23 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var viewModel = chatPage.DataContext as ChatViewModel;
                 if (viewModel != null)
                 {
-                    await viewModel.LoadTeamChatAsync(CurrentTeam.Id);
-                    _navigationService.NavigateTo(chatPage);
+                    var chat = await _chatService.GetTeamChatAsync(CurrentTeam.Id);
+
+                    if (chat.Success)
+                    {
+                        await viewModel.LoadTeamChatAsync(chat.Data);
+                        _navigationService.NavigateTo(chatPage);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось открыть чат команды", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
-            }
-            else
-            {
-                MessageBox.Show("Чат команды не найден");
+                else
+                {
+                    MessageBox.Show("Чат команды не найден");
+                }
             }
         }
 

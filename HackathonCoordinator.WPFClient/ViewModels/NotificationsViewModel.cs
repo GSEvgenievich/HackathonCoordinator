@@ -375,12 +375,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                     if (viewModel != null)
                     {
-                        await viewModel.LoadTeamChatAsync(notification.RelatedEntityId.Value);
+                        var chat = await _chatService.GetTeamChatAsync(notification.RelatedEntityId.Value);
 
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        if (chat.Success)
                         {
-                            _navigationService.NavigateTo(chatPage);
-                        });
+                            await viewModel.LoadTeamChatAsync(chat.Data);
+
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                _navigationService.NavigateTo(chatPage);
+                            });
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Ошибка открытия чата команды", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                     }
                 }
                 else if (notification.RelatedEntityType == "task chat" && notification.RelatedEntityId.HasValue)
@@ -390,12 +400,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                     if (viewModel != null)
                     {
-                        await viewModel.LoadTaskChatAsync(notification.RelatedEntityId.Value);
+                        var chat = await _chatService.GetTaskChatAsync(notification.RelatedEntityId.Value);
 
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        if (chat.Success)
                         {
-                            _navigationService.NavigateTo(chatPage);
-                        });
+                            await viewModel.LoadTaskChatAsync(chat.Data);
+
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                _navigationService.NavigateTo(chatPage);
+                            });
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Ошибка открытия чата задачи", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                     }
                 }
             }

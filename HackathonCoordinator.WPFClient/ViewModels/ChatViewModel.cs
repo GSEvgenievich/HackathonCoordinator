@@ -249,28 +249,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        public async Task LoadTeamChatAsync(int teamId)
+        public async Task LoadTeamChatAsync(ChatDto chat)
         {
             IsLoading = true;
 
             try
             {
-                var chat = await _chatService.GetTeamChatAsync(teamId);
-                if (chat.Success)
-                {
-                    CurrentChat = chat.Data;
-                    ChatTitle = $"💬 Чат команды";
-                    await UpdateMessagesAndParticipantsAsync();
+                CurrentChat = chat;
+                ChatTitle = $"💬 Чат команды";
+                await UpdateMessagesAndParticipantsAsync();
 
-                    CheckIfCurrentUserIsCaptain();
+                CheckIfCurrentUserIsCaptain();
 
-                    if (_isConnected)
-                        await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
-                }
-                else
-                {
-                    await ShowErrorAsync(chat.Message);
-                }
+                if (_isConnected)
+                    await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
             }
             catch (Exception ex)
             {
@@ -282,28 +274,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        public async Task LoadTaskChatAsync(int taskId)
+        public async Task LoadTaskChatAsync(ChatDto chat)
         {
             IsLoading = true;
 
             try
             {
-                var chat = await _chatService.GetTaskChatAsync(taskId);
-                if (chat.Success)
-                {
-                    CurrentChat = chat.Data;
-                    ChatTitle = $"💬 Чат задачи";
-                    await UpdateMessagesAndParticipantsAsync();
+                CurrentChat = chat;
+                ChatTitle = $"💬 Чат задачи";
+                await UpdateMessagesAndParticipantsAsync();
 
-                    CheckIfCurrentUserIsCaptain();
+                CheckIfCurrentUserIsCaptain();
 
-                    if (_isConnected)
-                        await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
-                }
-                else
-                {
-                    await ShowErrorAsync(chat.Message);
-                }
+                if (_isConnected)
+                    await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
             }
             catch (Exception ex)
             {

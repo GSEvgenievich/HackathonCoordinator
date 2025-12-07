@@ -169,34 +169,64 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             try
             {
-                var chatPage = new ChatPage();
-                var viewModel = chatPage.DataContext as ChatViewModel;
 
-                if (viewModel != null)
+                if (chatItem.TeamId.HasValue)
                 {
-                    if (chatItem.TeamId.HasValue)
+                    var chat = await _chatService.GetTeamChatAsync(chatItem.TeamId.Value);
+
+                    if (chat.Success)
                     {
-                        await viewModel.LoadTeamChatAsync(chatItem.TeamId.Value);
-                    }
-                    else if (chatItem.TaskId.HasValue)
-                    {
-                        await viewModel.LoadTaskChatAsync(chatItem.TaskId.Value);
+                        var chatPage = new ChatPage();
+                        var viewModel = chatPage.DataContext as ChatViewModel;
+
+                        if (viewModel != null)
+                        {
+                            await viewModel.LoadTeamChatAsync(chat.Data);
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                _navigationService.NavigateTo(chatPage);
+                            });
+                        }
                     }
                     else
                     {
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
-                        {
-                            MessageBox.Show("Не удалось определить тип чата", "Ошибка",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                        });
-                        return;
+                        MessageBox.Show("Не удалось открыть чат команды", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                     }
+                }
+                else if (chatItem.TaskId.HasValue)
+                {
+                    var chat = await _chatService.GetTaskChatAsync(chatItem.TaskId.Value);
+                    if (chat.Success)
+                    {
+                        var chatPage = new ChatPage();
+                        var viewModel = chatPage.DataContext as ChatViewModel;
 
+                        if (viewModel != null)
+                        {
+                            await viewModel.LoadTaskChatAsync(chat.Data);
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                _navigationService.NavigateTo(chatPage);
+                            });
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось открыть чат задачи", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                else
+                {
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        _navigationService.NavigateTo(chatPage);
+                        MessageBox.Show("Не удалось определить тип чата", "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                     });
+                    return;
                 }
+
             }
             catch (Exception ex)
             {
