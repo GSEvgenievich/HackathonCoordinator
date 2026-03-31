@@ -23,6 +23,10 @@ public partial class Team
 
     public virtual Competition Competition { get; set; } = null!;
 
+    public virtual ICollection<FinalTeamMember> FinalTeamMembers { get; set; } = new List<FinalTeamMember>();
+
+    public virtual ICollection<Result> Results { get; set; } = new List<Result>();
+
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();

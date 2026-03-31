@@ -3,7 +3,8 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
       Title="Управление участниками"
-      Unloaded="Page_Unloaded">
+      Unloaded="Page_Unloaded"
+      Loaded="Page_Loaded">
 
     <Page.DataContext>
         <vm:UsersManagementViewModel/>
@@ -40,7 +41,6 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Всего участников -->
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="👤 ВСЕГО УЧАСТНИКОВ"
                                    Style="{StaticResource StatsHeaderStyle}"/>
@@ -48,21 +48,17 @@
                                    Style="{StaticResource StatsValueStyle}"/>
                         </StackPanel>
 
-                        <!-- Разделитель -->
                         <Rectangle Grid.Column="1" Style="{StaticResource VerticalDividerStyle}"/>
 
-                        <!-- В командах -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="🏃 АКТИВНЫЕ"
+                            <TextBlock Text="🏃 В КОМАНДАХ"
                                    Style="{StaticResource StatsHeaderStyle}"/>
                             <TextBlock Text="{Binding UsersInTeamsCount}"
                                    Style="{StaticResource StatsValueStyle}"/>
                         </StackPanel>
 
-                        <!-- Разделитель -->
                         <Rectangle Grid.Column="3" Style="{StaticResource VerticalDividerStyle}"/>
 
-                        <!-- Без команды -->
                         <StackPanel Grid.Column="4">
                             <TextBlock Text="🎯 БЕЗ КОМАНДЫ"
                                    Style="{StaticResource StatsHeaderStyle}"/>
@@ -70,6 +66,107 @@
                                    Style="{StaticResource StatsValueStyle}"/>
                         </StackPanel>
                     </Grid>
+                </Border>
+
+                <!-- Кнопка управления должностями (только для админа) -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20"
+                        Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Button Content="📋 Управление должностями"
+                            Command="{Binding TogglePositionsPanelCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            HorizontalAlignment="Left"
+                            Padding="20,10"/>
+                </Border>
+
+                <!-- Панель управления должностями -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20"
+                        Visibility="{Binding ShowPositionsPanel, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="📋 Управление должностями"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Создание новой должности -->
+                        <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="➕ Создать новую должность"
+                                           Style="{StaticResource StatsHeaderStyle}"
+                                           Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Text="{Binding NewPositionName, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Tag="Название должности"/>
+                                    <Button Grid.Column="1"
+                                            Content="Создать"
+                                            Command="{Binding CreatePositionCommand}"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Margin="10,0,0,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Список должностей -->
+                        <TextBlock Text="📋 Существующие должности"
+                                   Style="{StaticResource StatsHeaderStyle}"
+                                   Margin="0,0,0,10"/>
+
+                        <ItemsControl ItemsSource="{Binding AllPositions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource MemberCardStyle}" Margin="0,0,0,5">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Название должности -->
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}"
+                                                           Style="{StaticResource BodyTextStyle}"
+                                                           FontWeight="SemiBold"/>
+                                                <TextBlock Text="Базовая должность (нельзя редактировать/удалить)"
+                                                           Style="{StaticResource CaptionSecondaryStyle}"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"
+                                                           Visibility="{Binding IsProtected, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            </StackPanel>
+
+                                            <!-- Кнопки действий -->
+                                            <StackPanel Grid.Column="1" 
+                                                        Orientation="Horizontal"
+                                                        Visibility="{Binding DataContext.IsAdmin, 
+                                                                   Converter={StaticResource BoolToVisibilityConverter},
+                                                                   RelativeSource={RelativeSource AncestorType=Page}}">
+
+                                                <!-- Редактировать -->
+                                                <Button Content="✏️"
+                                                        Command="{Binding DataContext.EditPositionCommand,
+                                                                  RelativeSource={RelativeSource AncestorType=Page}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource IconButton}"
+                                                        Margin="0,0,8,0"
+                                                        ToolTip="Редактировать должность"
+                                                        Visibility="{Binding IsProtected, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+
+                                                <!-- Удалить -->
+                                                <Button Content="🗑️"
+                                                        Command="{Binding DataContext.DeletePositionCommand,
+                                                                  RelativeSource={RelativeSource AncestorType=Page}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource DangerIconButton}"
+                                                        ToolTip="Удалить должность"
+                                                        Visibility="{Binding IsProtected, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </Border>
 
                 <!-- Поиск и фильтры -->
@@ -83,16 +180,14 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- Поиск -->
                             <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                  Style="{StaticResource ModernTextBox}"
                                  Tag="Поиск по имени или email..."
                                  Margin="0,0,15,0"/>
 
-                            <!-- Фильтр по статусу -->
                             <ComboBox Grid.Column="1"
                                   ItemsSource="{Binding StatusFilters}"
                                   SelectedItem="{Binding SelectedStatusFilter}"
@@ -101,9 +196,8 @@
                                   Width="180"
                                   Margin="0,0,15,0"/>
 
-                            <!-- Сброс фильтров -->
                             <Button Grid.Column="2"
-                                Content="🗑️ Сбросить фильтры"
+                                Content="🗑️ Сбросить"
                                 Command="{Binding ResetFiltersCommand}"
                                 Style="{StaticResource SecondaryButton}"/>
                         </Grid>
@@ -143,15 +237,13 @@
 
                                                 <!-- Информация -->
                                                 <StackPanel Grid.Column="1" Margin="15,0">
-                                                    <!-- Основная информация -->
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
                                                         <TextBlock Text="{Binding Username}"
                                                                Style="{StaticResource BodyTextStyle}"
                                                                FontWeight="SemiBold"
                                                                FontSize="14"/>
 
-                                                        <!-- Роль -->
-                                                        <Border Background="{DynamicResource PrimaryBrush}"
+                                                        <Border Background="{Binding RoleId, Converter={StaticResource RoleToBrushConverter}}"
                                                             CornerRadius="8"
                                                             Padding="6,2"
                                                             Margin="10,0,0,0"
@@ -161,9 +253,20 @@
                                                                    FontWeight="Bold"
                                                                    Foreground="White"/>
                                                         </Border>
+
+                                                        <Border Background="{DynamicResource PrimaryBrush}"
+                                                            CornerRadius="8"
+                                                            Padding="6,2"
+                                                            Margin="5,0,0,0"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{Binding PositionName, Converter={StaticResource NullToVisibilityConverter}}">
+                                                            <TextBlock Text="{Binding PositionName}"
+                                                                   FontSize="10"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="White"/>
+                                                        </Border>
                                                     </StackPanel>
 
-                                                    <!-- Детали -->
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="📧"
                                                                Style="{StaticResource MetaIconStyle}"/>
@@ -183,7 +286,6 @@
                                                                Style="{StaticResource MetaTextStyle}"/>
                                                     </StackPanel>
 
-                                                    <!-- Команда -->
                                                     <TextBlock Text="{Binding TeamInfo}"
                                                            Style="{StaticResource CaptionSecondaryStyle}"
                                                            Margin="0,5,0,0"
@@ -192,22 +294,28 @@
 
                                                 <!-- Действия -->
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                    <!-- Кнопка назначения организатором (только для админа) -->
+                                                    <Button Content="👑"
+                                                            Command="{Binding DataContext.ManageRoleCommand, 
+                                                                      RelativeSource={RelativeSource AncestorType=Page}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource IconButton}"
+                                                            ToolTip="{Binding RoleId, Converter={StaticResource RoleToManageTooltipConverter}}"
+                                                            Margin="0,0,10,0"
+                                                            Visibility="{Binding DataContext.IsAdmin, 
+                                                                         Converter={StaticResource BoolToVisibilityConverter},
+                                                                         RelativeSource={RelativeSource AncestorType=Page}}"/>
+
                                                     <!-- Кнопка удаления -->
                                                     <Button Content="🗑️"
-                                                        Command="{Binding DataContext.DeleteUserCommand, 
-                                                                  RelativeSource={RelativeSource AncestorType=Page}}"
-                                                        CommandParameter="{Binding}"
-                                                        Style="{StaticResource DangerIconButton}"
-                                                        ToolTip="Удалить учетную запись"
-                                                        Margin="0,0,10,0"/>
-
-                                                    <!-- Кнопка просмотра -->
-                                                    <Button Content="👁️"
-                                                        Command="{Binding DataContext.ViewUserCommand, 
-                                                                  RelativeSource={RelativeSource AncestorType=Page}}"
-                                                        CommandParameter="{Binding}"
-                                                        Style="{StaticResource IconButton}"
-                                                        ToolTip="Просмотр деталей"/>
+                                                            Command="{Binding DataContext.DeleteUserCommand, 
+                                                                      RelativeSource={RelativeSource AncestorType=Page}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource DangerIconButton}"
+                                                            ToolTip="Удалить учетную запись"
+                                                            Visibility="{Binding DataContext.IsAdmin, 
+                                                                         Converter={StaticResource BoolToVisibilityConverter},
+                                                                         RelativeSource={RelativeSource AncestorType=Page}}"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -216,7 +324,6 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <!-- Сообщение когда нет пользователей -->
                         <TextBlock Text="🎯 Участники не найдены"
                                Style="{StaticResource BodyTextStyle}"
                                HorizontalAlignment="Center"
@@ -232,7 +339,6 @@
                 Visibility="{Binding ShowDeleteDialog, Converter={StaticResource BoolToVisibilityConverter}}">
             <Border Style="{StaticResource ModalDialogStyle}" Width="450">
                 <StackPanel>
-                    <!-- Заголовок с иконкой -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="⚠️"
                                    FontSize="20"
@@ -245,7 +351,6 @@
                            Style="{StaticResource ModalDescriptionStyle}"
                            Margin="0,0,0,10"/>
 
-                    <!-- Информация об участнике -->
                     <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,15">
                         <StackPanel>
                             <TextBlock Text="{Binding UserToDelete.Username}"
@@ -265,16 +370,64 @@
                            FontWeight="SemiBold"
                            Margin="0,0,0,20"/>
 
-                    <!-- Кнопки действий -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Отмена"
                                 Command="{Binding CancelDeleteCommand}"
                                 Style="{StaticResource ModalSecondaryButton}"
                                 Margin="0,0,10,0"/>
-
                         <Button Content="Удалить"
                                 Command="{Binding ConfirmDeleteCommand}"
                                 Style="{StaticResource ModalDangerButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Модальное окно управления ролью -->
+        <Border Style="{StaticResource ModalOverlayStyle}"
+                Visibility="{Binding ShowManageRoleDialog, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Style="{StaticResource ModalDialogStyle}" Width="450">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="👑"
+                                   FontSize="20"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock Text="Управление ролью"
+                                Style="{StaticResource ModalTitleStyle}"/>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding RoleManageMessage}"
+                               Style="{StaticResource ModalDescriptionStyle}"
+                               Margin="0,0,0,10"/>
+
+                    <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,15">
+                        <StackPanel>
+                            <TextBlock Text="{Binding UserToManage.Username}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding UserToManage.Email}"
+                                    Style="{StaticResource CaptionSecondaryStyle}"/>
+                            <TextBlock Text="{Binding UserToManage.RoleName, StringFormat='Текущая роль: {0}'}"
+                                       Style="{StaticResource CaptionSecondaryStyle}"
+                                       Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Content="Отмена"
+                                Command="{Binding CancelManageRoleCommand}"
+                                Style="{StaticResource ModalSecondaryButton}"
+                                Margin="0,0,10,0"/>
+
+                        <Button Content="Назначить организатором"
+                                Command="{Binding ConfirmMakeOrganizerCommand}"
+                                Style="{StaticResource ModalPrimaryButton}"
+                                Visibility="{Binding IsUserNotOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                        <Button Content="Снять права организатора"
+                                Command="{Binding ConfirmRemoveOrganizerCommand}"
+                                Style="{StaticResource ModalDangerButton}"
+                                Visibility="{Binding IsUserOrganizer, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

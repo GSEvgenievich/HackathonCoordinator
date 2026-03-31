@@ -5,7 +5,6 @@
       Title="Соревнование"
       Unloaded="Page_Unloaded">
 
-
     <Page.DataContext>
         <vm:CompetitionDetailsViewModel/>
     </Page.DataContext>
@@ -57,6 +56,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Даты -->
@@ -97,6 +97,19 @@
                                        FontSize="12"
                                        FontWeight="SemiBold"/>
                             </StackPanel>
+
+                            <!-- Статус соревнования для организатора -->
+                            <StackPanel Grid.Column="3" Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="🏁 СТАТУС"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryColor}"
+                                       FontSize="12"
+                                       Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding CompetitionStatusInfo}"
+                                       Style="{StaticResource BodyTextStyle}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"/>
+                            </StackPanel>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -109,7 +122,29 @@
                                FontSize="18"
                                Foreground="{DynamicResource TextColor}"
                                Margin="0,0,0,15"/>
-
+                        
+                        <!-- Кнопка подведения итогов -->
+                        <Button Content="{Binding ResultsButtonText}"
+                                Command="{Binding GoToResultsCommand}"
+                                Height="45"
+                                Margin="0,0,0,10"
+                                IsEnabled="{Binding CanGoToResults}"
+                                ToolTip="{Binding ResultsButtonTooltip}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanViewResults}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CanGoToResults}" Value="False">
+                                            <Setter Property="Background" Value="{DynamicResource TextSecondaryColor}"/>
+                                            <Setter Property="Opacity" Value="0.6"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        
                         <!-- Для организатора -->
                         <StackPanel Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
                             <TextBlock Text="Создание команды"

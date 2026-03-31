@@ -1,5 +1,6 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -392,8 +393,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (user == null)
                     return HandleNotFound<TeamDto>("Пользователь не найден");
 
-                if (user.RoleId != (int)Roles.Organizer)
-                    return HandleForbidden<TeamDto>("Только организатор имеет доступ к данным всех команд");
+                if (user.RoleId != (int)Roles.Organizer && user.RoleId != (int)Roles.Admin)
+                    return HandleForbidden<TeamDto>("Недостаточно прав для доступа к данным команд");
 
                 var teamData = await _context.Teams
                     .Where(t => t.Id == teamId)
@@ -577,8 +578,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (team == null)
                     return HandleNotFound("Команда не найдена");
 
-                if (user.TeamId != teamId && user.RoleId != (int)Roles.Organizer)
-                    return HandleError("Капитан может назначить капитаном только члена своей команды");
+                if (user.TeamId != teamId && user.RoleId != (int)Roles.Organizer && user.RoleId != (int)Roles.Admin)
+                    return HandleError("Недостаточно прав для назначения капитана");
 
                 var newCaptain = team.Users.FirstOrDefault(u => u.Id == dto.UserId);
                 if (newCaptain == null)
@@ -625,8 +626,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != (int)Roles.Organizer)
-                    return HandleForbidden("Только организатор может удалять команды");
+                if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для удаления команды");
 
                 var team = await _context.Teams
                     .Include(t => t.Competition)
@@ -698,8 +699,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != (int)Roles.Organizer)
-                    return HandleForbidden("Только организатор может выгонять участников");
+                if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для исключения участников");
 
                 var memberToKick = await _context.Users
                     .Include(u => u.Team)

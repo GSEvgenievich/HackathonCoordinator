@@ -111,5 +111,50 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 return ApiResponse<CompetitionExportDataDto>.Fail($"Ошибка получения данных для экспорта: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Сохранить все результаты соревнования
+        /// </summary>
+        public async Task<ApiResponse> SaveAllResultsAsync(int competitionId, List<TeamResultDto> results)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var dtoList = results.Select(r => new SaveTeamResultDto
+                {
+                    CompetitionId = competitionId,
+                    TeamId = r.TeamId,
+                    Place = r.Place ?? 0,
+                    Comment = r.Comment
+                }).ToList();
+
+                var content = CreateJsonContent(dtoList);
+                var response = await _client.PostAsync($"competitions/{competitionId}/save-all-results", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка сохранения результатов: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить результаты соревнования
+        /// </summary>
+        public async Task<ApiResponse<List<TeamResultDto>>> GetCompetitionResultsAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"competitions/{competitionId}/results");
+                return await HandleResponseAsync<List<TeamResultDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<TeamResultDto>>.Fail($"Ошибка получения результатов: {ex.Message}");
+            }
+        }
     }
 }

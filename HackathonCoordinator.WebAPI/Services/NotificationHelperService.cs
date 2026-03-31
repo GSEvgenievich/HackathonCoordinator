@@ -1,41 +1,15 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Models;
+using Humanizer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Task = System.Threading.Tasks.Task;
 
 namespace HackathonCoordinator.WebAPI.Services
 {
-    /// <summary>
-    /// Enum для типов уведомлений
-    /// </summary>
-    public enum NotificationType
-    {
-        NewTask = 1,
-        TaskAssigned = 2,
-        TaskCompleted = 3,
-        TaskConfirmed = 4,
-        TaskCancelled = 5,
-        TaskDeadlineApproaching = 6,
-        ImportantTaskChatMessage = 7,
-        NewTeamMember = 8,
-        TeamMemberLeft = 9,
-        MemberKickedFromTeam = 10,
-        NewTeamCaptainAppointed = 11,
-        BecameTeamCaptain = 12,
-        GitHubRepoCreated = 13,
-        ImportantTeamChatMessage = 14,
-        NewTeamCreated = 15,
-        NewCompetitionCreated = 16,
-        CompetitionStarted = 17,
-        CompetitionEnded = 18,
-        SystemNotification = 19,
-        TeamDeleted = 20,
-        TaskCompletionCancelled = 21,
-        TaskDeadlineExpired = 22
-    }
 
     /// <summary>
     /// Сервис для создания и отправки уведомлений
@@ -45,11 +19,6 @@ namespace HackathonCoordinator.WebAPI.Services
         private readonly HackathonCoordinatorContext _context;
         private readonly IHubContext<NotificationHub> _hubContext;
         private readonly ILogger<NotificationHelperService> _logger;
-
-        // Константы для ролей пользователей
-        private const int CAPTAIN_ROLE_ID = 1;
-        private const int MEMBER_ROLE_ID = 2;
-        private const int ORGANIZER_ROLE_ID = 3;
 
         public NotificationHelperService(
             HackathonCoordinatorContext context,
@@ -75,7 +44,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(member.Id, new CreateNotificationDto
                 {
                     UserId = member.Id,
-                    NotificationTypeId = (int)NotificationType.NewTask,
+                    NotificationTypeId = (int)NotificationTypes.NewTask,
                     Title = "Новая задача в команде",
                     Message = $"Создана новая задача: \"{taskTitle}\"",
                     RelatedEntityType = "task",
@@ -92,7 +61,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(assignedToUserId, new CreateNotificationDto
             {
                 UserId = assignedToUserId,
-                NotificationTypeId = (int)NotificationType.TaskAssigned,
+                NotificationTypeId = (int)NotificationTypes.TaskAssigned,
                 Title = "Вам назначена задача",
                 Message = $"Вам назначена задача: \"{taskTitle}\"",
                 RelatedEntityType = "task",
@@ -108,7 +77,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(captainUserId, new CreateNotificationDto
             {
                 UserId = captainUserId,
-                NotificationTypeId = (int)NotificationType.TaskCompleted,
+                NotificationTypeId = (int)NotificationTypes.TaskCompleted,
                 Title = "Задача завершена",
                 Message = $"Задача \"{taskTitle}\" завершена участником {completedBy}. Требуется подтверждение.",
                 RelatedEntityType = "task",
@@ -124,7 +93,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(captainUserId, new CreateNotificationDto
             {
                 UserId = captainUserId,
-                NotificationTypeId = (int)NotificationType.TaskCancelled,
+                NotificationTypeId = (int)NotificationTypes.TaskCancelled,
                 Title = "Отменить задачу",
                 Message = $"Участник {completedBy} просит отменить задачу \"{taskTitle}\". Требуется подтверждение.",
                 RelatedEntityType = "task",
@@ -140,7 +109,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(userId, new CreateNotificationDto
             {
                 UserId = userId,
-                NotificationTypeId = (int)NotificationType.TaskConfirmed,
+                NotificationTypeId = (int)NotificationTypes.TaskConfirmed,
                 Title = "Задача подтверждена",
                 Message = $"Капитан подтвердил завершение задачи: \"{taskTitle}\"",
                 RelatedEntityType = "task",
@@ -156,7 +125,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(userId, new CreateNotificationDto
             {
                 UserId = userId,
-                NotificationTypeId = (int)NotificationType.TaskCompletionCancelled,
+                NotificationTypeId = (int)NotificationTypes.TaskCompletionCancelled,
                 Title = "Завершение задачи отменено",
                 Message = $"Капитан отменил завершение задачи: \"{taskTitle}\"",
                 RelatedEntityType = "task",
@@ -172,7 +141,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(userId, new CreateNotificationDto
             {
                 UserId = userId,
-                NotificationTypeId = (int)NotificationType.TaskCancelled,
+                NotificationTypeId = (int)NotificationTypes.TaskCancelled,
                 Title = "Задача отменена",
                 Message = $"Капитан подтвердил отмену задачи: \"{taskTitle}\"",
                 RelatedEntityType = "task",
@@ -188,7 +157,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(assignedToUserId, new CreateNotificationDto
             {
                 UserId = assignedToUserId,
-                NotificationTypeId = (int)NotificationType.TaskDeadlineApproaching,
+                NotificationTypeId = (int)NotificationTypes.TaskDeadlineApproaching,
                 Title = "🚨 Срок задачи истекает!",
                 Message = $"Срок выполнения задачи «{taskTitle}» истекает {deadline:dd.MM.yyyy}",
                 RelatedEntityType = "task",
@@ -204,7 +173,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(assignedToUserId, new CreateNotificationDto
             {
                 UserId = assignedToUserId,
-                NotificationTypeId = (int)NotificationType.TaskDeadlineExpired,
+                NotificationTypeId = (int)NotificationTypes.TaskDeadlineExpired,
                 Title = "Срок задачи истек!",
                 Message = $"Срок задачи «{taskTitle}» истек {deadline:dd.MM.yyyy}. Задача просрочена!",
                 RelatedEntityType = "task",
@@ -220,7 +189,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(captainUserId, new CreateNotificationDto
             {
                 UserId = captainUserId,
-                NotificationTypeId = (int)NotificationType.TaskDeadlineExpired,
+                NotificationTypeId = (int)NotificationTypes.TaskDeadlineExpired,
                 Title = "Срок задачи истек у участника",
                 Message = $"Срок задачи «{taskTitle}» (исполнитель: {assignedToUsername}) истек {deadline:dd.MM.yyyy}",
                 RelatedEntityType = "task",
@@ -236,7 +205,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(userId, new CreateNotificationDto
             {
                 UserId = userId,
-                NotificationTypeId = (int)NotificationType.ImportantTaskChatMessage,
+                NotificationTypeId = (int)NotificationTypes.ImportantTaskChatMessage,
                 Title = $"Важное сообщение от капитана в чате задачи {taskName}",
                 Message = $"{captain} (капитан): {messagePreview}",
                 RelatedEntityType = "task chat",
@@ -258,7 +227,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(member.Id, new CreateNotificationDto
                 {
                     UserId = member.Id,
-                    NotificationTypeId = (int)NotificationType.NewTeamMember,
+                    NotificationTypeId = (int)NotificationTypes.NewTeamMember,
                     Title = "Новый участник в команде",
                     Message = $"К команде присоединился {newMemberName}",
                     RelatedEntityType = "team",
@@ -279,7 +248,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(captainId, new CreateNotificationDto
                 {
                     UserId = captainId,
-                    NotificationTypeId = (int)NotificationType.TeamMemberLeft,
+                    NotificationTypeId = (int)NotificationTypes.TeamMemberLeft,
                     Title = "Участник покинул команду",
                     Message = $"Участник {leftMemberName} покинул команду",
                     RelatedEntityType = "team",
@@ -296,7 +265,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(kickedMemberId, new CreateNotificationDto
             {
                 UserId = kickedMemberId,
-                NotificationTypeId = (int)NotificationType.MemberKickedFromTeam,
+                NotificationTypeId = (int)NotificationTypes.MemberKickedFromTeam,
                 Title = "Исключение из команды",
                 Message = $"Вас исключили из команды «{teamName}»"
             });
@@ -314,7 +283,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(member.Id, new CreateNotificationDto
                 {
                     UserId = member.Id,
-                    NotificationTypeId = (int)NotificationType.NewTeamCaptainAppointed,
+                    NotificationTypeId = (int)NotificationTypes.NewTeamCaptainAppointed,
                     Title = "Новый капитан команды",
                     Message = $"Участник {newCaptainName} назначен новым капитаном команды «{teamName}»",
                     RelatedEntityType = "team",
@@ -331,7 +300,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(newCaptainId, new CreateNotificationDto
             {
                 UserId = newCaptainId,
-                NotificationTypeId = (int)NotificationType.BecameTeamCaptain,
+                NotificationTypeId = (int)NotificationTypes.BecameTeamCaptain,
                 Title = "Вы стали капитаном команды",
                 Message = $"Вас назначили капитаном команды «{teamName}»",
                 RelatedEntityType = "team",
@@ -351,7 +320,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(member.Id, new CreateNotificationDto
                 {
                     UserId = member.Id,
-                    NotificationTypeId = (int)NotificationType.GitHubRepoCreated,
+                    NotificationTypeId = (int)NotificationTypes.GitHubRepoCreated,
                     Title = "Создан GitHub репозиторий",
                     Message = $"Для команды «{teamName}» создан GitHub репозиторий: {repoName}",
                     RelatedEntityType = "team",
@@ -372,7 +341,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(member.Id, new CreateNotificationDto
                 {
                     UserId = member.Id,
-                    NotificationTypeId = (int)NotificationType.ImportantTeamChatMessage,
+                    NotificationTypeId = (int)NotificationTypes.ImportantTeamChatMessage,
                     Title = "Важное сообщение от капитана в чате команды",
                     Message = $"{captain} (капитан): {messagePreview}",
                     RelatedEntityType = "team chat",
@@ -391,7 +360,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(id, new CreateNotificationDto
                 {
                     UserId = id,
-                    NotificationTypeId = (int)NotificationType.MemberKickedFromTeam, // Используем существующий тип
+                    NotificationTypeId = (int)NotificationTypes.MemberKickedFromTeam, // Используем существующий тип
                     Title = "Команда удалена",
                     Message = $"Команда «{teamName}» была удалена организатором {deletedBy}"
                 });
@@ -412,7 +381,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(id, new CreateNotificationDto
                 {
                     UserId = id,
-                    NotificationTypeId = (int)NotificationType.NewCompetitionCreated,
+                    NotificationTypeId = (int)NotificationTypes.NewCompetitionCreated,
                     Title = "Создано новое соревнование",
                     Message = $"Организатор {createdBy} создал соревнование: \"{competitionName}\"",
                     RelatedEntityType = "competition",
@@ -433,7 +402,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(id, new CreateNotificationDto
                 {
                     UserId = id,
-                    NotificationTypeId = (int)NotificationType.NewTeamCreated,
+                    NotificationTypeId = (int)NotificationTypes.NewTeamCreated,
                     Title = "Создана новая команда",
                     Message = $"Организатор {createdBy} создал команду «{teamName}» в соревновании «{competitionName}»",
                     RelatedEntityType = "team",
@@ -454,7 +423,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(id, new CreateNotificationDto
                 {
                     UserId = id,
-                    NotificationTypeId = (int)NotificationType.TeamDeleted,
+                    NotificationTypeId = (int)NotificationTypes.TeamDeleted,
                     Title = "Команда удалена",
                     Message = $"Организатор {deletedBy} удалил команду «{teamName}» из соревнования «{competitionName}»",
                     RelatedEntityType = "competition",
@@ -475,7 +444,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(participant.Id, new CreateNotificationDto
                 {
                     UserId = participant.Id,
-                    NotificationTypeId = (int)NotificationType.CompetitionStarted,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionStarted,
                     Title = "Соревнование началось!",
                     Message = $"Соревнование «{competitionName}» началось. Удачи!",
                     RelatedEntityType = "competition",
@@ -496,7 +465,7 @@ namespace HackathonCoordinator.WebAPI.Services
                 await CreateNotificationAsync(participant.Id, new CreateNotificationDto
                 {
                     UserId = participant.Id,
-                    NotificationTypeId = (int)NotificationType.CompetitionEnded,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionEnded,
                     Title = "Соревнование завершено",
                     Message = $"Соревнование «{competitionName}» завершено. Спасибо за участие!",
                     RelatedEntityType = "competition",
@@ -508,6 +477,20 @@ namespace HackathonCoordinator.WebAPI.Services
         // --- Общие методы уведомлений ---
 
         /// <summary>
+        /// Создать уведомление об изменении роли пользователя
+        /// </summary>
+        public async Task NotifyRoleChanged(int userId, string oldRole, string newRole, string changedBy)
+        {
+            await CreateNotificationAsync(userId, new CreateNotificationDto
+            {
+                UserId = userId,
+                NotificationTypeId = (int)NotificationTypes.RoleChanged,
+                Title = "Изменение прав доступа",
+                Message = $"Ваша роль изменена с '{oldRole}' на '{newRole}' администратором {changedBy}. Пожалуйста, перезайдите в аккаунт для применения изменений."
+            });
+        }
+
+        /// <summary>
         /// Создать системное уведомление
         /// </summary>
         public async Task NotifySystemMessage(int userId, string title, string message, string? relatedEntityType = null, int? relatedEntityId = null)
@@ -515,7 +498,7 @@ namespace HackathonCoordinator.WebAPI.Services
             await CreateNotificationAsync(userId, new CreateNotificationDto
             {
                 UserId = userId,
-                NotificationTypeId = (int)NotificationType.SystemNotification,
+                NotificationTypeId = (int)NotificationTypes.SystemNotification,
                 Title = title,
                 Message = message,
                 RelatedEntityType = relatedEntityType,
@@ -569,6 +552,7 @@ namespace HackathonCoordinator.WebAPI.Services
                     {
                         Id = n.Id,
                         UserId = n.UserId,
+                        NotificationTypeId = n.NotificationTypeId,
                         Title = n.Title,
                         Message = n.Message,
                         TypeName = n.NotificationType.Name,
@@ -641,7 +625,7 @@ namespace HackathonCoordinator.WebAPI.Services
         private async Task<int> GetTeamCaptainIdAsync(int teamId)
         {
             return await _context.Users
-                .Where(u => u.TeamId == teamId && u.RoleId == CAPTAIN_ROLE_ID)
+                .Where(u => u.TeamId == teamId && u.RoleId == (int)Roles.Captain)
                 .Select(u => u.Id)
                 .FirstOrDefaultAsync();
         }
@@ -652,7 +636,7 @@ namespace HackathonCoordinator.WebAPI.Services
         private async Task<List<int>> GetOrganizerIdsAsync()
         {
             return await _context.Users
-                .Where(u => u.RoleId == ORGANIZER_ROLE_ID)
+                .Where(u => u.RoleId == (int)Roles.Organizer)
                 .Select(u => u.Id)
                 .ToListAsync();
         }

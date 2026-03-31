@@ -10,6 +10,8 @@
         public DateTime? CreatedAt { get; set; }
         public int CreatedById { get; set; }
         public string CreatedByUsername { get; set; }
+        public bool HasResults { get; set; }
+        public bool IsArchived { get; set; }
         public List<TeamDto> Teams { get; set; } = new();
 
         public string StatusText
@@ -58,7 +60,9 @@
             _ => $"{Teams.Count} команд"
         };
 
+        public bool IsCompleted => EndDate < DateTime.Now;
         public bool IsActive => StartDate <= DateTime.Now && EndDate >= DateTime.Now;
+        public bool IsUpcoming => StartDate > DateTime.Now;
         public string DateRangeText => $"{StartDate:dd.MM.yyyy} - {EndDate:dd.MM.yyyy}";
         public string DateTimeRangeText => $"{StartDate:dd.MM.yyyy HH:mm} - {EndDate:dd.MM.yyyy HH:mm}";
         public bool HasNoTeams => Teams?.Count == 0;

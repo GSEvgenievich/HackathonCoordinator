@@ -1,5 +1,6 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

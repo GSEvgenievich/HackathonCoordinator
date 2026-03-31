@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
@@ -101,7 +102,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async void InitializeSignalR()
         {
-            var baseUrl = "https://zip.hhallva.ru";
+            var baseUrl = "http://localhost:5046";
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/notificationhub", options =>
@@ -353,7 +354,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        if (user.Data.RoleId == 3)
+                        if (user.Data.RoleId == (int)Roles.Organizer)
                             _navigationService.NavigateTo(new TeamPage(notification.RelatedEntityId.Value));
                         else
                             _navigationService.NavigateTo(new TeamPage());

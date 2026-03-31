@@ -13,5 +13,7 @@
         public string? GitHubAccessToken { get; set; }
         public int? IconId { get; set; }
         public string? IconName { get; set; }
+        public int PositionId { get; set; }
+        public string PositionName { get; set; }
     }
 }

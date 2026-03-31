@@ -60,8 +60,7 @@ builder.Services.AddHttpClient("GitHub", client =>
 
 // Регистрация контекста базы данных
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<HackathonCoordinatorContext>(options =>
-    options.UseMySQL(connectionString));
+builder.Services.AddDbContext<HackathonCoordinatorContext>();
 
 // Настройка SignalR
 builder.Services.AddSignalR(options =>

@@ -1,5 +1,6 @@
 ﻿using HackathonCoordinator.ServiceLayer;
 using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
@@ -12,6 +13,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class TeamViewModel : BaseViewModel
     {
+        public bool doDispose = true;
+
         private readonly TeamService _teamService;
         private readonly TaskService _taskService;
         private readonly ChatService _chatService;
@@ -129,6 +132,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand CreateGitHubRepoCommand { get; }
         public ICommand CancelCreateRepoCommand { get; }
         public ICommand KickMemberCommand { get; }
+        public ICommand ViewMemberProfileCommand { get; }
 
         public TeamViewModel()
         {
@@ -176,6 +180,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OpenTaskCommand = new RelayCommand<TaskDto>(
                 task => ExecuteOpenTask(task),
                 task => task != null);
+
+            ViewMemberProfileCommand = new AsyncRelayCommand<MemberDto>(
+                execute: async (member) => await ExecuteViewMemberProfileAsync(member),
+                canExecute: (member) => member != null);
 
             ToggleSectionCommand = new RelayCommand<int>(
                 statusId => ToggleSection(statusId));
@@ -522,6 +530,26 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
+        private async Task ExecuteViewMemberProfileAsync(MemberDto member)
+        {
+            if (member == null) return;
+
+            try
+            {
+                doDispose = false;
+                var profilePage = new ProfilePage(member.Id);
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    _navigationService.NavigateTo(profilePage);
+                });
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorAsync($"Ошибка открытия профиля: {ex.Message}");
+                doDispose = true;
+            }
+        }
+
         private void ExecuteTransferLeadership()
         {
             AvailableMembers.Clear();
@@ -648,13 +676,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private void CheckUserRole()
         {
-            IsCaptain = _currentUser.RoleId == 1;
-            IsOrganizer = _currentUser.RoleId == 3;
+            IsCaptain = _currentUser.RoleId == (int)Roles.Captain;
+            IsOrganizer = _currentUser.RoleId == (int)Roles.Organizer ||
+                          _currentUser.RoleId == (int)Roles.Admin;
 
             OnPropertyChanged(nameof(IsCaptain));
             OnPropertyChanged(nameof(IsOrganizer));
             OnPropertyChanged(nameof(IsCaptainOrOrganizer));
             OnPropertyChanged(nameof(IsTeamMember));
+        }
+
+        private async Task ShowErrorAsync(string message)
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            });
         }
 
         private void UpdateDerivedProperties()
@@ -679,6 +716,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         protected override void DisposeManagedResources()
         {
+            if (!doDispose)
+                return;
+
             base.DisposeManagedResources();
 
             Members?.Clear();

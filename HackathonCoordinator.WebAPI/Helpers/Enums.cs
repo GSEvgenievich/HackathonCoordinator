@@ -1,13 +1,14 @@
-﻿namespace HackathonCoordinator.WebAPI.Models
+﻿namespace HackathonCoordinator.WebAPI.Helpers
 {
     /// <summary>
     /// Enum для ролей пользователей (соответствует таблице Roles)
     /// </summary>
     public enum Roles
     {
-        Captain = 1,
-        Member = 2,
-        Organizer = 3
+        Admin = 1,
+        Organizer = 2,
+        Captain = 3,
+        Member = 4
     }
 
     /// <summary>
@@ -36,7 +37,8 @@
         SystemNotification = 19,
         TeamDeleted = 20,
         TaskCompletionCancelled = 21,
-        TaskDeadlineExpired = 22
+        TaskDeadlineExpired = 22,
+        RoleChanged = 23
     }
 
     /// <summary>

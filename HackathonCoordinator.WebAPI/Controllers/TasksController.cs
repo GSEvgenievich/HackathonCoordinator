@@ -2,6 +2,7 @@
 using HackathonCoordinator.WebAPI.Controllers;
 using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -369,7 +370,7 @@ public class TasksController : BaseApiController
             // УВЕДОМЛЕНИЕ: Запрос завершения задачи для капитана
             try
             {
-                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == (int)Roles.Captain);
                 if (captain != null)
                 {
                     await _notificationHelper.NotifyRequestTaskCompletion(
@@ -433,7 +434,7 @@ public class TasksController : BaseApiController
             // УВЕДОМЛЕНИЕ: Запрос отмены задачи для капитана
             try
             {
-                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == (int)Roles.Captain);
                 if (captain != null)
                 {
                     await _notificationHelper.NotifyRequestTaskCancellation(

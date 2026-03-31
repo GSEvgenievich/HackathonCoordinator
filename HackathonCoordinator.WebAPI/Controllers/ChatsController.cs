@@ -1,5 +1,6 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WebAPI.Services;
@@ -47,7 +48,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleUnauthorized<ChatDto>("Пользователь не найден");
 
                 // Проверка доступа - участник команды или организатор
-                if (user.TeamId != teamId && user.RoleId != (int)Roles.Organizer)
+                if (user.TeamId != teamId && user.RoleId != (int)Roles.Organizer && user.RoleId != (int)Roles.Admin)
                     return HandleForbidden<ChatDto>("Нет доступа к чату команды");
 
                 var chat = await _context.Chats
@@ -108,8 +109,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 // Проверка доступа: капитан команды, исполнитель задачи или организатор
                 var hasAccess = user.RoleId == (int)Roles.Organizer ||
-                              teamMembers.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
-                              task.AssignedToId == userId;
+                                user.RoleId == (int)Roles.Admin ||
+                                teamMembers.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
+                                task.AssignedToId == userId;
 
                 if (!hasAccess)
                     return HandleForbidden<ChatDto>("Нет доступа к чату задачи");
@@ -177,7 +179,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (chat.TypeId == (int)ChatTypes.TeamChat) // Чат команды
                 {
                     hasAccess = chat.Teams.Any(t => t.Users.Any(u => u.Id == userId)) ||
-                               user.RoleId == (int)Roles.Organizer;
+                                user.RoleId == (int)Roles.Organizer ||
+                                user.RoleId == (int)Roles.Admin;
                 }
                 else if (chat.TypeId == (int)ChatTypes.TaskChat) // Чат задачи
                 {
@@ -185,9 +188,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     if (task != null)
                     {
                         // Проверяем доступ: капитан, исполнитель или организатор
-                        hasAccess = user.RoleId == (int)Roles.Organizer ||
-                                   task.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
-                                   task.AssignedToId == userId;
+                        hasAccess = user.RoleId == (int)Roles.Organizer || 
+                                    user.RoleId == (int)Roles.Admin ||
+                                    task.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
+                                    task.AssignedToId == userId;
                     }
                 }
 
@@ -304,8 +308,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var user = await _context.Users.FindAsync(userId);
 
                 // Может удалить только автор или организатор
-                if (message.UserId != userId && user?.RoleId != (int)Roles.Organizer)
-                    return HandleForbidden("Можно удалять только свои сообщения");
+                if (message.UserId != userId && user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для удаления сообщения");
 
                 _context.Messages.Remove(message);
                 await _context.SaveChangesAsync();
@@ -391,7 +395,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             if (user == null)
                 return false;
 
-            if (user.RoleId == (int)Roles.Organizer)
+            if (user.RoleId == (int)Roles.Organizer || user.RoleId == (int)Roles.Admin)
                 return true;
 
             if (chat.TypeId == (int)ChatTypes.TeamChat)

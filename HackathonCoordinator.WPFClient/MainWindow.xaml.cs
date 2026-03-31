@@ -29,7 +29,6 @@ namespace HackathonCoordinator.WPFClient
 
             try
             {
-                // Валидация токена при запуске
                 var validation = await _authService.ValidateTokenAsync();
 
                 if (!validation.Success)
@@ -38,7 +37,6 @@ namespace HackathonCoordinator.WPFClient
                     return;
                 }
 
-                // Получение информации о текущем пользователе
                 var user = await _userService.GetCurrentUserAsync();
 
                 if (!user.Success)
@@ -47,7 +45,6 @@ namespace HackathonCoordinator.WPFClient
                     return;
                 }
 
-                // Инициализация ViewModel
                 if (DataContext is MainWindowViewModel viewModel)
                 {
                     viewModel.InitializeNotificationsSignalR();
@@ -55,7 +52,6 @@ namespace HackathonCoordinator.WPFClient
                     viewModel.GetUsername();
                 }
 
-                // Навигация в зависимости от наличия команды
                 if (!string.IsNullOrEmpty(user.Data.TeamName))
                 {
                     App.NavigationService.NavigateTo(new TeamPage());

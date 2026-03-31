@@ -45,6 +45,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     {
                         Id = n.Id,
                         UserId = n.UserId,
+                        NotificationTypeId = n.NotificationTypeId,
                         Title = n.Title,
                         Message = n.Message,
                         TypeName = n.NotificationType.Name,

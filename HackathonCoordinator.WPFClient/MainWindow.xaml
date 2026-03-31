@@ -26,6 +26,7 @@
         <!-- Основной контент -->
         <Frame x:Name="MainFrame"
                NavigationUIVisibility="Hidden"
+               JournalOwnership="OwnsJournal"
                Margin="60 0 0 0"
                Background="Transparent" />
 

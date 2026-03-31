@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public int UserId { get; set; }
+        public int NotificationTypeId { get; set; }
         public string Title { get; set; } = null!;
         public string Message { get; set; } = null!;
         public string TypeName { get; set; } = null!;

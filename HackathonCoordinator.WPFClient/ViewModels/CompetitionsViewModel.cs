@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
@@ -191,7 +192,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 var user = await _userService.GetCurrentUserAsync();
-                IsOrganizer = user.Data.RoleId == 3; // 3 = Organizer
+                IsOrganizer = user.Data.RoleId == (int)Roles.Organizer || user.Data.RoleId == (int)Roles.Admin;
                 OnPropertyChanged(nameof(IsOrganizer));
             }
             catch (Exception ex)

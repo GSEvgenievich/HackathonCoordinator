@@ -15,7 +15,16 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (DataContext is UsersManagementViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
+            }
+        }
+
+        private void Page_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is UsersManagementViewModel viewModel)
+            {
+                viewModel.doDispose = true;
             }
         }
     }

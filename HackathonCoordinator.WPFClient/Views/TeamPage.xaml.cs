@@ -22,11 +22,12 @@ namespace HackathonCoordinator.WPFClient.Views
             InitializeComponent();
             Loaded += OnPageLoaded;
         }
-
+         
         private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is TeamViewModel viewModel)
             {
+                viewModel.doDispose = true;
                 await viewModel.LoadTeamDataAsync(TeamId);
             }
         }
@@ -35,7 +36,8 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (DataContext is TeamViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
 

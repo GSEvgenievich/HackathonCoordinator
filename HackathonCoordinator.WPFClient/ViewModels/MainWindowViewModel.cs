@@ -1,4 +1,6 @@
-﻿using HackathonCoordinator.ServiceLayer.Services;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
+using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
@@ -25,6 +27,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             get => _isOrganizer;
             set => SetProperty(ref _isOrganizer, value);
+        }
+
+        private bool _isAdmin = false;
+        public bool IsAdmin
+        {
+            get => _isAdmin;
+            set => SetProperty(ref _isAdmin, value);
         }
 
         private bool _notificationHubConnected = false;
@@ -117,15 +126,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             try
             {
-                var teamId = await _teamService.GetCurrentTeamIdAsync();
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (!teamId.Success || teamId.Data == 0)
-                        _navigationService.NavigateTo(new CompetitionsPage());
-                    else
-                        _navigationService.NavigateTo(new TeamPage());
-                });
+                _navigationService.GoToMainPage();
             }
             catch (Exception ex)
             {
@@ -175,24 +176,31 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                try
-                {
-                    await DisposeNotificationHub();
-                    _authService.Logout();
+                await Logout();
+            }
+        }
 
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        _navigationService.NavigateTo(new AuthorizationPage());
-                    });
-                }
-                catch (Exception ex)
+        private async Task Logout()
+        {
+            try
+            {
+                await DisposeNotificationHub();
+                _authService.Logout();
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show($"Ошибка при выходе: {ex.Message}",
-                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
-                }
+                    _navigationService.NavigateTo(new AuthorizationPage());
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка при выходе: {ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                    Application.Current.Shutdown();
+                });
             }
         }
 
@@ -216,7 +224,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public async void InitializeNotificationsSignalR()
         {
-            var baseUrl = "https://zip.hhallva.ru";
+            var baseUrl = "http://localhost:5046";
 
             _notificationHubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/notificationhub", options =>
@@ -277,11 +285,26 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
 
             // Получение нового уведомления
-            _notificationHubConnection.On<object>("ReceiveNotification", (notification) =>
+            _notificationHubConnection.On<NotificationDto>("ReceiveNotification", async (notification) =>
             {
-                Application.Current.Dispatcher.Invoke(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     UnreadNotificationsCount++;
+
+                    if (notification.NotificationTypeId == 23)
+                    {
+                        var result = MessageBox.Show(
+                            $"{notification.Message}\n\n" +
+                            "Будет совершен выход из аккаунта!",
+                            notification.Title,
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+
+                        if (result == MessageBoxResult.OK)
+                        {
+                            await Logout();
+                        }
+                    }
                 });
             });
         }
@@ -304,7 +327,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public async void CheckUserRole()
         {
             var user = await _userService.GetCurrentUserAsync();
-            IsOrganizer = user.Data.RoleId == 3;
+            IsAdmin = user.Data.RoleId == (int)Roles.Admin;
+            IsOrganizer = user.Data.RoleId == (int)Roles.Organizer || IsAdmin;
             OnPropertyChanged(nameof(IsOrganizer));
         }
 

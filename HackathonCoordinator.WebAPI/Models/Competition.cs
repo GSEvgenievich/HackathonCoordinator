@@ -19,7 +19,15 @@ public partial class Competition
 
     public int CreatedById { get; set; }
 
+    public bool IsArchived { get; set; }
+
+    public bool HasResults { get; set; }
+
     public virtual User CreatedBy { get; set; } = null!;
+
+    public virtual ICollection<Result> Results { get; set; } = new List<Result>();
+
+    public virtual ICollection<Stage> Stages { get; set; } = new List<Stage>();
 
     public virtual ICollection<Team> Teams { get; set; } = new List<Team>();
 }

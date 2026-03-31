@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
@@ -21,7 +22,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public CompetitionDto Competition
         {
             get => _competition;
-            set => SetProperty(ref _competition, value);
+            set
+            {
+                if (SetProperty(ref _competition, value))
+                {
+                    // Обновляем свойства кнопки при изменении соревнования
+                    UpdateResultsButtonState();
+                }
+            }
         }
 
         private string _inviteCode = "";
@@ -38,9 +46,90 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set => SetProperty(ref _isAlreadyInTeam, value);
         }
 
-        public bool IsOrganizer { get; private set; }
+        private bool _isOrganizer;
+        public bool IsOrganizer
+        {
+            get => _isOrganizer;
+            set
+            {
+                if (SetProperty(ref _isOrganizer, value))
+                {
+                    UpdateResultsButtonState();
+                }
+            }
+        }
+
+        private bool _canGoToResults;
+        public bool CanGoToResults
+        {
+            get => _canGoToResults;
+            set => SetProperty(ref _canGoToResults, value);
+        }
+
+        private bool _canViewResults;
+        public bool CanViewResults
+        {
+            get => _canViewResults;
+            set => SetProperty(ref _canViewResults, value);
+        }
+
+        private string _resultsButtonText;
+        public string ResultsButtonText
+        {
+            get => _resultsButtonText;
+            set => SetProperty(ref _resultsButtonText, value);
+        }
+
+        private string _resultsButtonTooltip;
+        public string ResultsButtonTooltip
+        {
+            get => _resultsButtonTooltip;
+            set => SetProperty(ref _resultsButtonTooltip, value);
+        }
+
         public bool IsRegularUser => !IsOrganizer;
         public bool CanJoinTeam => IsRegularUser && !IsAlreadyInTeam;
+
+        public string CompetitionStatusInfo
+        {
+            get
+            {
+                if (Competition == null) return "Неизвестно";
+                if (Competition.IsCompleted) return "✅ Закончено";
+                if (Competition.IsActive) return "🟢 Активно";
+                return "⏳ Ожидает начала";
+            }
+        }
+
+        // Метод обновления состояния кнопки
+        private void UpdateResultsButtonState()
+        {
+            if (Competition == null) return;
+
+            var canEdit = IsOrganizer && Competition.IsCompleted;
+            var canView = Competition.HasResults;
+
+            CanGoToResults = canEdit || canView;
+
+            if (canEdit)
+            {
+                ResultsButtonText = Competition.HasResults ? "✏️ Редактировать результаты" : "🏆 Подвести итоги";
+                ResultsButtonTooltip = Competition.HasResults
+                    ? "Редактировать результаты соревнования"
+                    : "Подвести итоги соревнования";
+            }
+            else if (canView)
+            {
+                ResultsButtonText = "📊 Посмотреть результаты";
+                ResultsButtonTooltip = "Просмотреть результаты соревнования";
+            }
+            else
+            {
+                ResultsButtonText = "🏆 Подвести итоги";
+                ResultsButtonTooltip = "Соревнование еще не закончено. Итоги можно подвести после окончания.";
+                CanGoToResults = false;
+            }
+        }
 
         // AsyncRelayCommand для операций с API
         public ICommand BackCommand { get; }
@@ -50,6 +139,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand DeleteTeamCommand { get; }
         public ICommand ManageTeamCommand { get; }
         public ICommand ExportCompetitionCommand { get; }
+        public ICommand GoToResultsCommand { get; }
 
         public CompetitionDetailsViewModel()
         {
@@ -60,13 +150,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
 
             BackCommand = new RelayCommand(BackToCompetitions);
+            GoToMainCommand = new RelayCommand(GoToMainPage);
+            ManageTeamCommand = new RelayCommand<TeamDto>(ManageTeam);
 
             // AsyncRelayCommand для создания команды
             CreateTeamCommand = new AsyncRelayCommand(
                 execute: async () => await CreateTeamAsync(),
                 canExecute: () => Competition != null && !IsAlreadyInTeam && IsOrganizer);
-
-            GoToMainCommand = new RelayCommand(GoToMainPage);
 
             // AsyncRelayCommand для присоединения к команде
             JoinTeamCommand = new AsyncRelayCommand(
@@ -78,12 +168,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 execute: async (team) => await DeleteTeamAsync(team),
                 canExecute: (team) => team != null && IsOrganizer);
 
-            ManageTeamCommand = new RelayCommand<TeamDto>(ManageTeam);
-
             // AsyncRelayCommand для экспорта
             ExportCompetitionCommand = new AsyncRelayCommand(
                 execute: async () => await ExportCompetitionAsync(),
                 canExecute: () => Competition != null && IsOrganizer);
+
+            // AsyncRelayCommand для перехода к подведению итогов
+            GoToResultsCommand = new AsyncRelayCommand(
+                execute: async () => await GoToResultsAsync(),
+                canExecute: () => CanGoToResults);
 
             CheckUserStatus();
         }
@@ -93,12 +186,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             try
             {
                 var user = await _userService.GetCurrentUserAsync();
-                IsOrganizer = user.Data.RoleId == 3;
+                IsOrganizer = user.Data.RoleId == (int)Roles.Organizer || user.Data.RoleId == (int)Roles.Admin;
                 IsAlreadyInTeam = user.Data.TeamId != null;
 
-                OnPropertyChanged(nameof(IsOrganizer));
                 OnPropertyChanged(nameof(IsRegularUser));
-                OnPropertyChanged(nameof(IsAlreadyInTeam));
                 OnPropertyChanged(nameof(CanJoinTeam));
             }
             catch (Exception ex)
@@ -132,6 +223,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     if (competition.Success)
                     {
                         Competition = competition.Data;
+                        OnPropertyChanged(nameof(CompetitionStatusInfo));
                     }
                     else
                     {
@@ -258,6 +350,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (team != null)
             {
                 _navigationService.NavigateTo(new TeamPage(team.Id));
+            }
+        }
+
+        private async Task GoToResultsAsync()
+        {
+            if (!CanGoToResults) return;
+
+            var resultsPage = new CompetitionResultsPage();
+            var viewModel = resultsPage.DataContext as CompetitionResultsViewModel;
+
+            if (viewModel != null)
+            {
+                bool editMode = IsOrganizer && Competition.IsCompleted;
+                await viewModel.LoadCompetitionAsync(Competition, editMode);
+                _navigationService.NavigateTo(resultsPage);
             }
         }
 

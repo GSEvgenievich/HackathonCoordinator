@@ -9,6 +9,8 @@ namespace HackathonCoordinator.WPFClient
         public static NavigationService NavigationService { get; private set; }
         public static string CurrentTheme { get; private set; } = "Light";
 
+        public static event EventHandler<string> ThemeChanged;
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -37,6 +39,8 @@ namespace HackathonCoordinator.WPFClient
                     Current.Resources.MergedDictionaries.Add(
                         new ResourceDictionary { Source = new Uri(themePath, UriKind.Relative) });
                 }
+
+                ThemeChanged?.Invoke(null, themeName);
             }
             catch (Exception ex)
             {

@@ -1,5 +1,6 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,8 +32,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != (int)Roles.Organizer)
-                    return HandleForbidden<CompetitionExportDataDto>("Только организатор может экспортировать данные");
+                if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden<CompetitionExportDataDto>("Недостаточно прав для экспорта данных");
 
                 var competition = await GetCompetitionWithDetailsAsync(competitionId);
                 if (competition == null)

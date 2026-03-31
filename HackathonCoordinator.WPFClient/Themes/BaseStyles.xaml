@@ -6,6 +6,11 @@
     <!-- КОНВЕРТЕРЫ -->
     <!-- ==================================================================== -->
     
+    <!-- Конертеры управления пользователями -->
+    <converters:RoleToBrushConverter x:Key="RoleToBrushConverter"/>
+    <converters:RoleToManageTooltipConverter x:Key="RoleToManageTooltipConverter"/>
+    <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+    
     <!-- Конвертеры видимости -->
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
@@ -16,9 +21,14 @@
     <converters:BoolToMessageStyleConverter x:Key="BoolToMessageStyleConverter"/>
     <converters:BoolToMessageTextColorConverter x:Key="BoolToMessageTextColorConverter"/>
     <converters:BoolToMessageTimeColorConverter x:Key="BoolToMessageTimeColorConverter"/>
-
+    
     <!-- Конвертеры для соревнований -->
     <converters:CompetitionStatusToBrushConverter x:Key="CompetitionStatusToBrushConverter"/>
+    <converters:BoolToSavedBrushConverter x:Key="BoolToSavedBrushConverter"/>
+    
+    <!-- Конвертеры для пользователей -->
+    <converters:PlaceToBrushConverter x:Key="PlaceToBrushConverter"/>
+    <converters:StringToColorConverter x:Key="StringToColorConverter"/>
 
     <!-- Конвертеры для команд -->
     <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
@@ -474,6 +484,7 @@
         <Setter Property="Background" Value="{DynamicResource IconButtonBackground}"/>
         <Setter Property="Foreground" Value="{DynamicResource IconButtonForeground}"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -532,6 +543,26 @@
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                             <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    
+    <Style x:Key="TransparentButton" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}">
+                        <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -648,13 +679,10 @@
     </Style>
 
     <!-- Участники команды -->
-    <Style x:Key="MemberCardStyle" TargetType="Border">
-        <Setter Property="CornerRadius" Value="10"/>
+    <Style x:Key="MemberCardStyle" TargetType="Border" BasedOn="{StaticResource InteractiveCardStyle}">
         <Setter Property="Background" Value="{DynamicResource ControlBackground}"/>
         <Setter Property="Margin" Value="0,0,0,6"/>
         <Setter Property="Padding" Value="12"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}"/>
-        <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <Style x:Key="AvatarStyle" TargetType="Border">

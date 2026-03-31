@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
@@ -71,7 +72,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool CanConfirmCompletion => Task?.CanConfirmCompletion ?? false;
         public bool CanRejectCompletion => Task?.CanRejectCompletion ?? false;
         public bool CanCancelTaskAsCaptain => Task?.CanCancelTaskAsCaptain ?? false;
-        public bool CanOpenChat => IsMyTask || CurrentUser?.RoleId == 1 || CurrentUser?.RoleId == 3;
+        public bool CanOpenChat => IsMyTask || CurrentUser?.RoleId == (int)Roles.Captain || CurrentUser?.RoleId == (int)Roles.Organizer || CurrentUser?.RoleId == (int)Roles.Admin;
 
         // AsyncRelayCommand для операций с API
         public ICommand BackCommand { get; }

@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
@@ -132,7 +133,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task InitializeSignalRAsync()
         {
-            var baseUrl = "https://zip.hhallva.ru";
+            var baseUrl = "http://localhost:5046";
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/chathub", options =>
                 {
@@ -298,7 +299,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (CurrentUser != null)
             {
-                IsCaptain = CurrentUser.RoleId == 1;
+                IsCaptain = CurrentUser.RoleId == (int)Roles.Captain;
             }
             else
             {
@@ -453,7 +454,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 if (CurrentChat?.TeamId != null)
                 {
-                    var targetPage = CurrentUser?.RoleId == 3
+                    var targetPage = CurrentUser?.RoleId == (int)Roles.Organizer ||
+                    CurrentUser?.RoleId == (int)Roles.Admin
                         ? new TeamPage(CurrentChat.TeamId.Value)
                         : new TeamPage();
                     _navigationService.NavigateTo(targetPage);
