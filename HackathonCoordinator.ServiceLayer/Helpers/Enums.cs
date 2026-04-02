@@ -38,7 +38,10 @@
         TeamDeleted = 20,
         TaskCompletionCancelled = 21,
         TaskDeadlineExpired = 22,
-        RoleChanged = 23
+        RoleChanged = 23,
+        CompetitionResultsPublished = 24,
+        CompetitionResultsUpdated = 25,
+        StageStarted = 26
     }
 
     /// <summary>

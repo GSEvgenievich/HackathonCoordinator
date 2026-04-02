@@ -29,7 +29,11 @@ public partial class User
 
     public string? GitHubAvatarUrl { get; set; }
 
-    public virtual ICollection<Competition> Competitions { get; set; } = new List<Competition>();
+    public virtual ICollection<Competition> CompetitionCreatedBies { get; set; } = new List<Competition>();
+
+    public virtual ICollection<Competition> CompetitionResultsCreatedBies { get; set; } = new List<Competition>();
+
+    public virtual ICollection<Competition> CompetitionResultsUpdatedBies { get; set; } = new List<Competition>();
 
     public virtual ICollection<FinalTeamMember> FinalTeamMembers { get; set; } = new List<FinalTeamMember>();
 
@@ -40,10 +44,6 @@ public partial class User
     public virtual Position Position { get; set; } = null!;
 
     public virtual ProfileIcon? ProfileIcon { get; set; }
-
-    public virtual ICollection<Result> ResultCreatedBies { get; set; } = new List<Result>();
-
-    public virtual ICollection<Result> ResultUpdatedBies { get; set; } = new List<Result>();
 
     public virtual Role Role { get; set; } = null!;
 

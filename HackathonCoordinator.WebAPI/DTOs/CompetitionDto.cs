@@ -14,5 +14,11 @@
         public bool HasResults { get; set; }
         public bool IsArchived { get; set; }
         public List<TeamDto> Teams { get; set; } = new();
+        public DateTime? ResultsCreatedAt { get; set; }
+        public int? ResultsCreatedById { get; set; }
+        public string ResultsCreatedByUsername { get; set; }
+        public DateTime? ResultsUpdatedAt { get; set; }
+        public int? ResultsUpdatedById { get; set; }
+        public string ResultsUpdatedByUsername { get; set; }
     }
 }

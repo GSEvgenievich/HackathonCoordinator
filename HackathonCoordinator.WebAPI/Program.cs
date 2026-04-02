@@ -143,6 +143,7 @@ builder.Services.AddCors(options =>
 
 // Фоновые сервисы
 builder.Services.AddHostedService<DeadlineNotificationService>();
+builder.Services.AddHostedService<CompetitionNotificationService>();
 
 var app = builder.Build();
 

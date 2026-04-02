@@ -98,12 +98,22 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.EndDate).HasColumnType("datetime");
             entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.ResultsCreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.ResultsUpdatedAt).HasColumnType("datetime");
             entity.Property(e => e.StartDate).HasColumnType("datetime");
 
-            entity.HasOne(d => d.CreatedBy).WithMany(p => p.Competitions)
+            entity.HasOne(d => d.CreatedBy).WithMany(p => p.CompetitionCreatedBies)
                 .HasForeignKey(d => d.CreatedById)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Competitions_CreatedById");
+
+            entity.HasOne(d => d.ResultsCreatedBy).WithMany(p => p.CompetitionResultsCreatedBies)
+                .HasForeignKey(d => d.ResultsCreatedById)
+                .HasConstraintName("FK_Competitions_Users");
+
+            entity.HasOne(d => d.ResultsUpdatedBy).WithMany(p => p.CompetitionResultsUpdatedBies)
+                .HasForeignKey(d => d.ResultsUpdatedById)
+                .HasConstraintName("FK_Competitions_Users1");
         });
 
         modelBuilder.Entity<FinalTeamMember>(entity =>
@@ -220,34 +230,19 @@ public partial class HackathonCoordinatorContext : DbContext
 
             entity.HasIndex(e => new { e.CompetitionId, e.Place }, "IX_Results_CompetitionId_Place");
 
-            entity.HasIndex(e => e.CreatedById, "IX_Results_CreatedById");
-
             entity.HasIndex(e => e.TeamId, "IX_Results_TeamId");
 
             entity.Property(e => e.Comment).HasMaxLength(300);
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
             entity.Property(e => e.PlaceDisplay).HasMaxLength(10);
-            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
             entity.HasOne(d => d.Competition).WithMany(p => p.Results)
                 .HasForeignKey(d => d.CompetitionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Results_Competitions");
 
-            entity.HasOne(d => d.CreatedBy).WithMany(p => p.ResultCreatedBies)
-                .HasForeignKey(d => d.CreatedById)
-                .HasConstraintName("FK_Results_Users");
-
             entity.HasOne(d => d.Team).WithMany(p => p.Results)
                 .HasForeignKey(d => d.TeamId)
                 .HasConstraintName("FK_Results_Teams");
-
-            entity.HasOne(d => d.UpdatedBy).WithMany(p => p.ResultUpdatedBies)
-                .HasForeignKey(d => d.UpdatedById)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_Results_Users1");
         });
 
         modelBuilder.Entity<Role>(entity =>

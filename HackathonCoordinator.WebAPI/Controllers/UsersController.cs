@@ -170,7 +170,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(r => r.Team)
                         .ThenInclude(t => t.FinalTeamMembers)
                             .ThenInclude(ftm => ftm.Role)
-                    .OrderByDescending(r => r.CreatedAt)
+                    .OrderByDescending(r => r.Competition.CreatedAt)
                     .Select(r => new UserResultDto
                     {
                         CompetitionId = r.CompetitionId,
@@ -180,7 +180,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         Place = r.Place,
                         PlaceDisplay = r.PlaceDisplay,
                         Comment = r.Comment,
-                        CreatedAt = r.CreatedAt,
+                        CreatedAt = r.Competition.CreatedAt,
                         FinalTeamMembers = r.Team.FinalTeamMembers
                             .Select(ftm => new FinalTeamMemberDto
                             {

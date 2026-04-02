@@ -25,5 +25,7 @@ public partial class Stage
 
     public DateTime CreatedAt { get; set; }
 
+    public bool IsStartNotified { get; set; }
+
     public virtual Competition Competition { get; set; } = null!;
 }

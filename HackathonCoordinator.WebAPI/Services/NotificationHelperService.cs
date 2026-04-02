@@ -467,9 +467,72 @@ namespace HackathonCoordinator.WebAPI.Services
                     UserId = participant.Id,
                     NotificationTypeId = (int)NotificationTypes.CompetitionEnded,
                     Title = "Соревнование завершено",
-                    Message = $"Соревнование «{competitionName}» завершено. Спасибо за участие!",
+                    Message = $"Соревнование «{competitionName}» завершено. Скоро будут объявлены результаты!",
                     RelatedEntityType = "competition",
                     RelatedEntityId = competitionId
+                });
+            }
+        }
+
+        /// <summary>
+        /// Создать уведомление о подведении итогов соревнования для всех участников
+        /// </summary>
+        public async Task NotifyCompetitionResultsPublished(int competitionId, string competitionName)
+        {
+            var participants = await GetCompetitionParticipantsAsync(competitionId);
+
+            foreach (var participant in participants)
+            {
+                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                {
+                    UserId = participant.Id,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionResultsPublished,
+                    Title = "Результаты соревнования опубликованы!",
+                    Message = $"Результаты соревнования «{competitionName}» опубликованы. Перейдите на страницу соревнования для просмотра.",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+        }
+
+        /// <summary>
+        /// Создать уведомление об обновлении результатов соревнования
+        /// </summary>
+        public async Task NotifyCompetitionResultsUpdated(int competitionId, string competitionName)
+        {
+            var participants = await GetCompetitionParticipantsAsync(competitionId);
+
+            foreach (var participant in participants)
+            {
+                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                {
+                    UserId = participant.Id,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionResultsUpdated,
+                    Title = "Результаты соревнования обновлены!",
+                    Message = $"Результаты соревнования «{competitionName}» были обновлены. Перейдите на страницу соревнования для просмотра актуальных итогов.",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+        }
+
+        /// <summary>
+        /// Создать уведомление о начале этапа соревнования для всех участников
+        /// </summary>
+        public async Task NotifyStageStarted(int competitionId, int stageId, string stageName, string competitionName)
+        {
+            var participants = await GetCompetitionParticipantsAsync(competitionId);
+
+            foreach (var participant in participants)
+            {
+                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                {
+                    UserId = participant.Id,
+                    NotificationTypeId = (int)NotificationTypes.StageStarted,
+                    Title = $"Этап «{stageName}» начался!",
+                    Message = $"Начался этап «{stageName}» соревнования «{competitionName}». Удачи!",
+                    RelatedEntityType = "stage",
+                    RelatedEntityId = stageId
                 });
             }
         }

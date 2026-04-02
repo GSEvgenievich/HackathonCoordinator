@@ -76,6 +76,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
             {
                 var competition = await _context.Competitions
                     .Include(c => c.CreatedBy)
+                    .Include(c => c.ResultsCreatedBy)
+                    .Include(c => c.ResultsUpdatedBy)
                     .Include(c => c.Teams)
                     .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -94,6 +96,12 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     CreatedByUsername = competition.CreatedBy.Username,
                     IsArchived = competition.IsArchived,
                     HasResults = competition.HasResults,
+                    ResultsCreatedAt = competition.ResultsCreatedAt,
+                    ResultsCreatedById = competition.ResultsCreatedById,
+                    ResultsCreatedByUsername = competition.ResultsCreatedBy?.Username,
+                    ResultsUpdatedAt = competition.ResultsUpdatedAt,
+                    ResultsUpdatedById = competition.ResultsUpdatedById,
+                    ResultsUpdatedByUsername = competition.ResultsUpdatedBy?.Username,
                     Teams = competition.Teams.Select(t => new TeamDto
                     {
                         Id = t.Id,
@@ -212,38 +220,82 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (competition == null)
                     return HandleNotFound("Соревнование не найдено");
 
-                // Удаляем старые результаты
-                var oldResults = await _context.Results
-                    .Where(r => r.CompetitionId == id)
-                    .ToListAsync();
-                _context.Results.RemoveRange(oldResults);
+                bool hadResults = competition.HasResults;
 
-                // Сохраняем новые результаты
+                // Удаляем старые результаты
+                var existingResults = await _context.Results
+                    .Where(r => r.CompetitionId == id)
+                    .ToDictionaryAsync(r => r.TeamId);
+
+                // Сохраняем результаты
                 foreach (var dto in results)
                 {
-                    var result = new Models.Result
+                    if (existingResults.TryGetValue(dto.TeamId, out var existingResult))
                     {
-                        CompetitionId = id,
-                        TeamId = dto.TeamId,
-                        Place = dto.Place,
-                        PlaceDisplay = GetPlaceDisplay(dto.Place, competition.Teams.Count),
-                        Comment = dto.Comment ?? "",
-                        CreatedAt = DateTime.Now,
-                        CreatedById = userId
-                    };
-                    _context.Results.Add(result);
+                        // Обновляем существующий результат
+                        existingResult.Place = dto.Place;
+                        existingResult.PlaceDisplay = GetPlaceDisplay(dto.Place, competition.Teams.Count);
+                        existingResult.Comment = dto.Comment ?? "";
+                    }
+                    else
+                    {
+                        // Создаем новый результат
+                        var newResult = new Models.Result
+                        {
+                            CompetitionId = id,
+                            TeamId = dto.TeamId,
+                            Place = dto.Place,
+                            PlaceDisplay = GetPlaceDisplay(dto.Place, competition.Teams.Count),
+                            Comment = dto.Comment ?? ""
+                        };
+                        _context.Results.Add(newResult);
 
-                    // Фиксируем состав команды
-                    await FixTeamMembersAsync(dto.TeamId);
+                        await FixTeamMembersAsync(dto.TeamId);
+                    }
                 }
 
-                // Устанавливаем флаг, что результаты опубликованы
-                competition.HasResults = true;
+                if (!competition.HasResults)
+                {
+                    // Первое создание результатов
+                    competition.HasResults = true;
+                    competition.ResultsCreatedAt = DateTime.Now;
+                    competition.ResultsCreatedById = userId;
+                    competition.ResultsUpdatedAt = null;
+                    competition.ResultsUpdatedById = null;
+                }
+                else
+                {
+                    // Обновление результатов
+                    competition.ResultsUpdatedAt = DateTime.Now;
+                    competition.ResultsUpdatedById = userId;
+                }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return HandleSuccess("Результаты успешно сохранены и опубликованы");
+                var message = hadResults
+                   ? "Результаты успешно обновлены и опубликованы"
+                   : "Результаты успешно сохранены и опубликованы";
+
+                try
+                {
+                    if (!hadResults)
+                    {
+                        // Первая публикация результатов
+                        await _notificationHelper.NotifyCompetitionResultsPublished(id, competition.Name);
+                    }
+                    else
+                    {
+                        // Обновление существующих результатов
+                        await _notificationHelper.NotifyCompetitionResultsUpdated(id, competition.Name);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return HandleSuccess(message + "\nОшибка отправки уведомления");
+                }
+
+                return HandleSuccess(message);
             }
             catch (Exception ex)
             {
@@ -300,12 +352,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .FirstOrDefaultAsync(t => t.Id == teamId);
 
                 if (team == null) return;
-
-                // Удаляем старую фиксацию состава
-                var oldFixed = await _context.FinalTeamMembers
-                    .Where(f => f.TeamId == teamId)
-                    .ToListAsync();
-                _context.FinalTeamMembers.RemoveRange(oldFixed);
 
                 // Фиксируем текущий состав
                 foreach (var user in team.Users)

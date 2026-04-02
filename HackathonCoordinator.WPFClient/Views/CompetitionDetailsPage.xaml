@@ -23,18 +23,63 @@
                                     Margin="0,0,20,0"/>
 
                             <StackPanel>
-                                <TextBlock Text="{Binding Competition.Name}" 
-                                       FontSize="26" 
-                                       FontWeight="Bold"
-                                       Foreground="{DynamicResource TextColor}"
-                                       TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Competition.Name}" 
+                                               FontSize="26" 
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource TextColor}"
+                                               TextWrapping="Wrap"/>
+
+                                    <!-- Иконка информации о результатах (только для организаторов) -->
+                                    <Border Background="Transparent"
+                                            Margin="12,0,0,0"
+                                            Cursor="Help"
+                                            Visibility="{Binding IsOrganizer, 
+                                                       Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Border.ToolTip>
+                                            <Border Background="{DynamicResource CardBackground}"
+                                                    BorderBrush="{DynamicResource BorderColor}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="12"
+                                                    MaxWidth="300">
+                                                <StackPanel>
+                                                    <TextBlock Text="📋 Информация о соревновании" 
+                                                               FontWeight="Bold" 
+                                                               FontSize="13"
+                                                               Margin="0,0,0,10"/>
+                                                    <TextBlock Text="👤 Создано:" FontWeight="SemiBold" FontSize="11"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,5">
+                                                        <TextBlock Text="{Binding Competition.CreatedByUsername, FallbackValue='—'}" 
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource PrimaryBrush}"/>
+                                                        <TextBlock Text=" " FontSize="11"/>
+                                                        <TextBlock Text="{Binding Competition.CreatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource TextSecondaryColor}"/>
+                                                    </StackPanel>
+                                                    <Separator Background="{DynamicResource BorderColor}" Margin="0,5,0,5"/>
+                                                    <TextBlock Text="🏆 Результаты:" FontWeight="SemiBold" FontSize="11"/>
+                                                    <TextBlock Text="{Binding Competition.ResultsInfo}" 
+                                                               FontSize="11"
+                                                               Margin="0,2,0,8"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Border.ToolTip>
+                                        <TextBlock Text="ℹ️" 
+                                                   FontSize="16" 
+                                                   Foreground="{DynamicResource PrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
 
                                 <!-- Статус соревнования -->
                                 <Border Background="{Binding Competition.StatusColor, Converter={StaticResource CompetitionStatusToBrushConverter}}"
                                         CornerRadius="12"
-                                        Padding="6,2"
+                                        Padding="8,3"
                                         HorizontalAlignment="Left"
-                                        Margin="0,5,0,0">
+                                        Margin="0,8,0,0">
                                     <TextBlock Text="{Binding Competition.StatusText}"
                                                FontSize="11"
                                                FontWeight="SemiBold"

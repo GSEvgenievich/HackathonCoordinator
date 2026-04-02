@@ -13,7 +13,41 @@
         public bool HasResults { get; set; }
         public bool IsArchived { get; set; }
         public List<TeamDto> Teams { get; set; } = new();
+        public DateTime? ResultsCreatedAt { get; set; }
+        public int? ResultsCreatedById { get; set; }
+        public string ResultsCreatedByUsername { get; set; }
+        public DateTime? ResultsUpdatedAt { get; set; }
+        public int? ResultsUpdatedById { get; set; }
+        public string ResultsUpdatedByUsername { get; set; }
+        public string ResultsInfo
+        {
+            get
+            {
+                if (!HasResults) return "Результаты не подведены";
 
+                if (ResultsCreatedAt.HasValue)
+                {
+                    var info = $"Результаты подведены: ⏰ {ResultsCreatedAt:dd.MM.yyyy HH:mm}";
+
+                    if (ResultsCreatedByUsername != null)
+                    {
+                        info += $", 👤 {ResultsCreatedByUsername}";
+                    }
+
+                    if (ResultsUpdatedAt.HasValue)
+                    {
+                        info += $"\nРезультаты обновлены: ⏰ {ResultsUpdatedAt:dd.MM.yyyy HH:mm}";
+
+                        if (ResultsUpdatedByUsername != null)
+                        {
+                            info += $", 👤 {ResultsUpdatedByUsername}";
+                        }
+                    }
+                }
+
+                return "Результаты подведены";
+            }
+        }
         public string StatusText
         {
             get
