@@ -25,6 +25,8 @@
     <!-- Конвертеры для соревнований -->
     <converters:CompetitionStatusToBrushConverter x:Key="CompetitionStatusToBrushConverter"/>
     <converters:BoolToSavedBrushConverter x:Key="BoolToSavedBrushConverter"/>
+    <converters:BoolToActiveBrushConverter x:Key="BoolToActiveBrushConverter"/>
+    <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>
     
     <!-- Конвертеры для пользователей -->
     <converters:PlaceToBrushConverter x:Key="PlaceToBrushConverter"/>

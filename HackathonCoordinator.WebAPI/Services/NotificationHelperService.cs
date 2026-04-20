@@ -3,14 +3,12 @@ using HackathonCoordinator.WebAPI.DTOs;
 using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Models;
-using Humanizer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Task = System.Threading.Tasks.Task;
 
 namespace HackathonCoordinator.WebAPI.Services
 {
-
     /// <summary>
     /// Сервис для создания и отправки уведомлений
     /// </summary>
@@ -37,13 +35,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyTeamAboutNewTask(int taskId, int teamId, string taskTitle)
         {
-            var teamMembers = await GetTeamMembersAsync(teamId);
+            var memberIds = await GetTeamMemberIdsAsync(teamId);
 
-            foreach (var member in teamMembers)
+            foreach (var memberId in memberIds)
             {
-                await CreateNotificationAsync(member.Id, new CreateNotificationDto
+                await CreateNotificationAsync(memberId, new CreateNotificationDto
                 {
-                    UserId = member.Id,
+                    UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.NewTask,
                     Title = "Новая задача в команде",
                     Message = $"Создана новая задача: \"{taskTitle}\"",
@@ -220,13 +218,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyNewTeamMember(int teamId, int newMemberId, string newMemberName)
         {
-            var teamMembers = await GetTeamMembersExceptAsync(teamId, newMemberId);
+            var memberIds = await GetTeamMemberIdsExceptAsync(teamId, newMemberId);
 
-            foreach (var member in teamMembers)
+            foreach (var memberId in memberIds)
             {
-                await CreateNotificationAsync(member.Id, new CreateNotificationDto
+                await CreateNotificationAsync(memberId, new CreateNotificationDto
                 {
-                    UserId = member.Id,
+                    UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.NewTeamMember,
                     Title = "Новый участник в команде",
                     Message = $"К команде присоединился {newMemberName}",
@@ -276,13 +274,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyNewCaptainToTeam(int teamId, int newCaptainId, string newCaptainName, string teamName)
         {
-            var teamMembers = await GetTeamMembersExceptAsync(teamId, newCaptainId);
+            var memberIds = await GetTeamMemberIdsExceptAsync(teamId, newCaptainId);
 
-            foreach (var member in teamMembers)
+            foreach (var memberId in memberIds)
             {
-                await CreateNotificationAsync(member.Id, new CreateNotificationDto
+                await CreateNotificationAsync(memberId, new CreateNotificationDto
                 {
-                    UserId = member.Id,
+                    UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.NewTeamCaptainAppointed,
                     Title = "Новый капитан команды",
                     Message = $"Участник {newCaptainName} назначен новым капитаном команды «{teamName}»",
@@ -313,13 +311,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyGitHubRepoCreated(int teamId, string teamName, string repoName, string repoUrl)
         {
-            var teamMembers = await GetTeamMembersAsync(teamId);
+            var memberIds = await GetTeamMemberIdsAsync(teamId);
 
-            foreach (var member in teamMembers)
+            foreach (var memberId in memberIds)
             {
-                await CreateNotificationAsync(member.Id, new CreateNotificationDto
+                await CreateNotificationAsync(memberId, new CreateNotificationDto
                 {
-                    UserId = member.Id,
+                    UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.GitHubRepoCreated,
                     Title = "Создан GitHub репозиторий",
                     Message = $"Для команды «{teamName}» создан GitHub репозиторий: {repoName}",
@@ -334,13 +332,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyImportantTeamChatMessage(int chatId, int teamId, string captain, string messagePreview)
         {
-            var teamMembers = await GetTeamMembersAsync(teamId);
+            var memberIds = await GetTeamMemberIdsAsync(teamId);
 
-            foreach (var member in teamMembers)
+            foreach (var memberId in memberIds)
             {
-                await CreateNotificationAsync(member.Id, new CreateNotificationDto
+                await CreateNotificationAsync(memberId, new CreateNotificationDto
                 {
-                    UserId = member.Id,
+                    UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.ImportantTeamChatMessage,
                     Title = "Важное сообщение от капитана в чате команды",
                     Message = $"{captain} (капитан): {messagePreview}",
@@ -355,12 +353,12 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyTeamDeleted(List<int> membersIds, string teamName, string deletedBy)
         {
-            foreach (var id in membersIds)
+            foreach (var memberId in membersIds)
             {
-                await CreateNotificationAsync(id, new CreateNotificationDto
+                await CreateNotificationAsync(memberId, new CreateNotificationDto
                 {
-                    UserId = id,
-                    NotificationTypeId = (int)NotificationTypes.MemberKickedFromTeam, // Используем существующий тип
+                    UserId = memberId,
+                    NotificationTypeId = (int)NotificationTypes.MemberKickedFromTeam,
                     Title = "Команда удалена",
                     Message = $"Команда «{teamName}» была удалена организатором {deletedBy}"
                 });
@@ -374,13 +372,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyOrganizersAboutNewCompetition(int competitionId, string competitionName, string createdBy)
         {
-            var organizersIds = await GetOrganizerIdsAsync();
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var id in organizersIds)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = id,
+                    UserId = organizerId,
                     NotificationTypeId = (int)NotificationTypes.NewCompetitionCreated,
                     Title = "Создано новое соревнование",
                     Message = $"Организатор {createdBy} создал соревнование: \"{competitionName}\"",
@@ -395,13 +393,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyOrganizersAboutNewTeam(int competitionId, int teamId, string teamName, string competitionName, string createdBy)
         {
-            var organizersIds = await GetOrganizerIdsAsync();
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var id in organizersIds)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = id,
+                    UserId = organizerId,
                     NotificationTypeId = (int)NotificationTypes.NewTeamCreated,
                     Title = "Создана новая команда",
                     Message = $"Организатор {createdBy} создал команду «{teamName}» в соревновании «{competitionName}»",
@@ -416,13 +414,13 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyOrganizersAboutTeamDeletion(int competitionId, string teamName, string competitionName, string deletedBy)
         {
-            var organizersIds = await GetOrganizerIdsAsync();
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var id in organizersIds)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = id,
+                    UserId = organizerId,
                     NotificationTypeId = (int)NotificationTypes.TeamDeleted,
                     Title = "Команда удалена",
                     Message = $"Организатор {deletedBy} удалил команду «{teamName}» из соревнования «{competitionName}»",
@@ -433,17 +431,31 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Создать уведомление о начале соревнования для всех участников
+        /// Создать уведомление о начале соревнования
         /// </summary>
         public async Task NotifyCompetitionStarted(int competitionId, string competitionName)
         {
-            var participants = await GetCompetitionParticipantsAsync(competitionId);
+            var participantIds = await GetCompetitionParticipantIdsAsync(competitionId);
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var participant in participants)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = participant.Id,
+                    UserId = organizerId,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionStarted,
+                    Title = "Соревнование началось",
+                    Message = $"Соревнование «{competitionName}» началось.",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+
+            foreach (var participantId in participantIds)
+            {
+                await CreateNotificationAsync(participantId, new CreateNotificationDto
+                {
+                    UserId = participantId,
                     NotificationTypeId = (int)NotificationTypes.CompetitionStarted,
                     Title = "Соревнование началось!",
                     Message = $"Соревнование «{competitionName}» началось. Удачи!",
@@ -458,13 +470,27 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyCompetitionEnded(int competitionId, string competitionName)
         {
-            var participants = await GetCompetitionParticipantsAsync(competitionId);
+            var participantIds = await GetCompetitionParticipantIdsAsync(competitionId);
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var participant in participants)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = participant.Id,
+                    UserId = organizerId,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionEnded,
+                    Title = "Соревнование завершено",
+                    Message = $"Соревнование «{competitionName}» завершено.",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+
+            foreach (var participantId in participantIds)
+            {
+                await CreateNotificationAsync(participantId, new CreateNotificationDto
+                {
+                    UserId = participantId,
                     NotificationTypeId = (int)NotificationTypes.CompetitionEnded,
                     Title = "Соревнование завершено",
                     Message = $"Соревнование «{competitionName}» завершено. Скоро будут объявлены результаты!",
@@ -475,17 +501,31 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Создать уведомление о подведении итогов соревнования для всех участников
+        /// Создать уведомление о подведении итогов соревнования
         /// </summary>
         public async Task NotifyCompetitionResultsPublished(int competitionId, string competitionName)
         {
-            var participants = await GetCompetitionParticipantsAsync(competitionId);
+            var participantIds = await GetCompetitionParticipantIdsAsync(competitionId);
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var participant in participants)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = participant.Id,
+                    UserId = organizerId,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionResultsPublished,
+                    Title = "Результаты соревнования опубликованы",
+                    Message = $"Результаты соревнования «{competitionName}» опубликованы.",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+
+            foreach (var participantId in participantIds)
+            {
+                await CreateNotificationAsync(participantId, new CreateNotificationDto
+                {
+                    UserId = participantId,
                     NotificationTypeId = (int)NotificationTypes.CompetitionResultsPublished,
                     Title = "Результаты соревнования опубликованы!",
                     Message = $"Результаты соревнования «{competitionName}» опубликованы. Перейдите на страницу соревнования для просмотра.",
@@ -500,13 +540,27 @@ namespace HackathonCoordinator.WebAPI.Services
         /// </summary>
         public async Task NotifyCompetitionResultsUpdated(int competitionId, string competitionName)
         {
-            var participants = await GetCompetitionParticipantsAsync(competitionId);
+            var participantIds = await GetCompetitionParticipantIdsAsync(competitionId);
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var participant in participants)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = participant.Id,
+                    UserId = organizerId,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionResultsPublished,
+                    Title = "Результаты соревнования обновлены",
+                    Message = $"Результаты соревнования «{competitionName}» обновлены.",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+
+            foreach (var participantId in participantIds)
+            {
+                await CreateNotificationAsync(participantId, new CreateNotificationDto
+                {
+                    UserId = participantId,
                     NotificationTypeId = (int)NotificationTypes.CompetitionResultsUpdated,
                     Title = "Результаты соревнования обновлены!",
                     Message = $"Результаты соревнования «{competitionName}» были обновлены. Перейдите на страницу соревнования для просмотра актуальных итогов.",
@@ -517,17 +571,31 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Создать уведомление о начале этапа соревнования для всех участников
+        /// Создать уведомление о начале этапа соревнования
         /// </summary>
         public async Task NotifyStageStarted(int competitionId, int stageId, string stageName, string competitionName)
         {
-            var participants = await GetCompetitionParticipantsAsync(competitionId);
+            var participantIds = await GetCompetitionParticipantIdsAsync(competitionId);
+            var organizerIds = await GetOrganizerIdsAsync();
 
-            foreach (var participant in participants)
+            foreach (var organizerId in organizerIds)
             {
-                await CreateNotificationAsync(participant.Id, new CreateNotificationDto
+                await CreateNotificationAsync(organizerId, new CreateNotificationDto
                 {
-                    UserId = participant.Id,
+                    UserId = organizerId,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionResultsPublished,
+                    Title = $"Этап «{stageName}» начался",
+                    Message = $"Начался этап «{stageName}» соревнования «{competitionName}».",
+                    RelatedEntityType = "stage",
+                    RelatedEntityId = stageId
+                });
+            }
+
+            foreach (var participantId in participantIds)
+            {
+                await CreateNotificationAsync(participantId, new CreateNotificationDto
+                {
+                    UserId = participantId,
                     NotificationTypeId = (int)NotificationTypes.StageStarted,
                     Title = $"Этап «{stageName}» начался!",
                     Message = $"Начался этап «{stageName}» соревнования «{competitionName}». Удачи!",
@@ -569,7 +637,7 @@ namespace HackathonCoordinator.WebAPI.Services
             });
         }
 
-        // --- Вспомогательные методы ---
+        // --- Вспомогательные методы (оптимизированные) ---
 
         /// <summary>
         /// Общий метод создания уведомления
@@ -663,22 +731,24 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Получение участников команды
+        /// Получение ID участников команды
         /// </summary>
-        private async Task<List<User>> GetTeamMembersAsync(int teamId)
+        private async Task<List<int>> GetTeamMemberIdsAsync(int teamId)
         {
             return await _context.Users
                 .Where(u => u.TeamId == teamId)
+                .Select(u => u.Id)
                 .ToListAsync();
         }
 
         /// <summary>
-        /// Получение участников команды, кроме указанного пользователя
+        /// Получение ID участников команды, кроме указанного пользователя
         /// </summary>
-        private async Task<List<User>> GetTeamMembersExceptAsync(int teamId, int excludeUserId)
+        private async Task<List<int>> GetTeamMemberIdsExceptAsync(int teamId, int excludeUserId)
         {
             return await _context.Users
                 .Where(u => u.TeamId == teamId && u.Id != excludeUserId)
+                .Select(u => u.Id)
                 .ToListAsync();
         }
 
@@ -705,12 +775,13 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
-        /// Получение участников соревнования
+        /// Получение ID участников соревнования
         /// </summary>
-        private async Task<List<User>> GetCompetitionParticipantsAsync(int competitionId)
+        private async Task<List<int>> GetCompetitionParticipantIdsAsync(int competitionId)
         {
             return await _context.Users
                 .Where(u => u.Team != null && u.Team.CompetitionId == competitionId)
+                .Select(u => u.Id)
                 .ToListAsync();
         }
 

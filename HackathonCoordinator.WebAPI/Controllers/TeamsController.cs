@@ -67,7 +67,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 {
                     await _notificationHelper.NotifyNewTeamMember(team.Id, user.Id, user.Username);
                 }
-                catch { }
+                catch
+                {
+                    return HandleSuccess($"Вы успешно присоединились к команде «{team.Name}»\n!Ошибка отправки уведомления!");
+                }
 
                 return HandleSuccess($"Вы успешно присоединились к команде «{team.Name}»");
             }
@@ -315,7 +318,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         if (task.AssignedToId.HasValue)
                             await _notificationHelper.NotifyTaskAssignment(task.Id, task.AssignedToId.Value, task.Title);
                     }
-                    catch { }
+                    catch
+                    {
+                        return HandleSuccess($"{message}\n!Ошибка отправки уведомления!");
+                    }
 
                     return HandleSuccess(message);
                 }
@@ -544,7 +550,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 {
                     await _notificationHelper.NotifyTeamMemberLeft(team.Id, user.Id, user.Username);
                 }
-                catch { }
+                catch
+                {
+                    return HandleSuccess("Вы покинули команду\n!Ошибка отправки уведомления!");
+                }
 
                 return HandleSuccess("Вы покинули команду");
             }
@@ -605,7 +614,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     await _notificationHelper.NotifyCaptainAssignment(teamId, newCaptain.Id, team.Name);
                     await _notificationHelper.NotifyNewCaptainToTeam(teamId, newCaptain.Id, newCaptain.Username, team.Name);
                 }
-                catch { }
+                catch
+                {
+                    return HandleSuccess("Капитан успешно назначен\n!Ошибка отправки уведомления!");
+                }
 
                 return HandleSuccess("Капитан успешно назначен");
             }
@@ -672,7 +684,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                             await _notificationHelper.NotifyOrganizersAboutTeamDeletion(competitionId.Value, teamName, competitionName, user.Username);
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                        return HandleSuccess("Команда успешно удалена\n!Ошибка отправки уведомления!");
+                    }
 
                     return HandleSuccess("Команда успешно удалена");
                 }
@@ -726,7 +741,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 {
                     await _notificationHelper.NotifyMemberKicked(memberId, teamName);
                 }
-                catch { }
+                catch
+                {
+                    return HandleSuccess($"Участник {memberToKick.Username} выгнан из команды {teamName}\n!Ошибка отправки уведомления!");
+                }
 
                 return HandleSuccess($"Участник {memberToKick.Username} выгнан из команды {teamName}");
             }
@@ -788,7 +806,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 {
                     await _notificationHelper.NotifyGitHubRepoCreated(teamId, team.Name, result.RepoName, result.RepoUrl);
                 }
-                catch { }
+                catch
+                {
+                    response.Message += "\n!Ошибка отправки уведомления!";
+                    return HandleResult(response);
+                }
 
                 return HandleResult(response);
             }

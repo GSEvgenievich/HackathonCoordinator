@@ -18,144 +18,152 @@
                         <!-- Заголовок и кнопка возврата -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                             <Button Content="← Назад к соревнованиям" 
-                                    Command="{Binding BackCommand}"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,20,0"/>
+                    Command="{Binding BackCommand}"
+                    Style="{StaticResource SecondaryButton}"
+                    Margin="0,0,20,0"/>
 
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Competition.Name}" 
-                                               FontSize="26" 
-                                               FontWeight="Bold"
-                                               Foreground="{DynamicResource TextColor}"
-                                               TextWrapping="Wrap"/>
-
-                                    <!-- Иконка информации о результатах (только для организаторов) -->
-                                    <Border Background="Transparent"
-                                            Margin="12,0,0,0"
-                                            Cursor="Help"
-                                            Visibility="{Binding IsOrganizer, 
-                                                       Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <Border.ToolTip>
-                                            <Border Background="{DynamicResource CardBackground}"
-                                                    BorderBrush="{DynamicResource BorderColor}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="8"
-                                                    Padding="12"
-                                                    MaxWidth="300">
-                                                <StackPanel>
-                                                    <TextBlock Text="📋 Информация о соревновании" 
-                                                               FontWeight="Bold" 
-                                                               FontSize="13"
-                                                               Margin="0,0,0,10"/>
-                                                    <TextBlock Text="👤 Создано:" FontWeight="SemiBold" FontSize="11"/>
-                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,5">
-                                                        <TextBlock Text="{Binding Competition.CreatedByUsername, FallbackValue='—'}" 
-                                                                   FontSize="11"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource PrimaryBrush}"/>
-                                                        <TextBlock Text=" " FontSize="11"/>
-                                                        <TextBlock Text="{Binding Competition.CreatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
-                                                                   FontSize="11"
-                                                                   Foreground="{DynamicResource TextSecondaryColor}"/>
-                                                    </StackPanel>
-                                                    <Separator Background="{DynamicResource BorderColor}" Margin="0,5,0,5"/>
-                                                    <TextBlock Text="🏆 Результаты:" FontWeight="SemiBold" FontSize="11"/>
-                                                    <TextBlock Text="{Binding Competition.ResultsInfo}" 
-                                                               FontSize="11"
-                                                               Margin="0,2,0,8"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </Border.ToolTip>
-                                        <TextBlock Text="ℹ️" 
-                                                   FontSize="16" 
-                                                   Foreground="{DynamicResource PrimaryBrush}"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
-                                </StackPanel>
-
-                                <!-- Статус соревнования -->
-                                <Border Background="{Binding Competition.StatusColor, Converter={StaticResource CompetitionStatusToBrushConverter}}"
-                                        CornerRadius="12"
-                                        Padding="8,3"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,8,0,0">
-                                    <TextBlock Text="{Binding Competition.StatusText}"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"
-                                               Foreground="White"
-                                               HorizontalAlignment="Center"/>
-                                </Border>
-                            </StackPanel>
+                            <TextBlock Text="{Binding Competition.Name}" 
+                       FontSize="26" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextColor}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Описание -->
                         <TextBlock Text="{Binding Competition.Description}"
-                               Style="{StaticResource BodyTextStyle}"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,15"/>
+                   Style="{StaticResource BodyTextStyle}"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,15"/>
 
                         <!-- Детали соревнования -->
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource StatsContainerStyle}" Padding="15">
+                            <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                            <!-- Даты -->
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="📅 ДАТЫ ПРОВЕДЕНИЯ"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextSecondaryColor}"
-                                       FontSize="12"
-                                       Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Competition.DateTimeRangeText}"
-                                       Style="{StaticResource BodyTextStyle}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"/>
-                            </StackPanel>
+                                <!-- 1. Даты -->
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock Text="📅"
+                                               FontSize="22"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Competition.DateTimeRangeText}"
+                                               FontSize="15"
+                                               TextWrapping="Wrap"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryBrush}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
 
-                            <!-- Организатор -->
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="👤 ОРГАНИЗАТОР"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextSecondaryColor}"
-                                       FontSize="12"
-                                       Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Competition.CreatedByUsername}"
-                                       Style="{StaticResource BodyTextStyle}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"/>
-                            </StackPanel>
+                                <!-- Разделитель -->
+                                <Rectangle Grid.Column="1" 
+                                           Width="1" 
+                                           Height="50"
+                                           Fill="{DynamicResource BorderColor}"
+                                           VerticalAlignment="Center"
+                                           Margin="15,0"/>
 
-                            <!-- Команды -->
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="👥 КОМАНДЫ"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextSecondaryColor}"
-                                       FontSize="12"
-                                       Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding Competition.TeamsCountText}"
-                                       Style="{StaticResource BodyTextStyle}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"/>
-                            </StackPanel>
+                                <!-- 2. Статус -->
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="🏁"
+                                               FontSize="22"
+                                               HorizontalAlignment="Center"/>
+                                    <Border Background="{Binding Competition.StatusColor, Converter={StaticResource CompetitionStatusToBrushConverter}}"
+                                            CornerRadius="16"
+                                            Padding="12,4"
+                                            Margin="0,5,0,0"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Competition.StatusText}"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Foreground="White"/>
+                                    </Border>
+                                </StackPanel>
 
-                            <!-- Статус соревнования для организатора -->
-                            <StackPanel Grid.Column="3" Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="🏁 СТАТУС"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextSecondaryColor}"
-                                       FontSize="12"
-                                       Margin="0,0,0,5"/>
-                                <TextBlock Text="{Binding CompetitionStatusInfo}"
-                                       Style="{StaticResource BodyTextStyle}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"/>
+                                <!-- Разделитель -->
+                                <Rectangle Grid.Column="3" 
+                                           Width="1" 
+                                           Height="50"
+                                           Fill="{DynamicResource BorderColor}"
+                                           VerticalAlignment="Center"
+                                           Margin="15,0"/>
+
+                                <!-- 3. Команды -->
+                                <StackPanel Grid.Column="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="👥"
+                                               FontSize="22"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Competition.TeamsCountText}"
+                                               FontSize="15"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryBrush}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Дополнительная информация (только для организатора) -->
+                            <Grid Margin="0,15,0,0"
+                                  Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Создатель -->
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock Text="👤"
+                                               FontSize="18"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Competition.CreatedByUsername}" 
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource PrimaryBrush}"
+                                               Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding Competition.CreatedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
+                                               Style="{StaticResource CaptionSecondaryStyle}"/>
+                                </StackPanel>
+
+                                <!-- Результаты -->
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                    <TextBlock Text="🏆"
+                                               FontSize="18"
+                                               HorizontalAlignment="Center"/>
+
+                                    <StackPanel Margin="0,4,0,0"
+                                                Visibility="{Binding Competition.HasResults, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="Подведены"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SuccessBrush}"/>
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryColor}">
+                                            <Run Text="Создал:"/>
+                                            <Run Text="{Binding Competition.ResultsCreatedByUsername}" FontWeight="SemiBold"/>
+                                        </TextBlock>
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource TextSecondaryColor}"
+                                                   Visibility="{Binding Competition.ResultsUpdatedByUsername, Converter={StaticResource NullToVisibilityConverter}}">
+                                            <Run Text="Обновил:"/>
+                                            <Run Text="{Binding Competition.ResultsUpdatedByUsername}" FontWeight="SemiBold"/>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Не подведены"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondaryColor}"
+                                               Margin="0,4,0,0"
+                                               Visibility="{Binding Competition.HasResults, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                </StackPanel>
+                            </Grid>
                             </StackPanel>
-                        </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
 
@@ -163,11 +171,9 @@
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                     <StackPanel>
                         <TextBlock Text="🚀 Участие в соревновании"
-                               FontWeight="SemiBold"
-                               FontSize="18"
-                               Foreground="{DynamicResource TextColor}"
-                               Margin="0,0,0,15"/>
-                        
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   Margin="0,0,0,15"/>
+
                         <!-- Кнопка подведения итогов -->
                         <Button Content="{Binding ResultsButtonText}"
                                 Command="{Binding GoToResultsCommand}"
@@ -189,7 +195,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        
+
                         <!-- Для организатора -->
                         <StackPanel Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
                             <TextBlock Text="Создание команды"
@@ -266,15 +272,185 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Расписание соревнования -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="📅 Расписание соревнования"
+                                   Style="{StaticResource SectionHeaderStyle}"/>
+
+                        <!-- Заголовок таблицы -->
+                        <Border Background="{DynamicResource PrimaryBrush}"
+                                CornerRadius="8,8,0,0"
+                                Padding="12,10"
+                                Margin="0 15 0 0"
+                                Visibility="{Binding HasNoStages, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="40"/>
+                                    <ColumnDefinition Width="1.6*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="1.5*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="№"
+                                           FontWeight="Bold"
+                                           Foreground="White"
+                                           FontSize="14"
+                                           HorizontalAlignment="Center"/>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="Название этапа"
+                                           FontWeight="Bold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           FontSize="14"/>
+
+                                <TextBlock Grid.Column="2"
+                                           Text="Место проведения"
+                                           FontWeight="Bold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           FontSize="14"/>
+
+                                <TextBlock Grid.Column="3"
+                                           Text="Дата и время"
+                                           FontWeight="Bold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           FontSize="14"/>
+
+                                <TextBlock Grid.Column="4"
+                                           Text="Описание"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="White"
+                                           FontSize="14"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Список этапов с группировкой по дням -->
+                        <ItemsControl ItemsSource="{Binding StagesGroupedByDay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <!-- Заголовок дня -->
+                                        <Border Background="{DynamicResource HoverColor}"
+                                                Padding="10,5"
+                                                Margin="0,5,0,0">
+                                            <TextBlock Text="{Binding DayHeader}"
+                                                       FontWeight="Bold"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource PrimaryBrush}"/>
+                                        </Border>
+
+                                        <!-- Этапы дня -->
+                                        <ItemsControl ItemsSource="{Binding Stages}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource ControlBackground}"
+                                                            BorderBrush="{DynamicResource BorderColor}"
+                                                            BorderThickness="0,0,0,1"
+                                                            Padding="12,10">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="40"/>
+                                                                <ColumnDefinition Width="1.6*"/>
+                                                                <ColumnDefinition Width="2*"/>
+                                                                <ColumnDefinition Width="1.5*"/>
+                                                                <ColumnDefinition Width="3*"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <!-- Порядковый номер -->
+                                                            <Border Background="{Binding IsActive, Converter={StaticResource BoolToActiveBrushConverter}}"
+                                                                    CornerRadius="15"
+                                                                    Width="30"
+                                                                    Height="30"
+                                                                    HorizontalAlignment="Center">
+                                                                <TextBlock Text="{Binding Order}"
+                                                                           Foreground="White"
+                                                                           FontWeight="Bold"
+                                                                           FontSize="14"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"/>
+                                                            </Border>
+
+                                                            <!-- Название этапа -->
+                                                            <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="15"/>
+                                                                <Border Background="{DynamicResource PrimaryBrush}"
+                                                                        CornerRadius="8"
+                                                                        Padding="6,2"
+                                                                        Margin="10,0,0,0"
+                                                                        Visibility="{Binding IsFinal, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    <TextBlock Text="Финал"
+                                                                               FontSize="10"
+                                                                               FontWeight="Bold"
+                                                                               Foreground="White"/>
+                                                                </Border>
+                                                            </StackPanel>
+
+                                                            <!-- Место проведения -->
+                                                            <TextBlock Grid.Column="2" HorizontalAlignment="Center"
+                                                                       Text="{Binding Location, FallbackValue='—'}"
+                                                                       Style="{StaticResource BodyTextStyle}"
+                                                                       VerticalAlignment="Center"
+                                                                       FontSize="14"/>
+
+                                                            <!-- Время -->
+                                                            <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                <TextBlock Text="{Binding StartTime, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="14"/>
+                                                                <TextBlock Style="{StaticResource CaptionSecondaryStyle}"
+                                                                           FontSize="13">
+                                                                    <Run Text="{Binding StartTime, StringFormat='{}{0:HH:mm}'}"/>
+                                                                    <Run Text=" - "/>
+                                                                    <Run Text="{Binding EndTime, StringFormat='{}{0:HH:mm}'}"/>
+                                                                </TextBlock>
+                                                            </StackPanel>
+
+                                                            <!-- Описание -->
+                                                            <TextBlock Grid.Column="4" HorizontalAlignment="Center"
+                                                                       Text="{Binding Description, FallbackValue='—'}"
+                                                                       Style="{StaticResource BodyTextStyle}"
+                                                                       TextWrapping="Wrap"
+                                                                       FontSize="14"
+                                                                       VerticalAlignment="Center"
+                                                                       MaxHeight="60">
+                                                                <TextBlock.ToolTip>
+                                                                    <ToolTip Content="{Binding Description}"/>
+                                                                </TextBlock.ToolTip>
+                                                            </TextBlock>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="🎯 Расписание не добавлено"
+                                   Style="{StaticResource BodyTextStyle}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,20,0,0"
+                                   Visibility="{Binding HasNoStages, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- Список команд (только для организатора) -->
                 <Border Style="{StaticResource CardStyle}"
-                    Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                             <TextBlock Text="👥 Управление командами"
-                                   FontWeight="SemiBold"
-                                   FontSize="18"
-                                   Foreground="{DynamicResource TextColor}"/>
+                                       Style="{StaticResource SectionHeaderStyle}"
+                                       Margin="0,0,0,15"/>
 
                             <TextBlock Text="{Binding Competition.Teams.Count, StringFormat='({0})'}"
                                    FontWeight="SemiBold"

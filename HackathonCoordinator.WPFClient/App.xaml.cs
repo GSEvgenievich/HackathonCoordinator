@@ -51,7 +51,10 @@ namespace HackathonCoordinator.WPFClient
                     Current.Resources.MergedDictionaries[1] =
                         new ResourceDictionary { Source = new Uri("Themes/LightTheme.xaml", UriKind.Relative) };
                 }
-                catch { }
+                catch
+                {
+                    MessageBox.Show($"Ошибка загрузки темы LightTheme: {ex.Message}");
+                }
             }
         }
 

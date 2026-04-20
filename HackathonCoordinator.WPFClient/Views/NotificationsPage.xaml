@@ -19,6 +19,7 @@
         <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,15">
             <DockPanel>
                 <Button Content="← Назад" 
+                        IsCancel="True"
                         Command="{Binding BackCommand}"
                         Style="{StaticResource NavigationButton}"
                         DockPanel.Dock="Left"

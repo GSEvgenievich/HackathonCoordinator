@@ -156,5 +156,61 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 return ApiResponse<List<TeamResultDto>>.Fail($"Ошибка получения результатов: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Получить расписание соревнования
+        /// </summary>
+        public async Task<ApiResponse<List<StageDto>>> GetStagesAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"competitions/{competitionId}/stages");
+                return await HandleResponseAsync<List<StageDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<StageDto>>.Fail($"Ошибка получения расписания: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Создать соревнование с этапами
+        /// </summary>
+        public async Task<ApiResponse> CreateCompetitionWithStagesAsync(CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var content = CreateJsonContent(new { Competition = competitionDto, Stages = stages });
+                var response = await _client.PostAsync("competitions/create-with-stages", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка создания соревнования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Обновить соревнование с этапами
+        /// </summary>
+        public async Task<ApiResponse> UpdateCompetitionWithStagesAsync(int competitionId, CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var content = CreateJsonContent(new { Competition = competitionDto, Stages = stages });
+                var response = await _client.PutAsync($"competitions/{competitionId}/update-with-stages", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка обновления соревнования: {ex.Message}");
+            }
+        }
     }
 }

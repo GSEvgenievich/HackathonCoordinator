@@ -163,6 +163,80 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Создать соревнование с этапами
+        /// </summary>
+        [HttpPost("create-with-stages")]
+        public async Task<ActionResult<ApiResponse>> CreateCompetitionWithStages([FromBody] CreateCompetitionWithStagesDto dto)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var userId = GetUserId();
+                var user = await _context.Users.FindAsync(userId);
+
+                if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для создания соревнования");
+
+                // Создаем соревнование
+                var competition = new Competition
+                {
+                    Name = dto.Competition.Name,
+                    Description = dto.Competition.Description,
+                    StartDate = dto.Competition.StartDate,
+                    EndDate = dto.Competition.EndDate,
+                    CreatedById = userId,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.Competitions.Add(competition);
+                await _context.SaveChangesAsync();
+
+                // Создаем этапы с переданными временами
+                if (dto.Stages != null && dto.Stages.Any())
+                {
+                    foreach (var stageDto in dto.Stages.OrderBy(s => s.Order))
+                    {
+                        var stage = new Stage
+                        {
+                            CompetitionId = competition.Id,
+                            Name = stageDto.Name,
+                            Description = stageDto.Description,
+                            Location = stageDto.Location,
+                            Order = stageDto.Order,
+                            IsFinal = stageDto.IsFinal,
+                            CreatedAt = DateTime.Now,
+                            IsStartNotified = false,
+                            StartTime = stageDto.StartTime,
+                            EndTime = stageDto.EndTime
+                        };
+                        _context.Stages.Add(stage);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                // Уведомление организаторов
+                try
+                {
+                    await _notificationHelper.NotifyOrganizersAboutNewCompetition(competition.Id, competition.Name, user.Username);
+                }
+                catch 
+                {
+                    return HandleSuccess("Соревнование успешно создано \n!Ошибка отправки уведомления!");
+                }
+
+                return HandleSuccess("Соревнование успешно создано");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка создания соревнования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Обновить соревнование (только организатор)
         /// </summary>
         [HttpPut("{id}")]
@@ -194,6 +268,90 @@ namespace HackathonCoordinator.WebAPI.Controllers
             catch (Exception ex)
             {
                 return HandleError("Ошибка при обновлении соревнования");
+            }
+        }
+
+        /// <summary>
+        /// Обновить соревнование с этапами
+        /// </summary>
+        [HttpPut("{id}/update-with-stages")]
+        public async Task<ActionResult<ApiResponse>> UpdateCompetitionWithStages(int id, [FromBody] UpdateCompetitionWithStagesDto dto)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var userId = GetUserId();
+                var user = await _context.Users.FindAsync(userId);
+
+                if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для редактирования соревнования");
+
+                var competition = await _context.Competitions.FindAsync(id);
+                if (competition == null)
+                    return HandleNotFound("Соревнование не найдено");
+
+                // Обновляем соревнование
+                competition.Name = dto.Competition.Name;
+                competition.Description = dto.Competition.Description;
+                competition.StartDate = dto.Competition.StartDate;
+                competition.EndDate = dto.Competition.EndDate;
+
+                // Получаем существующие этапы
+                var existingStages = await _context.Stages
+                    .Where(s => s.CompetitionId == id)
+                    .ToDictionaryAsync(s => s.Id);
+
+                // Обновляем, добавляем, удаляем этапы
+                foreach (var stageDto in dto.Stages)
+                {
+                    if (stageDto.Id.HasValue && existingStages.ContainsKey(stageDto.Id.Value))
+                    {
+                        // Обновляем существующий этап
+                        var stage = existingStages[stageDto.Id.Value];
+                        stage.Name = stageDto.Name;
+                        stage.Description = stageDto.Description;
+                        stage.Location = stageDto.Location;
+                        stage.Order = stageDto.Order;
+                        stage.IsFinal = stageDto.IsFinal;
+                        stage.StartTime = stageDto.StartTime;  // Обновляем время начала
+                        stage.EndTime = stageDto.EndTime;      // Обновляем время окончания
+                        existingStages.Remove(stageDto.Id.Value);
+                    }
+                    else if (!stageDto.Id.HasValue)
+                    {
+                        // Добавляем новый этап
+                        _context.Stages.Add(new Stage
+                        {
+                            CompetitionId = id,
+                            Name = stageDto.Name,
+                            Description = stageDto.Description,
+                            Location = stageDto.Location,
+                            Order = stageDto.Order,
+                            IsFinal = stageDto.IsFinal,
+                            CreatedAt = DateTime.Now,
+                            IsStartNotified = false,
+                            StartTime = stageDto.StartTime,  // Сохраняем время начала
+                            EndTime = stageDto.EndTime       // Сохраняем время окончания
+                        });
+                    }
+                }
+
+                // Удаляем этапы, которых нет в запросе
+                foreach (var stageToDelete in existingStages.Values)
+                {
+                    _context.Stages.Remove(stageToDelete);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return HandleSuccess("Соревнование успешно обновлено");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка обновления соревнования: {ex.Message}");
             }
         }
 
@@ -292,7 +450,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 }
                 catch (Exception ex)
                 {
-                    return HandleSuccess(message + "\nОшибка отправки уведомления");
+                    return HandleSuccess(message + "\n!Ошибка отправки уведомления!");
                 }
 
                 return HandleSuccess(message);
@@ -301,6 +459,44 @@ namespace HackathonCoordinator.WebAPI.Controllers
             {
                 await transaction.RollbackAsync();
                 return HandleError($"Ошибка сохранения результатов: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить расписание соревнования
+        /// </summary>
+        [HttpGet("{competitionId}/stages")]
+        public async Task<ActionResult<ApiResponse<List<StageDto>>>> GetCompetitionStages(int competitionId)
+        {
+            try
+            {
+                var competition = await _context.Competitions.FindAsync(competitionId);
+                if (competition == null)
+                    return HandleNotFound<List<StageDto>>("Соревнование не найдено");
+
+                var stages = await _context.Stages
+                    .Where(s => s.CompetitionId == competitionId)
+                    .OrderBy(s => s.Order)
+                    .Select(s => new StageDto
+                    {
+                        Id = s.Id,
+                        CompetitionId = s.CompetitionId,
+                        Name = s.Name,
+                        Description = s.Description,
+                        StartTime = s.StartTime,
+                        EndTime = s.EndTime,
+                        Location = s.Location,
+                        Order = s.Order,
+                        IsFinal = s.IsFinal,
+                        IsStartNotified = s.IsStartNotified
+                    })
+                    .ToListAsync();
+
+                return HandleResult(stages);
+            }
+            catch (Exception ex)
+            {
+                return HandleError<List<StageDto>>($"Ошибка получения расписания: {ex.Message}");
             }
         }
 

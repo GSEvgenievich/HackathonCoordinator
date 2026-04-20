@@ -5,6 +5,7 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.Win32;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 
@@ -26,11 +27,27 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 if (SetProperty(ref _competition, value))
                 {
-                    // Обновляем свойства кнопки при изменении соревнования
+                    LoadStagesAsync();
                     UpdateResultsButtonState();
                 }
             }
         }
+
+        private ObservableCollection<StageDto> _stages = new();
+        public ObservableCollection<StageDto> Stages
+        {
+            get => _stages;
+            set => SetProperty(ref _stages, value);
+        }
+
+        private ObservableCollection<DayStagesGroup> _stagesGroupedByDay;
+        public ObservableCollection<DayStagesGroup> StagesGroupedByDay
+        {
+            get => _stagesGroupedByDay;
+            set => SetProperty(ref _stagesGroupedByDay, value);
+        }
+
+        public bool HasNoStages => Stages == null || Stages.Count == 0;
 
         private string _inviteCode = "";
         public string InviteCode
@@ -101,7 +118,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        // Метод обновления состояния кнопки
         private void UpdateResultsButtonState()
         {
             if (Competition == null) return;
@@ -131,7 +147,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        // AsyncRelayCommand для операций с API
+        // Команды
         public ICommand BackCommand { get; }
         public ICommand CreateTeamCommand { get; }
         public ICommand JoinTeamCommand { get; }
@@ -153,27 +169,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             GoToMainCommand = new RelayCommand(GoToMainPage);
             ManageTeamCommand = new RelayCommand<TeamDto>(ManageTeam);
 
-            // AsyncRelayCommand для создания команды
             CreateTeamCommand = new AsyncRelayCommand(
                 execute: async () => await CreateTeamAsync(),
                 canExecute: () => Competition != null && !IsAlreadyInTeam && IsOrganizer);
 
-            // AsyncRelayCommand для присоединения к команде
             JoinTeamCommand = new AsyncRelayCommand(
                 execute: async () => await JoinTeamAsync(),
                 canExecute: () => !string.IsNullOrWhiteSpace(InviteCode) && CanJoinTeam);
 
-            // AsyncRelayCommand для удаления команды
             DeleteTeamCommand = new AsyncRelayCommand<TeamDto>(
                 execute: async (team) => await DeleteTeamAsync(team),
                 canExecute: (team) => team != null && IsOrganizer);
 
-            // AsyncRelayCommand для экспорта
             ExportCompetitionCommand = new AsyncRelayCommand(
                 execute: async () => await ExportCompetitionAsync(),
                 canExecute: () => Competition != null && IsOrganizer);
 
-            // AsyncRelayCommand для перехода к подведению итогов
             GoToResultsCommand = new AsyncRelayCommand(
                 execute: async () => await GoToResultsAsync(),
                 canExecute: () => CanGoToResults);
@@ -232,6 +243,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         _navigationService.NavigateTo(new CompetitionsPage());
                     }
                 });
+
+                await LoadStagesAsync();
             }
             catch (Exception ex)
             {
@@ -240,6 +253,43 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     MessageBox.Show($"Ошибка загрузки соревнования: {ex.Message}", "Ошибка",
                         MessageBoxButton.OK, MessageBoxImage.Error);
                     _navigationService.NavigateTo(new CompetitionsPage());
+                });
+            }
+        }
+
+        private async Task LoadStagesAsync()
+        {
+           if(Competition == null)
+                return;
+
+            try
+            {
+                var result = await _competitionService.GetStagesAsync(Competition.Id);
+                if (result.Success && result.Data != null)
+                {
+                    Stages = new ObservableCollection<StageDto>(result.Data);
+
+                    // Группировка по дням
+                    var groups = result.Data
+                        .OrderBy(s => s.StartTime)
+                        .GroupBy(s => s.StartTime.Date)
+                        .Select(g => new DayStagesGroup
+                        {
+                            DayHeader = g.Key.ToString("dddd, dd MMMM yyyy", new System.Globalization.CultureInfo("ru-RU")),
+                            Stages = new ObservableCollection<StageDto>(g)
+                        })
+                        .ToList();
+
+                    StagesGroupedByDay = new ObservableCollection<DayStagesGroup>(groups);
+                    OnPropertyChanged(nameof(HasNoStages));
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка загрузки расписания: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
                 });
             }
         }
@@ -431,6 +481,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             Competition = null;
             _inviteCode = null;
+            Stages?.Clear();
 
             if (_competitionService is IDisposable compDisposable)
                 compDisposable.Dispose();
@@ -443,6 +494,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (_excelExportService is IDisposable excelDisposable)
                 excelDisposable.Dispose();
+        }
+
+        public class DayStagesGroup
+        {
+            public string DayHeader { get; set; }
+            public ObservableCollection<StageDto> Stages { get; set; }
         }
     }
 }
