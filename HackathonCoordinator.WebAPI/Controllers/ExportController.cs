@@ -15,8 +15,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
 
-        public ExportController(
-            HackathonCoordinatorContext context)
+        public ExportController(HackathonCoordinatorContext context)
         {
             _context = context;
         }
@@ -49,8 +48,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
         }
 
-        // --- Вспомогательные методы ---
-
         /// <summary>
         /// Получение соревнования с деталями для экспорта
         /// </summary>
@@ -58,6 +55,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         {
             return await _context.Competitions
                 .Include(c => c.CreatedBy)
+                .Include(c => c.ResultsCreatedBy)      // Добавляем создателя результатов
+                .Include(c => c.ResultsUpdatedBy)      // Добавляем редактора результатов
                 .Include(c => c.Teams)
                     .ThenInclude(t => t.Users)
                     .ThenInclude(t => t.Role)
@@ -81,12 +80,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
             var competitionDto = CreateCompetitionDto(competition);
             var teamExportDtos = await CreateTeamExportDtosAsync(competition);
             var competitionStats = CalculateCompetitionStats(teamExportDtos);
+            var results = await GetCompetitionResultsAsync(competition.Id);
 
             return new CompetitionExportDataDto
             {
                 Competition = competitionDto,
                 Teams = teamExportDtos,
                 Stats = competitionStats,
+                Results = results,
                 SuggestedFileName = GenerateFileName(competition.Name)
             };
         }
@@ -104,7 +105,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 StartDate = competition.StartDate,
                 EndDate = competition.EndDate,
                 CreatedByUsername = competition.CreatedBy.Username,
-                CreatedAt = competition.CreatedAt
+                CreatedAt = competition.CreatedAt,
+                HasResults = competition.HasResults,
+                ResultsCreatedAt = competition.ResultsCreatedAt,
+                ResultsCreatedById = competition.ResultsCreatedById,
+                ResultsCreatedByUsername = competition.ResultsCreatedBy?.Username,
+                ResultsUpdatedAt = competition.ResultsUpdatedAt,
+                ResultsUpdatedById = competition.ResultsUpdatedById,
+                ResultsUpdatedByUsername = competition.ResultsUpdatedBy?.Username
             };
         }
 
@@ -214,6 +222,29 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Получение результатов соревнования
+        /// </summary>
+        private async Task<List<TeamResultDto>> GetCompetitionResultsAsync(int competitionId)
+        {
+            var results = await _context.Results
+                .Where(r => r.CompetitionId == competitionId)
+                .Include(r => r.Team)
+                .Select(r => new TeamResultDto
+                {
+                    TeamId = r.TeamId,
+                    TeamName = r.Team.Name,
+                    Place = r.Place,
+                    PlaceDisplay = r.PlaceDisplay,
+                    Comment = r.Comment,
+                    IsSaved = true,
+                    MembersCount = r.Team.Users.Count.ToString()
+                })
+                .ToListAsync();
+
+            return results;
+        }
+
+        /// <summary>
         /// Генерация безопасного имени файла
         /// </summary>
         private string GenerateFileName(string competitionName)
@@ -228,15 +259,12 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
             safeName = safeName.Trim();
 
-            // Удаление двойных пробелов
             while (safeName.Contains("  "))
                 safeName = safeName.Replace("  ", " ");
 
-            // Ограничение длины имени
             if (safeName.Length > 50)
                 safeName = safeName.Substring(0, 50).Trim();
 
-            // Проверка на пустое имя после обработки
             if (string.IsNullOrWhiteSpace(safeName))
                 safeName = "competition";
 

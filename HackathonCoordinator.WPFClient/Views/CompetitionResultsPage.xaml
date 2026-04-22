@@ -19,14 +19,56 @@
 
         <!-- Заголовок -->
         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
-            <DockPanel VerticalAlignment="Center">
-                <Button Content="← Назад" 
-                        IsCancel="True"
-                        Command="{Binding BackCommand}"
-                        Style="{StaticResource NavigationButton}"
-                        Margin="0,0,20,0"/>
+            <StackPanel>
+                <!-- Верхняя часть с навигацией -->
+                <DockPanel VerticalAlignment="Center" Margin="0,0,0,15">
+                    <Button Content="← Назад" 
+                            Command="{Binding BackCommand}"
+                            Style="{StaticResource NavigationButton}"
+                            Margin="0,0,20,0"/>
 
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding PageTitle}" 
+                                   FontSize="26" 
+                                   Style="{StaticResource PageHeaderStyle}"/>
+                        <Border Background="Transparent"
+                                Margin="12,0,0,0"
+                                Cursor="Help"
+                                Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Border.ToolTip>
+                                <Border Background="{DynamicResource CardBackground}"
+                                        BorderBrush="{DynamicResource BorderColor}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="12"
+                                        MaxWidth="300">
+                                    <StackPanel>
+                                        <TextBlock Text="📋 Информация о результатах" 
+                                                   FontWeight="Bold" 
+                                                   FontSize="13"
+                                                   Margin="0,0,0,10"/>
+                                        <TextBlock Text="{Binding Competition.ResultsInfo}" 
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,2,0,8"/>
+                                    </StackPanel>
+                                </Border>
+                            </Border.ToolTip>
+                            <TextBlock Text="ℹ️" 
+                                       FontSize="16" 
+                                       Foreground="{DynamicResource PrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Подзаголовок -->
+                <TextBlock Text="{Binding CompetitionName, StringFormat='Соревнование: {0}'}"
+                           Style="{StaticResource PageSubtitleStyle}"
+                           Margin="0,0,0,15"/>
+
+                <!-- Кнопки действий -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,5,0,0">
                     <!-- Кнопка экспорта -->
                     <Button Content="{Binding ExportButtonText}"
                             Command="{Binding ExportResultsCommand}"
@@ -42,44 +84,7 @@
                             Padding="20,12"
                             Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 </StackPanel>
-
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding PageTitle}" 
-                                   Style="{StaticResource PageHeaderStyle}"/>
-                        <Border Background="Transparent"
-                                    Margin="12,0,0,0"
-                                    Cursor="Help"
-                                    Visibility="{Binding IsOrganizer, 
-                                            Converter={StaticResource BoolToVisibilityConverter}}">
-                                <Border.ToolTip>
-                                    <Border Background="{DynamicResource CardBackground}"
-                                            BorderBrush="{DynamicResource BorderColor}"
-                                            BorderThickness="1"
-                                            CornerRadius="8"
-                                            Padding="12"
-                                            MaxWidth="300">
-                                        <StackPanel>
-                                            <TextBlock Text="📋 Информация о результатах" 
-                                                               FontWeight="Bold" 
-                                                               FontSize="13"
-                                                               Margin="0,0,0,10"/>
-                                            <TextBlock Text="{Binding Competition.ResultsInfo}" 
-                                                            FontSize="11"
-                                                            Margin="0,2,0,8"/>
-                                        </StackPanel>
-                                    </Border>
-                                </Border.ToolTip>
-                                <TextBlock Text="ℹ️" 
-                                           FontSize="16" 
-                                           Foreground="{DynamicResource PrimaryBrush}"
-                                           VerticalAlignment="Center"/>
-                            </Border>
-                    </StackPanel>
-                    <TextBlock Text="{Binding CompetitionName, StringFormat='Соревнование: {0}'}"
-                               Style="{StaticResource PageSubtitleStyle}"/>
-                </StackPanel>
-            </DockPanel>
+            </StackPanel>
         </Border>
 
         <!-- Список команд -->

@@ -2,6 +2,7 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      xmlns:uc="clr-namespace:HackathonCoordinator.WPFClient.UserControls"
       Title="Профиль"
       Unloaded="Page_Unloaded">
 
@@ -53,15 +54,10 @@
                               Height="130"
                               Margin="0,0,30,0"
                               VerticalAlignment="Center">
-                            <Border Width="120"
-                                    Height="120"
-                                    CornerRadius="60"
-                                    BorderBrush="{DynamicResource BorderColor}"
-                                    BorderThickness="3"
-                                    VerticalAlignment="Center"
-                                    HorizontalAlignment="Center">
-                                <Image Source="{Binding User.IconPath}" Stretch="UniformToFill"/>
-                            </Border>
+                            <uc:RoundAvatar Size="120" 
+                                            Source="{Binding User.IconPath}"
+                                            BorderBrush="{DynamicResource BorderColor}"
+                                            BorderThickness="3"/>
 
                             <!-- Кнопка редактирования иконки наезжает на аватар -->
                             <Button Content="✏️"
@@ -282,8 +278,8 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Visibility="{Binding IsIconPanelVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                Width="200"
-                Height="180">
+                Width="250"
+                Height="250">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.2"/>
             </Border.Effect>
@@ -298,25 +294,13 @@
 
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Width="70" Height="70"
-                                    Margin="5"
-                                    BorderBrush="{Binding IsSelected, Converter={StaticResource BoolToBrushConverter}}"
-                                    BorderThickness="2"
+                            <Button BorderThickness="0"
                                     Command="{Binding DataContext.SelectIconCommand, 
                                               RelativeSource={RelativeSource AncestorType=Page}}"
                                     CommandParameter="{Binding}">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border CornerRadius="35" Background="{TemplateBinding Background}">
-                                                        <Image Source="{Binding Path}" Stretch="UniformToFill"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
                                         <Style.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
@@ -324,6 +308,10 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Button.Style>
+                                <uc:RoundAvatar Size="100" 
+                                                Source="{Binding Path}"
+                                                BorderBrush="{DynamicResource PrimaryBrush}"
+                                                BorderThickness="{Binding IsSelected, Converter={StaticResource BoolToThicknessConverter}}"/>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

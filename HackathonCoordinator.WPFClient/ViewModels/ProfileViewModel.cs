@@ -204,6 +204,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         }
                         AvailableIcons.Add(icon);
                     }
+
+                    if (User.IconId == null)
+                    {
+                        AvailableIcons[0].IsSelected = true;
+                    }
                 }
             }
             catch (Exception ex)
@@ -279,10 +284,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (icon == null) return;
 
+            SelectedIcon.IsSelected = false;
             SelectedIcon = icon;
             User.IconName = icon.Name;
             User.IconId = icon.Id;
             IsIconPanelVisible = false;
+            icon.IsSelected = true;
 
             _userService.UpdateProfileAsync(User.Username, icon.Id);
         }

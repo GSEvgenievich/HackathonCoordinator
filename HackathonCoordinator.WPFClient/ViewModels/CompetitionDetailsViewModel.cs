@@ -122,29 +122,53 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (Competition == null) return;
 
-            var canEdit = IsOrganizer && Competition.IsCompleted;
-            var canView = Competition.HasResults;
+            var (canGoToResults, buttonText, tooltip) = DetermineResultsButtonState();
 
-            CanGoToResults = canEdit || canView;
+            CanGoToResults = canGoToResults;
+            ResultsButtonText = buttonText;
+            ResultsButtonTooltip = tooltip;
+
+            OnPropertyChanged(nameof(CanGoToResults));
+        }
+
+        private (bool CanGoToResults, string ButtonText, string Tooltip) DetermineResultsButtonState()
+        {
+            bool canEdit = IsOrganizer && Competition.IsCompleted;
+            bool canView = Competition.HasResults;
 
             if (canEdit)
             {
-                ResultsButtonText = Competition.HasResults ? "✏️ Редактировать результаты" : "🏆 Подвести итоги";
-                ResultsButtonTooltip = Competition.HasResults
-                    ? "Редактировать результаты соревнования"
-                    : "Подвести итоги соревнования";
+                return (
+                    true,
+                    Competition.HasResults ? "✏️ Редактировать результаты" : "🏆 Подвести итоги",
+                    Competition.HasResults ? "Редактировать результаты соревнования" : "Подвести итоги соревнования"
+                );
             }
-            else if (canView)
+
+            if (canView)
             {
-                ResultsButtonText = "📊 Посмотреть результаты";
-                ResultsButtonTooltip = "Просмотреть результаты соревнования";
+                return (
+                    true,
+                    "📊 Посмотреть результаты",
+                    "Просмотреть результаты соревнования"
+                );
             }
-            else
+
+            if (IsOrganizer)
             {
-                ResultsButtonText = "🏆 Подвести итоги";
-                ResultsButtonTooltip = "Соревнование еще не закончено. Итоги можно подвести после окончания.";
-                CanGoToResults = false;
+                return (
+                    false,
+                    "🏆 Подвести итоги",
+                    $"❌ Нельзя подвести итоги, пока соревнование не закончено.\n" +
+                    $"Соревнование завершится: {Competition.EndDate:dd.MM.yyyy HH:mm}"
+                );
             }
+
+            return (
+                false,
+                "📊 Посмотреть результаты",
+                "Итоги соревнования еще не подведены"
+            );
         }
 
         // Команды
@@ -156,6 +180,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand ManageTeamCommand { get; }
         public ICommand ExportCompetitionCommand { get; }
         public ICommand GoToResultsCommand { get; }
+        public ICommand EditCompetitionCommand { get; }
 
         public CompetitionDetailsViewModel()
         {
@@ -168,6 +193,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             BackCommand = new RelayCommand(BackToCompetitions);
             GoToMainCommand = new RelayCommand(GoToMainPage);
             ManageTeamCommand = new RelayCommand<TeamDto>(ManageTeam);
+            EditCompetitionCommand = new RelayCommand(EditCompetition);
 
             CreateTeamCommand = new AsyncRelayCommand(
                 execute: async () => await CreateTeamAsync(),
@@ -223,6 +249,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _navigationService.NavigateTo(new TeamPage());
         }
 
+        private void EditCompetition()
+        {
+            _navigationService.NavigateTo(new EditCompetitionPage(Competition));
+        }
+
         public async void LoadCompetitionAsync(int competitionId)
         {
             try
@@ -259,7 +290,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task LoadStagesAsync()
         {
-           if(Competition == null)
+            if (Competition == null)
                 return;
 
             try

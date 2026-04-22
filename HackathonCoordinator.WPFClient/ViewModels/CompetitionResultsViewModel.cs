@@ -1,9 +1,9 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -12,6 +12,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class CompetitionResultsViewModel : BaseViewModel
     {
+        private readonly IPdfExportService _pdfExportService;
         private readonly NavigationService _navigationService;
         private readonly CompetitionService _competitionService;
         private readonly UserService _userService;
@@ -21,10 +22,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private TeamResultDto _selectedTeam;
         private string _commentText;
         private bool _showCommentDialog;
-        private bool _isEditMode;  // Режим редактирования (для организатора/админа)
+        private bool _isEditMode;
         private bool _canMoveUp;
         private bool _canMoveDown;
-        private bool _hasExistingResults;  // Есть ли уже сохраненные результаты
+        private bool _hasExistingResults;
 
         public CompetitionDto Competition
         {
@@ -86,8 +87,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool IsEditMode
         {
             get => _isEditMode;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _isEditMode, value))
                 {
                     OnPropertyChanged(nameof(IsViewMode));
@@ -96,7 +97,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         }
 
         public bool IsViewMode => !IsEditMode;
-        public bool HasExistingResults => _hasExistingResults;
+
+        public bool HasExistingResults
+        {
+            get => _hasExistingResults;
+            set => SetProperty(ref _hasExistingResults, value); // Добавляем SetProperty
+        }
 
         public string SaveButtonText => "💾 Сохранить результаты";
         public string ExportButtonText => "📤 Экспортировать результаты";
@@ -118,13 +124,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public CompetitionResultsViewModel()
         {
+            _pdfExportService = new PdfExportService();
             _navigationService = App.NavigationService;
             _competitionService = new CompetitionService();
             _userService = new UserService();
 
             BackCommand = new RelayCommand(GoBack);
             SaveResultsCommand = new AsyncRelayCommand(SaveResultsAsync);
-            ExportResultsCommand = new RelayCommand(ExportResults);  // Заглушка
+            ExportResultsCommand = new AsyncRelayCommand(ExportResults);
             MoveUpCommand = new RelayCommand(MoveUp, () => CanMoveUp && IsEditMode);
             MoveDownCommand = new RelayCommand(MoveDown, () => CanMoveDown && IsEditMode);
             AddCommentCommand = new RelayCommand<TeamResultDto>(ShowCommentDialogCommand);
@@ -191,7 +198,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var place = i + 1;
                 Teams[i].Place = place;
                 Teams[i].PlaceDisplay = place.ToString();
-                Teams[i].IsSaved = false; 
+                Teams[i].IsSaved = false;
                 PositionUpdated?.Invoke(i);
             }
             UpdateMoveButtonsState();
@@ -207,16 +214,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var competitionData = await _competitionService.GetCompetitionAsync(competition.Id);
                 if (!competitionData.Success) return;
 
-                // Загружаем сохраненные результаты
                 var savedResults = await _competitionService.GetCompetitionResultsAsync(competition.Id);
 
                 var teams = new List<TeamResultDto>();
 
                 if (savedResults.Success && savedResults.Data.Any())
                 {
-                    _hasExistingResults = true;
+                    HasExistingResults = true; // Используем свойство с SetProperty
 
-                    // Загружаем сохраненные результаты в правильном порядке мест
                     foreach (var savedTeam in savedResults.Data.OrderBy(r => r.Place))
                     {
                         var team = competitionData.Data.Teams.FirstOrDefault(t => t.Id == savedTeam.TeamId);
@@ -232,11 +237,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    _hasExistingResults = false;
+                    HasExistingResults = false; // Используем свойство с SetProperty
 
                     if (IsEditMode)
                     {
-                        // Режим редактирования, но результатов нет - перемешиваем
                         var random = new Random();
                         foreach (var team in competitionData.Data.Teams)
                         {
@@ -256,7 +260,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        // Режим просмотра, но результатов нет
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
                             MessageBox.Show("Результаты еще не опубликованы", "Информация",
@@ -306,7 +309,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             var result = await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 return MessageBox.Show(
-                    _hasExistingResults
+                    HasExistingResults
                         ? "Сохранить изменения результатов?\n\nПосле сохранения новые места будут зафиксированы."
                         : "Сохранить результаты соревнования?\n\nПосле сохранения порядок мест будет зафиксирован и станет доступен для просмотра участниками.",
                     "Подтверждение сохранения",
@@ -318,19 +321,26 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             try
             {
-                // Сохраняем все результаты
                 var saveResult = await _competitionService.SaveAllResultsAsync(Competition.Id, Teams.ToList());
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (saveResult.Success)
                     {
-                        // Обновляем флаг сохранения для всех команд
                         foreach (var team in Teams)
                         {
                             team.IsSaved = true;
                         }
-                        _hasExistingResults = true;
+
+                        // Обновляем флаг после успешного сохранения
+                        HasExistingResults = true;
+
+                        // Обновляем объект соревнования после успешного сохранения
+                        var updatedCompetition = await _competitionService.GetCompetitionAsync(Competition.Id);
+                        if (updatedCompetition.Success)
+                        {
+                            Competition = updatedCompetition.Data;
+                        }
 
                         MessageBox.Show("Результаты успешно сохранены!", "Успешно",
                             MessageBoxButton.OK, MessageBoxImage.Information);
@@ -352,11 +362,54 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void ExportResults()
+        private async Task ExportResults()
         {
-            // Заглушка для экспорта результатов
-            MessageBox.Show("Функция экспорта результатов будет добавлена в следующей версии",
-                "В разработке", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (Competition == null || Teams == null || !Teams.Any())
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show("Нет данных для экспорта", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                });
+                return;
+            }
+
+            try
+            {
+                var saveFileDialog = new SaveFileDialog
+                {
+                    FileName = $"Результаты_{Competition.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
+                    Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
+                    DefaultExt = ".pdf"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    var success = await _pdfExportService.ExportResultsToPdfAsync(Competition, Teams.ToList(), saveFileDialog.FileName);
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (success)
+                        {
+                            MessageBox.Show($"Результаты успешно экспортированы в PDF файл:\n{saveFileDialog.FileName}",
+                                "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Ошибка при создании PDF файла", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка экспорта: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
         }
 
         private void GoBack()

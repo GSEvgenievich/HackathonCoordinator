@@ -205,7 +205,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        // Остальные методы без изменений...
         private void InitializeStatusFilters()
         {
             StatusFilters = new ObservableCollection<StatusFilter>

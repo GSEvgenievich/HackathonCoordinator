@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
       xmlns:behaviors="clr-namespace:HackathonCoordinator.WPFClient.Behaviors"
+      xmlns:uc="clr-namespace:HackathonCoordinator.WPFClient.UserControls"
       Title="Команда"
       Unloaded="Page_Unloaded">
 
@@ -169,9 +170,10 @@
 
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <!-- Аватар -->
-                                                    <Border Style="{StaticResource AvatarStyle}">
-                                                        <Image Source="{Binding IconPath}" Stretch="UniformToFill"/>
-                                                    </Border>
+                                                    <uc:RoundAvatar Size="50" Margin="0 0 10 0"
+                                                                    Source="{Binding IconPath}"
+                                                                    BorderBrush="{DynamicResource BorderColor}"
+                                                                    BorderThickness="3"/>
 
                                                     <!-- Информация -->
                                                     <StackPanel>

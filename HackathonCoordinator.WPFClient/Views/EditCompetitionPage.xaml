@@ -114,17 +114,15 @@
                         <!-- Расписание (Stages) -->
                         <StackPanel Margin="0,0,0,12">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <TextBlock Text="📋 Расписание соревнования"
+                                <TextBlock Text="📋 Расписание соревнования" VerticalAlignment="Center"
                                            Style="{StaticResource SectionTitleStyle}"/>
-                                <Button Content="＋ Добавить этап"
+                                <Button Content="➕ Добавить этап"
                                         Command="{Binding AddStageCommand}"
                                         Style="{StaticResource PrimaryButton}"
-                                        Margin="15,0,0,0"
-                                        Padding="12,6"
-                                        FontSize="12"/>
+                                        Margin="15,0,0,0"/>
                             </StackPanel>
 
-                            <Border Style="{StaticResource StatsContainerStyle}" Padding="15">
+                            <Border Style="{StaticResource StatsContainerStyle}" Padding="15 15 15 7">
                                 <StackPanel>
                                     <ItemsControl ItemsSource="{Binding Stages}">
                                         <ItemsControl.ItemTemplate>
@@ -144,13 +142,14 @@
 
                                                         <!-- Порядковый номер -->
                                                         <Border Background="{DynamicResource PrimaryBrush}"
-                                                                CornerRadius="15"
-                                                                Width="30"
-                                                                Height="30"
+                                                                CornerRadius="18"
+                                                                Width="36"
+                                                                Height="36"
                                                                 Margin="0,0,12,0">
                                                             <TextBlock Text="{Binding Order}"
                                                                        Foreground="White"
                                                                        FontWeight="Bold"
+                                                                       FontSize="18"
                                                                        HorizontalAlignment="Center"
                                                                        VerticalAlignment="Center"/>
                                                         </Border>
@@ -159,29 +158,31 @@
                                                         <StackPanel Grid.Column="1">
                                                             <StackPanel Orientation="Horizontal">
                                                                 <TextBlock Text="{Binding Name}"
+                                                                           Style="{DynamicResource BaseTextBlock}"
                                                                            FontWeight="SemiBold"
-                                                                           FontSize="14"/>
+                                                                           FontSize="16"/>
                                                                 <Border Background="{DynamicResource PrimaryBrush}"
                                                                         CornerRadius="8"
                                                                         Padding="6,2"
                                                                         Margin="10,0,0,0"
                                                                         Visibility="{Binding IsFinal, Converter={StaticResource BoolToVisibilityConverter}}">
                                                                     <TextBlock Text="Финал"
-                                                                               FontSize="10"
+                                                                               FontSize="12"
+                                                                               VerticalAlignment="Center"
                                                                                FontWeight="Bold"
                                                                                Foreground="White"/>
                                                                 </Border>
                                                             </StackPanel>
                                                             <TextBlock Text="{Binding TimeRangeText}"
                                                                        Style="{StaticResource CaptionSecondaryStyle}"
-                                                                       FontSize="11"
+                                                                       FontSize="14"
                                                                        Margin="0,4,0,0"/>
                                                             <TextBlock Text="{Binding Location, StringFormat='📍 {0}', FallbackValue=''}"
                                                                        Style="{StaticResource CaptionSecondaryStyle}"
-                                                                       FontSize="11"/>
+                                                                       FontSize="14"/>
                                                             <TextBlock Text="{Binding Description}"
                                                                        Style="{StaticResource CaptionSecondaryStyle}"
-                                                                       FontSize="11"
+                                                                       FontSize="14"
                                                                        TextWrapping="Wrap"
                                                                        Visibility="{Binding Description, Converter={StaticResource NullToVisibilityConverter}}"/>
                                                         </StackPanel>
@@ -215,12 +216,6 @@
                                                Visibility="{Binding HasNoStages, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 </StackPanel>
                             </Border>
-
-                            <TextBlock Text="ℹ️ Первый этап начинается с началом соревнования. Для остальных этапов вы можете указать время начала. Время окончания каждого этапа определяется автоматически."
-                                       Style="{StaticResource CaptionSecondaryStyle}"
-                                       Margin="0,8,0,0"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <!-- Кнопки действий -->

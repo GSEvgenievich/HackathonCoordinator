@@ -35,6 +35,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
             {
                 var competitions = await _context.Competitions
                     .Include(c => c.CreatedBy)
+                    .Include(c => c.ResultsCreatedBy)
+                    .Include(c => c.ResultsUpdatedBy)
                     .Include(c => c.Teams)
                     .OrderByDescending(c => c.CreatedAt)
                     .ToListAsync();
@@ -51,6 +53,12 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     CreatedByUsername = c.CreatedBy.Username,
                     IsArchived = c.IsArchived,
                     HasResults = c.HasResults,
+                    ResultsCreatedAt = c.ResultsCreatedAt,
+                    ResultsCreatedById = c.ResultsCreatedById,
+                    ResultsCreatedByUsername = c.ResultsCreatedBy?.Username,
+                    ResultsUpdatedAt = c.ResultsUpdatedAt,
+                    ResultsUpdatedById = c.ResultsUpdatedById,
+                    ResultsUpdatedByUsername = c.ResultsUpdatedBy?.Username,
                     Teams = c.Teams.Select(t => new TeamDto
                     {
                         Id = t.Id,
