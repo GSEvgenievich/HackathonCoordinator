@@ -52,6 +52,7 @@
                                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                     <TextBlock Text="📅"
                                                FontSize="22"
+                                               Foreground="{DynamicResource TextColor}"
                                                HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding Competition.DateTimeRangeText}"
                                                FontSize="15"
@@ -72,7 +73,8 @@
 
                                 <!-- 2. Статус -->
                                 <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                    <TextBlock Text="🏁"
+                                    <TextBlock Text="{Binding Competition.StatusIcon}"
+                                               Foreground="{DynamicResource TextColor}"
                                                FontSize="22"
                                                HorizontalAlignment="Center"/>
                                     <Border Background="{Binding Competition.StatusColor, Converter={StaticResource CompetitionStatusToBrushConverter}}"
@@ -99,6 +101,7 @@
                                 <StackPanel Grid.Column="4" HorizontalAlignment="Center">
                                     <TextBlock Text="👥"
                                                FontSize="22"
+                                               Foreground="{DynamicResource TextColor}"
                                                HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding Competition.TeamsCountText}"
                                                FontSize="15"
@@ -121,6 +124,7 @@
                                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                     <TextBlock Text="👤"
                                                FontSize="18"
+                                               Foreground="{DynamicResource TextColor}"
                                                HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding Competition.CreatedByUsername}" 
                                                FontWeight="SemiBold"
@@ -135,6 +139,7 @@
                                 <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                                     <TextBlock Text="🏆"
                                                FontSize="18"
+                                               Foreground="{DynamicResource TextColor}"
                                                HorizontalAlignment="Center"/>
 
                                     <StackPanel Margin="0,4,0,0"
@@ -201,15 +206,38 @@
                         <!-- Для организатора -->
                         <StackPanel Visibility="{Binding IsOrganizer, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Button Content="✏️ Редактировать соревнование"
+                                    Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                     Command="{Binding EditCompetitionCommand}"
                                     Style="{StaticResource PrimaryButton}"
                                     Height="45"
                                     Margin="0,0,0,10"/>
+
                             <Button Content="📤 Экспортировать данные"
                                     Command="{Binding ExportCompetitionCommand}"
                                     Style="{StaticResource SecondaryButton}"
                                     Height="45"
+                                    Margin="0,0,0,10"
                                     ToolTip="Экспортировать данные соревнования и данные всех команд"/>
+
+                            <Button Content="📦 Архивировать соревнование"
+                                    Command="{Binding ArchiveCompetitionCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    BorderBrush="{DynamicResource DangerBrush}"
+                                    Foreground="{DynamicResource DangerBrush}"
+                                    Height="45"
+                                    Margin="0,0,0,10"
+                                    ToolTip="Архивировать соревнование (удаление многих связанных данных)"
+                                    Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+
+                            <Button Content="🗑️ Удалить соревнование"
+                                    Command="{Binding DeleteCompetitionCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    BorderBrush="{DynamicResource DangerBrush}"
+                                    Foreground="{DynamicResource DangerBrush}"
+                                    Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                    Height="45"
+                                    Margin="0,0,0,0"
+                                    ToolTip="Удалить соревнование и все связанные данные"/>
                         </StackPanel>
 
                         <!-- Для обычного пользователя -->

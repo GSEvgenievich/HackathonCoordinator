@@ -8,6 +8,7 @@ using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
@@ -16,6 +17,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool doDispose = true;
 
         private readonly TeamService _teamService;
+        private readonly CompetitionService _competitionService;
         private readonly TaskService _taskService;
         private readonly ChatService _chatService;
         private readonly UserService _userService;
@@ -112,6 +114,97 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set { _newRepoIsPrivate = value; OnPropertyChanged(); }
         }
 
+        private bool _isArchived;
+        public bool IsArchived
+        {
+            get => _isArchived;
+            set
+            {
+                _isArchived = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(PageSubtitle));
+                OnPropertyChanged(nameof(MembersSectionTitle));
+            }
+        }
+
+        private string _competitionStatusText;
+        public string CompetitionStatusText
+        {
+            get => _competitionStatusText;
+            set => SetProperty(ref _competitionStatusText, value);
+        }
+
+        private string _competitionStatusColor;
+        public string CompetitionStatusColor
+        {
+            get => _competitionStatusColor;
+            set => SetProperty(ref _competitionStatusColor, value);
+        }
+
+        private bool _hasResult;
+        public bool HasResult
+        {
+            get => _hasResult;
+            set => SetProperty(ref _hasResult, value);
+        }
+
+        private int? _place;
+        public int? Place
+        {
+            get => _place;
+            set
+            {
+                SetProperty(ref _place, value);
+                OnPropertyChanged(nameof(PlaceDisplay));
+                OnPropertyChanged(nameof(PlaceBrush));
+            }
+        }
+
+        public string PlaceDisplay
+        {
+            get
+            {
+                if (!Place.HasValue) return "—";
+                return Place.Value switch
+                {
+                    1 => "🥇 1 место",
+                    2 => "🥈 2 место",
+                    3 => "🥉 3 место",
+                    _ => $"{Place.Value} место"
+                };
+            }
+        }
+
+        public Brush PlaceBrush
+        {
+            get
+            {
+                return Place switch
+                {
+                    1 => new SolidColorBrush(Color.FromRgb(255, 215, 0)),   // Золотой
+                    2 => new SolidColorBrush(Color.FromRgb(192, 192, 192)), // Серебряный
+                    3 => new SolidColorBrush(Color.FromRgb(205, 127, 50)),  // Бронзовый
+                    _ => new SolidColorBrush(Color.FromRgb(108, 117, 125))  // Серый
+                };
+            }
+        }
+
+        private string _resultComment;
+        public string ResultComment
+        {
+            get => _resultComment;
+            set => SetProperty(ref _resultComment, value);
+        }
+
+        public string PageSubtitle => IsArchived ? "Просмотр архива команды" : "Управление проектом и задачами команды";
+        public string MembersSectionTitle => IsArchived ? "👥 Финальный состав команды" : "👥 Участники команды";
+
+        private ObservableCollection<FinalTeamMemberDto> _finalTeamMembers = new();
+        public ObservableCollection<FinalTeamMemberDto> FinalTeamMembers
+        {
+            get => _finalTeamMembers;
+            set => SetProperty(ref _finalTeamMembers, value);
+        }
         public ObservableCollection<MemberDto> Members { get; set; } = new();
         public ObservableCollection<TaskSection> TaskSections { get; set; } = new();
         public ObservableCollection<MemberDto> AvailableMembers { get; set; } = new();
@@ -137,6 +230,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public TeamViewModel()
         {
             _teamService = new TeamService();
+            _competitionService = new CompetitionService();
             _userService = new UserService();
             _chatService = new ChatService();
             _taskService = new TaskService();
@@ -313,8 +407,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        MessageBox.Show("Команда не найдена", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("Команда не найдена", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                         _navigationService.NavigateTo(new CompetitionsPage());
                     });
                     return;
@@ -322,14 +415,39 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 CurrentTeam = teamResponse.Data;
 
+                // Проверяем статус соревнования
+                var competition = await _competitionService.GetCompetitionAsync(CurrentTeam.CompetitionId);
+                if (competition.Success)
+                {
+                    IsArchived = competition.Data.IsArchived;
+                    CompetitionStatusText = competition.Data.StatusText;
+                    CompetitionStatusColor = competition.Data.StatusColor;
+                    HasResult = competition.Data.HasResults;
+                }
+
                 var userResponse = await _userService.GetCurrentUserAsync();
                 if (userResponse.Success)
                 {
                     _currentUser = userResponse.Data;
                 }
 
-                await LoadMembersAsync();
-                await LoadTasksAsync();
+                if (IsArchived)
+                {
+                    // Загружаем финальный состав и результат
+                    await LoadFinalTeamDataAsync();
+                }
+                else
+                {
+                    await LoadMembersAsync();
+                    await LoadTasksAsync();
+                }
+
+                // Загружаем результат команды (если есть)
+                if (HasResult)
+                {
+                    await LoadTeamResultAsync();
+                }
+
                 CheckUserRole();
                 UpdateAllProperties();
             }
@@ -344,11 +462,59 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
+        private async Task LoadFinalTeamDataAsync()
+        {
+            try
+            {
+                var finalMembers = await _teamService.GetFinalTeamMembersAsync(CurrentTeam.Id);
+                if (finalMembers.Success && finalMembers.Data.Any())
+                {
+                    FinalTeamMembers = new ObservableCollection<FinalTeamMemberDto>(finalMembers.Data);
+
+                    // Формируем Members из финального состава
+                    Members.Clear();
+                    foreach (var member in finalMembers.Data)
+                    {
+                        Members.Add(new MemberDto
+                        {
+                            Id = member.UserId ?? 0,
+                            Username = member.Username,
+                            PositionName = member.PositionName,
+                            RoleName = member.RoleName,
+                            IsCurrentUser = member.UserId == _currentUser?.Id
+                        });
+                    }
+                    OnPropertyChanged(nameof(MembersCount));
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorAsync($"Ошибка загрузки финального состава: {ex.Message}");
+            }
+        }
+
+        private async Task LoadTeamResultAsync()
+        {
+            try
+            {
+                var result = await _teamService.GetTeamResultAsync(CurrentTeam.CompetitionId, CurrentTeam.Id);
+                if (result.Success && result.Data != null)
+                {
+                    Place = result.Data.Place;
+                    ResultComment = result.Data.Comment;
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorAsync($"Ошибка загрузки результата: {ex.Message}");
+            }
+        }
+
         private async void ExecuteBackCommand()
         {
             if (CurrentTeam != null)
             {
-                var competition = (await _teamService.GetCompetitionByTeamIdAsync(CurrentTeam.Id)).Data;
+                var competition = (await _competitionService.GetCompetitionAsync(CurrentTeam.CompetitionId)).Data;
                 _navigationService.NavigateTo(new CompetitionDetailsPage(competition));
             }
         }

@@ -188,6 +188,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                                 UserId = ftm.UserId,
                                 Username = ftm.Username,
                                 PositionName = ftm.PositionName,
+                                RoleId = ftm.RoleId,
                                 RoleName = ftm.Role.Name,
                                 FixedAt = ftm.FixedAt
                             })

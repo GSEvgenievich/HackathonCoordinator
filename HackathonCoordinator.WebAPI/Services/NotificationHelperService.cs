@@ -351,7 +351,7 @@ namespace HackathonCoordinator.WebAPI.Services
         /// <summary>
         /// Создать уведомление об удалении команды для всех участников
         /// </summary>
-        public async Task NotifyTeamDeleted(List<int> membersIds, string teamName, string deletedBy)
+        public async Task NotifyTeamDisbanded(List<int> membersIds, string teamName, string deletedBy)
         {
             foreach (var memberId in membersIds)
             {
@@ -359,8 +359,8 @@ namespace HackathonCoordinator.WebAPI.Services
                 {
                     UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.MemberKickedFromTeam,
-                    Title = "Команда удалена",
-                    Message = $"Команда «{teamName}» была удалена организатором {deletedBy}"
+                    Title = "Команда расформирована",
+                    Message = $"Команда «{teamName}» была расформирована организатором {deletedBy}"
                 });
             }
         }
@@ -405,6 +405,48 @@ namespace HackathonCoordinator.WebAPI.Services
                     Message = $"Организатор {createdBy} создал команду «{teamName}» в соревновании «{competitionName}»",
                     RelatedEntityType = "team",
                     RelatedEntityId = teamId
+                });
+            }
+        }
+
+        /// <summary>
+        /// Уведомить организаторов об удалении соревнования
+        /// </summary>
+        public async Task NotifyCompetitionDeleted(int competitionId, string competitionName, string deletedBy)
+        {
+            var organizersIds = await GetOrganizerIdsAsync();
+
+            foreach (var id in organizersIds)
+            {
+                await CreateNotificationAsync(id, new CreateNotificationDto
+                {
+                    UserId = id,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionDeleted,
+                    Title = "Соревнование удалено",
+                    Message = $"Соревнование \"{competitionName}\" было удалено организатором {deletedBy}",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
+                });
+            }
+        }
+
+        /// <summary>
+        /// Уведомить организаторов об отправке соревнования в архив
+        /// </summary>
+        public async Task NotifyCompetitionArchived(int competitionId, string competitionName, string archivedBy)
+        {
+            var organizersIds = await GetOrganizerIdsAsync();
+
+            foreach (var id in organizersIds)
+            {
+                await CreateNotificationAsync(id, new CreateNotificationDto
+                {
+                    UserId = id,
+                    NotificationTypeId = (int)NotificationTypes.CompetitionArchived,
+                    Title = "Соревнование архивировано",
+                    Message = $"Соревнование \"{competitionName}\" было отправлено в архив организатором {archivedBy}",
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
                 });
             }
         }

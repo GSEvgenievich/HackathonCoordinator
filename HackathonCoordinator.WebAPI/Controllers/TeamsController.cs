@@ -54,10 +54,17 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleError("Вы уже состоите в команде. Сначала покиньте текущую");
 
                 var team = await _context.Teams
+                    .Include(t => t.Competition)
                     .FirstOrDefaultAsync(t => t.InviteCode == dto.InviteCode.Trim());
 
                 if (team == null)
                     return HandleNotFound("Команда с таким кодом не найдена");
+
+                if (team.Competition.IsArchived)
+                    return HandleError("Невозможно присоединиться к команде, так как соревнование находится в архиве");
+
+                if (team.Competition.EndDate <= DateTime.Now)
+                    return HandleError("Невозможно присоединиться к команде, так как соревнование уже завершено");
 
                 user.TeamId = team.Id;
                 await _context.SaveChangesAsync();
@@ -102,6 +109,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                             Id = m.Id,
                             Username = m.Username,
                             RoleName = m.Role.Name ?? "Участник",
+                            PositionName = m.Position.Name,
                             IconName = m.ProfileIcon.Name,
                             IsCaptain = m.RoleId == (int)Roles.Captain
                         })
@@ -145,6 +153,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var teamDto = new TeamDto
                 {
                     Id = teamData.Team.Id,
+                    CompetitionId = teamData.Team.CompetitionId,
                     Name = teamData.Team.Name,
                     ChatId = teamData.Team.ChatId,
                     InviteCode = teamData.Team.InviteCode,
@@ -202,6 +211,87 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Получить финальный состав команды (из FinalTeamMembers)
+        /// </summary>
+        [HttpGet("{teamId}/final-members")]
+        public async Task<ActionResult<ApiResponse<List<FinalTeamMemberDto>>>> GetFinalTeamMembers(int teamId)
+        {
+            try
+            {
+                var team = await _context.Teams.FindAsync(teamId);
+                if (team == null)
+                    return HandleNotFound<List<FinalTeamMemberDto>>("Команда не найдена");
+
+                var finalMembers = await _context.FinalTeamMembers
+                    .Where(f => f.TeamId == teamId)
+                    .Include(f => f.Role)
+                    .OrderBy(f => f.RoleId == (int)Roles.Captain ? 0 : 1) // Капитаны первыми
+                    .ThenBy(f => f.Username)
+                    .Select(f => new FinalTeamMemberDto
+                    {
+                        Id = f.Id,
+                        UserId = f.UserId,
+                        Username = f.Username,
+                        PositionName = f.PositionName,
+                        RoleId = f.RoleId,
+                        RoleName = f.Role.Name,
+                        FixedAt = f.FixedAt
+                    })
+                    .ToListAsync();
+
+                return HandleResult(finalMembers);
+            }
+            catch (Exception ex)
+            {
+                return HandleError<List<FinalTeamMemberDto>>($"Ошибка получения финального состава: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить результат команды в соревновании
+        /// </summary>
+        [HttpGet("{teamId}/result")]
+        public async Task<ActionResult<ApiResponse<TeamResultDto>>> GetTeamResult(int teamId)
+        {
+            try
+            {
+                var team = await _context.Teams
+                    .Include(t => t.Competition)
+                    .FirstOrDefaultAsync(t => t.Id == teamId);
+
+                if (team == null)
+                    return HandleNotFound<TeamResultDto>("Команда не найдена");
+
+                // Проверяем, есть ли результаты у соревнования
+                if (!team.Competition.HasResults)
+                    return HandleNotFound<TeamResultDto>("Результаты еще не подведены");
+
+                var result = await _context.Results
+                    .Where(r => r.CompetitionId == team.CompetitionId && r.TeamId == teamId)
+                    .Select(r => new TeamResultDto
+                    {
+                        TeamId = r.TeamId,
+                        TeamName = team.Name,
+                        Place = r.Place,
+                        PlaceDisplay = r.PlaceDisplay,
+                        Comment = r.Comment,
+                        IsSaved = true,
+                        MembersCount = team.Users.Count.ToString()
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (result == null)
+                    return HandleNotFound<TeamResultDto>("Результат для команды не найден");
+
+                return HandleResult(result);
+            }
+            catch (Exception ex)
+            {
+                return HandleError<TeamResultDto>($"Ошибка получения результата: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Создать задачу в команде
         /// </summary>
         [HttpPost("{teamId}/tasks")]
@@ -216,11 +306,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleUnauthorized("Пользователь не найден");
 
                 var team = await _context.Teams
+                    .Include(t => t.Competition)
                     .Include(p => p.Users)
                     .FirstOrDefaultAsync(p => p.Id == teamId);
 
                 if (team == null)
                     return HandleNotFound("Команда не найдена");
+
+                if (team.Competition.IsArchived)
+                    return HandleError("Невозможно создать задачу, так как соревнование в архиве");
 
                 if (user.RoleId != (int)Roles.Captain && !team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain))
                     return HandleForbidden("Только капитан команды может создавать задачи");
@@ -415,6 +509,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                                 Id = m.Id,
                                 Username = m.Username,
                                 RoleName = m.Role.Name ?? "Участник",
+                                PositionName = m.Position.Name,
                                 IconName = m.ProfileIcon.Name,
                                 IsCaptain = m.RoleId == (int)Roles.Captain
                             })
@@ -452,6 +547,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var teamDto = new TeamDto
                 {
                     Id = teamData.Team.Id,
+                    CompetitionId = teamData.Team.CompetitionId,
                     Name = teamData.Team.Name,
                     ChatId = teamData.Team.ChatId,
                     InviteCode = teamData.Team.InviteCode,
@@ -581,11 +677,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleForbidden("Только организатор или капитан может назначать капитанов");
 
                 var team = await _context.Teams
+                    .Include(t => t.Competition)
                     .Include(t => t.Users)
                     .FirstOrDefaultAsync(t => t.Id == teamId);
 
                 if (team == null)
                     return HandleNotFound("Команда не найдена");
+
+                if (team.Competition.IsArchived)
+                    return HandleError("Невозможно изменить состав команды, так как соревнование в архиве");
 
                 if (user.TeamId != teamId && user.RoleId != (int)Roles.Organizer && user.RoleId != (int)Roles.Admin)
                     return HandleError("Недостаточно прав для назначения капитана");
@@ -630,9 +730,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// <summary>
         /// Удалить команду (только организатор)
         /// </summary>
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<ApiResponse>> DeleteTeam(int id)
+        [HttpDelete("{id}/teams/{teamId}")]
+        public async Task<ActionResult<ApiResponse>> DeleteTeam(int id, int teamId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            List<int> memberIds = new List<int>();
+            string teamName = "";
+            string deletedBy = "";
+
             try
             {
                 var userId = GetUserId();
@@ -641,64 +746,89 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
                     return HandleForbidden("Недостаточно прав для удаления команды");
 
+                var competition = await _context.Competitions.FindAsync(id);
+                if (competition == null)
+                    return HandleNotFound("Соревнование не найдено");
+
+                if (competition.IsArchived)
+                    return HandleError("Невозможно удалить команду, так как соревнование в архиве");
+
                 var team = await _context.Teams
-                    .Include(t => t.Competition)
                     .Include(t => t.Users)
-                    .FirstOrDefaultAsync(t => t.Id == id);
+                    .Include(t => t.Chat)
+                        .ThenInclude(c => c.Messages)
+                    .Include(t => t.Tasks)
+                        .ThenInclude(task => task.Chat)
+                            .ThenInclude(chat => chat.Messages)
+                    .FirstOrDefaultAsync(t => t.Id == teamId && t.CompetitionId == id);
 
                 if (team == null)
                     return HandleNotFound("Команда не найдена");
 
-                var teamName = team.Name;
-                var competitionName = team.Competition?.Name;
-                var competitionId = team.Competition?.Id;
-                var memberIds = team.Users.Select(u => u.Id).ToList();
+                // Сохраняем данные для уведомления
+                teamName = team.Name;
+                deletedBy = user.Username;
+                memberIds = team.Users.Select(u => u.Id).ToList();
 
-                using var transaction = await _context.Database.BeginTransactionAsync();
-
-                try
+                // Удаляем сообщения чата команды
+                if (team.Chat != null)
                 {
-                    var chatId = team.ChatId;
-
-                    _context.Teams.Remove(team);
-                    await _context.SaveChangesAsync();
-
-                    var chat = await _context.Chats.FindAsync(chatId);
-                    if (chat != null)
+                    if (team.Chat.Messages != null && team.Chat.Messages.Any())
                     {
-                        _context.Chats.Remove(chat);
-                        await _context.SaveChangesAsync();
+                        _context.Messages.RemoveRange(team.Chat.Messages);
                     }
+                    _context.Chats.Remove(team.Chat);
+                }
 
-                    await transaction.CommitAsync();
+                // Удаляем задачи и их чаты
+                foreach (var task in team.Tasks)
+                {
+                    if (task.Chat != null)
+                    {
+                        if (task.Chat.Messages != null && task.Chat.Messages.Any())
+                        {
+                            _context.Messages.RemoveRange(task.Chat.Messages);
+                        }
+                        _context.Chats.Remove(task.Chat);
+                    }
+                }
+                _context.Tasks.RemoveRange(team.Tasks);
 
-                    // Уведомления после успешного удаления
+                // Очищаем связь участников с командой
+                foreach (var member in team.Users)
+                {
+                    member.TeamId = null;
+                    // Если участник был капитаном, меняем роль на обычного участника
+                    if (member.RoleId == (int)Roles.Captain)
+                    {
+                        member.RoleId = (int)Roles.Member;
+                    }
+                }
+
+                // Удаляем команду
+                _context.Teams.Remove(team);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Отправляем уведомления всем участникам команды
+                if (memberIds.Any())
+                {
                     try
                     {
-                        // Уведомляем всех бывших участников команды
-                        await _notificationHelper.NotifyTeamDeleted(memberIds, teamName, user.Username);
-
-                        // Уведомляем организаторов о удалении команды
-                        if (!string.IsNullOrEmpty(competitionName))
-                        {
-                            await _notificationHelper.NotifyOrganizersAboutTeamDeletion(competitionId.Value, teamName, competitionName, user.Username);
-                        }
+                        await _notificationHelper.NotifyTeamDisbanded(memberIds, teamName, deletedBy);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        return HandleSuccess("Команда успешно удалена\n!Ошибка отправки уведомления!");
+                        return HandleSuccess($"Команда \"{teamName}\" успешно удалена\n!Ошибка отправки уведомления!");
                     }
+                }
 
-                    return HandleSuccess("Команда успешно удалена");
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                return HandleSuccess($"Команда \"{teamName}\" успешно удалена");
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при удалении команды: {ex.Message}");
             }
         }
@@ -769,11 +899,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleUnauthorized<GitHubRepoCreationResponseDto>("Пользователь не найден");
 
                 var team = await _context.Teams
+                    .Include(t => t.Competition)
                     .Include(t => t.Users)
                     .FirstOrDefaultAsync(t => t.Id == teamId);
 
                 if (team == null)
                     return HandleNotFound<GitHubRepoCreationResponseDto>("Команда не найдена");
+
+                if (team.Competition.IsArchived)
+                    return HandleError<GitHubRepoCreationResponseDto>("Невозможно создать репозиторий, так как соревнование в архиве");
 
                 if (user.RoleId != (int)Roles.Captain)
                     return HandleForbidden<GitHubRepoCreationResponseDto>("Только капитан команды может создавать GitHub репозиторий");

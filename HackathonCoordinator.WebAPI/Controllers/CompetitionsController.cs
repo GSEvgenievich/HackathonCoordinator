@@ -62,6 +62,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     Teams = c.Teams.Select(t => new TeamDto
                     {
                         Id = t.Id,
+                        CompetitionId = t.CompetitionId,
                         Name = t.Name
                     }).ToList()
                 }).ToList();
@@ -87,6 +88,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(c => c.ResultsCreatedBy)
                     .Include(c => c.ResultsUpdatedBy)
                     .Include(c => c.Teams)
+                    .ThenInclude(t=>t.Results)
                     .FirstOrDefaultAsync(c => c.Id == id);
 
                 if (competition == null)
@@ -113,6 +115,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     Teams = competition.Teams.Select(t => new TeamDto
                     {
                         Id = t.Id,
+                        CompetitionId = t.CompetitionId,
                         Name = t.Name
                     }).ToList()
                 };
@@ -230,7 +233,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 {
                     await _notificationHelper.NotifyOrganizersAboutNewCompetition(competition.Id, competition.Name, user.Username);
                 }
-                catch 
+                catch
                 {
                     return HandleSuccess("Соревнование успешно создано \n!Ошибка отправки уведомления!");
                 }
@@ -257,6 +260,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var competition = await _context.Competitions.FindAsync(id);
                 if (competition == null)
                     return HandleNotFound("Соревнование не найдено");
+
+                if (competition.IsArchived)
+                    return HandleError("Невозможно редактировать соревнование, так как оно находится в архиве");
 
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
@@ -298,6 +304,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var competition = await _context.Competitions.FindAsync(id);
                 if (competition == null)
                     return HandleNotFound("Соревнование не найдено");
+
+                if (competition.IsArchived)
+                    return HandleError("Невозможно редактировать соревнование, так как оно находится в архиве");
 
                 // Обновляем соревнование
                 competition.Name = dto.Competition.Name;
@@ -364,6 +373,344 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Удалить соревнование и все связанные данные
+        /// </summary>
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse>> DeleteCompetition(int id)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // Собираем данные для уведомлений
+            string competitionName = "";
+            string deletedBy = "";
+            List<int> allParticipantIds = new List<int>();
+            Dictionary<int, string> teamNamesDict = new Dictionary<int, string>();
+            Dictionary<int, List<int>> teamMembersDict = new Dictionary<int, List<int>>();
+            List<string> notificationErrors = new List<string>();
+
+            try
+            {
+                var userId = GetUserId();
+                var currentUser = await _context.Users.FindAsync(userId);
+
+                if (currentUser?.RoleId != (int)Roles.Organizer && currentUser?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для удаления соревнования");
+
+                var competition = await _context.Competitions
+                    .Include(c => c.Teams)
+                        .ThenInclude(t => t.Users)
+                    .Include(c => c.Teams)
+                        .ThenInclude(t => t.Tasks)
+                            .ThenInclude(task => task.Chat)
+                                .ThenInclude(chat => chat.Messages)
+                    .Include(c => c.Teams)
+                        .ThenInclude(t => t.Chat)
+                            .ThenInclude(chat => chat.Messages)
+                    .Include(c => c.Stages)
+                    .Include(c => c.Results)
+                    .FirstOrDefaultAsync(c => c.Id == id);
+
+                if (competition == null)
+                    return HandleNotFound("Соревнование не найдено");
+
+                // Сохраняем данные для уведомлений
+                competitionName = competition.Name;
+                deletedBy = currentUser.Username;
+
+                foreach (var team in competition.Teams)
+                {
+                    var memberIds = team.Users.Select(u => u.Id).ToList();
+                    teamMembersDict[team.Id] = memberIds;
+                    teamNamesDict[team.Id] = team.Name;
+                    allParticipantIds.AddRange(memberIds);
+                }
+                allParticipantIds = allParticipantIds.Distinct().ToList();
+
+                // 1. Удаляем все уведомления, связанные с соревнованием и его командами
+                var notificationIds = await _context.Notifications
+                    .Where(n => n.RelatedEntityType == "competition" && n.RelatedEntityId == id ||
+                               n.RelatedEntityType == "team" && competition.Teams.Select(t => t.Id).Contains(n.RelatedEntityId ?? 0))
+                    .Select(n => n.Id)
+                    .ToListAsync();
+
+                if (notificationIds.Any())
+                {
+                    var notificationsToDelete = await _context.Notifications
+                        .Where(n => notificationIds.Contains(n.Id))
+                        .ToListAsync();
+                    _context.Notifications.RemoveRange(notificationsToDelete);
+                }
+
+                // 2. Удаляем финальные составы команд
+                var finalTeamMembers = await _context.FinalTeamMembers
+                    .Where(f => competition.Teams.Select(t => t.Id).Contains(f.TeamId))
+                    .ToListAsync();
+                if (finalTeamMembers.Any())
+                {
+                    _context.FinalTeamMembers.RemoveRange(finalTeamMembers);
+                }
+
+                // 3. Обрабатываем каждую команду
+                foreach (var team in competition.Teams)
+                {
+                    // Очищаем участников команды
+                    foreach (var user in team.Users)
+                    {
+                        user.TeamId = null;
+                        if (user.RoleId == (int)Roles.Captain)
+                        {
+                            user.RoleId = (int)Roles.Member;
+                        }
+                    }
+
+                    // Удаляем задачи и их чаты
+                    foreach (var task in team.Tasks)
+                    {
+                        if (task.Chat != null)
+                        {
+                            if (task.Chat.Messages != null && task.Chat.Messages.Any())
+                            {
+                                _context.Messages.RemoveRange(task.Chat.Messages);
+                            }
+                            _context.Chats.Remove(task.Chat);
+                        }
+                    }
+                    _context.Tasks.RemoveRange(team.Tasks);
+
+                    // Удаляем чат команды
+                    if (team.Chat != null)
+                    {
+                        if (team.Chat.Messages != null && team.Chat.Messages.Any())
+                        {
+                            _context.Messages.RemoveRange(team.Chat.Messages);
+                        }
+                        _context.Chats.Remove(team.Chat);
+                    }
+                }
+
+                // 4. Удаляем результаты соревнования
+                if (competition.Results != null && competition.Results.Any())
+                {
+                    _context.Results.RemoveRange(competition.Results);
+                }
+
+                // 5. Удаляем этапы
+                if (competition.Stages != null && competition.Stages.Any())
+                {
+                    _context.Stages.RemoveRange(competition.Stages);
+                }
+
+                // 6. Удаляем команды
+                if (competition.Teams != null && competition.Teams.Any())
+                {
+                    _context.Teams.RemoveRange(competition.Teams);
+                }
+
+                // 7. Удаляем само соревнование
+                _context.Competitions.Remove(competition);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // 8. Отправляем уведомления ПОСЛЕ успешного сохранения
+
+                // Уведомляем участников всех команд
+                foreach (var teamId in teamMembersDict.Keys)
+                {
+                    var memberIds = teamMembersDict[teamId];
+                    var teamName = teamNamesDict[teamId];
+
+                    if (memberIds.Any())
+                    {
+                        try
+                        {
+                            await _notificationHelper.NotifyTeamDisbanded(memberIds, teamName, deletedBy);
+                        }
+                        catch (Exception ex)
+                        {
+                            notificationErrors.Add($"• Команда \"{teamName}\" (ID: {teamId})");
+                        }
+                    }
+                }
+
+                // Уведомляем организаторов
+                try
+                {
+                    await _notificationHelper.NotifyCompetitionDeleted(id, competitionName, deletedBy);
+                }
+                catch (Exception ex)
+                {
+                    notificationErrors.Add("• Уведомления для организаторов");
+                }
+
+                // Формируем ответ
+                if (notificationErrors.Any())
+                {
+                    var errorMessage = $"Соревнование \"{competitionName}\" успешно удалено.\n\n⚠️ Ошибки при отправке уведомлений:\n" + string.Join("\n", notificationErrors);
+                    return HandleSuccess(errorMessage);
+                }
+
+                return HandleSuccess($"Соревнование \"{competitionName}\" успешно удалено");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка удаления соревнования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Архивировать соревнование и очистить связанные данные
+        /// </summary>
+        [HttpPost("{id}/archive")]
+        public async Task<ActionResult<ApiResponse>> ArchiveCompetition(int id)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // Словарь для хранения участников по командам (для уведомлений)
+            Dictionary<int, List<int>> teamMembersDict = new Dictionary<int, List<int>>();
+            Dictionary<int, string> teamNamesDict = new Dictionary<int, string>();
+            List<string> notificationErrors = new List<string>();
+            string archivedBy = "";
+            string competitionName = "";
+
+            try
+            {
+                var userId = GetUserId();
+                var currentUser = await _context.Users.FindAsync(userId);
+
+                if (currentUser?.RoleId != (int)Roles.Organizer && currentUser?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Недостаточно прав для архивирования соревнования");
+
+                archivedBy = currentUser.Username;
+
+                var competition = await _context.Competitions
+                    .Include(c => c.Teams)
+                        .ThenInclude(t => t.Users)
+                    .Include(c => c.Teams)
+                        .ThenInclude(t => t.Tasks)
+                            .ThenInclude(task => task.Chat)
+                                .ThenInclude(chat => chat.Messages)
+                    .Include(c => c.Teams)
+                        .ThenInclude(t => t.Chat)
+                            .ThenInclude(chat => chat.Messages)
+                    .Include(c => c.Stages)
+                    .FirstOrDefaultAsync(c => c.Id == id);
+
+                if (competition == null)
+                    return HandleNotFound("Соревнование не найдено");
+
+                if (competition.IsArchived)
+                    return HandleError("Соревнование уже архивировано");
+
+                competitionName = competition.Name;
+
+                // Сохраняем данные для уведомлений
+                foreach (var team in competition.Teams)
+                {
+                    teamMembersDict[team.Id] = team.Users.Select(u => u.Id).ToList();
+                    teamNamesDict[team.Id] = team.Name;
+                }
+
+                // Очищаем данные в командах
+                foreach (var team in competition.Teams)
+                {
+                    // Очищаем участников команды
+                    foreach (var user in team.Users)
+                    {
+                        user.TeamId = null;
+                        if (user.RoleId == (int)Roles.Captain)
+                        {
+                            user.RoleId = (int)Roles.Member;
+                        }
+                    }
+
+                    // Удаляем задачи и их чаты
+                    foreach (var task in team.Tasks)
+                    {
+                        if (task.Chat != null)
+                        {
+                            if (task.Chat.Messages != null && task.Chat.Messages.Any())
+                            {
+                                _context.Messages.RemoveRange(task.Chat.Messages);
+                            }
+                            _context.Chats.Remove(task.Chat);
+                        }
+                    }
+                    _context.Tasks.RemoveRange(team.Tasks);
+
+                    // Очищаем чат команды
+                    if (team.Chat != null)
+                    {
+                        if (team.Chat.Messages != null && team.Chat.Messages.Any())
+                        {
+                            _context.Messages.RemoveRange(team.Chat.Messages);
+                        }
+                        _context.Chats.Remove(team.Chat);
+                    }
+
+                    // Очищаем GitHub репозиторий
+                    team.GitRepoName = null;
+                }
+
+                // Удаляем этапы
+                if (competition.Stages != null && competition.Stages.Any())
+                {
+                    _context.Stages.RemoveRange(competition.Stages);
+                }
+
+                // Устанавливаем флаг архивации
+                competition.IsArchived = true;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Отправляем уведомления участникам всех команд
+                foreach (var teamId in teamMembersDict.Keys)
+                {
+                    var memberIds = teamMembersDict[teamId];
+                    var teamName = teamNamesDict[teamId];
+
+                    if (memberIds.Any())
+                    {
+                        try
+                        {
+                            await _notificationHelper.NotifyTeamDisbanded(memberIds, teamName, archivedBy);
+                        }
+                        catch (Exception ex)
+                        {
+                            notificationErrors.Add($"• Команда \"{teamName}\" (ID: {teamId})");
+                        }
+                    }
+                }
+
+                // Отправляем уведомления организаторам
+                try
+                {
+                    await _notificationHelper.NotifyCompetitionArchived(id, competitionName, archivedBy);
+                }
+                catch (Exception ex)
+                {
+                    notificationErrors.Add("• Уведомления для организаторов");
+                }
+
+                // Формируем ответ
+                if (notificationErrors.Any())
+                {
+                    var errorMessage = "Соревнование успешно архивировано.\n\n⚠️ Ошибки при отправке уведомлений:\n" + string.Join("\n", notificationErrors);
+                    return HandleSuccess(errorMessage);
+                }
+
+                return HandleSuccess("Соревнование успешно архивировано");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка архивирования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Сохранить все результаты соревнования (массовое сохранение)
         /// </summary>
         [HttpPost("{id}/save-all-results")]
@@ -385,6 +732,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 if (competition == null)
                     return HandleNotFound("Соревнование не найдено");
+
+                if (competition.IsArchived)
+                    return HandleError("Невозможно подвести итоги, так как соревнование находится в архиве");
 
                 bool hadResults = competition.HasResults;
 
@@ -524,6 +874,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (competition == null)
                     return HandleNotFound<List<TeamResultDto>>("Соревнование не найдено");
 
+                if (!competition.HasResults)
+                    return HandleError<List<TeamResultDto>>("Результаты еще не подведены");
+
                 var results = competition.Results
                     .OrderBy(r => r.Place)
                     .Select(r => new TeamResultDto
@@ -604,6 +957,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var competition = await _context.Competitions.FindAsync(id);
                 if (competition == null)
                     return HandleNotFound("Соревнование не найдено");
+
+                if (competition.IsArchived)
+                    return HandleError("Невозможно создать команду, так как соревнование находится в архиве");
 
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);

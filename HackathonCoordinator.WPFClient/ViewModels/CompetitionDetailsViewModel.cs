@@ -28,6 +28,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (SetProperty(ref _competition, value))
                 {
                     LoadStagesAsync();
+                    OnPropertyChanged(nameof(IsArchived));
                     UpdateResultsButtonState();
                 }
             }
@@ -47,6 +48,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set => SetProperty(ref _stagesGroupedByDay, value);
         }
 
+        public bool IsArchived => Competition?.IsArchived ?? false;
+        public bool IsActiveCompetition => !IsArchived && Competition != null;
         public bool HasNoStages => Stages == null || Stages.Count == 0;
 
         private string _inviteCode = "";
@@ -133,7 +136,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private (bool CanGoToResults, string ButtonText, string Tooltip) DetermineResultsButtonState()
         {
-            bool canEdit = IsOrganizer && Competition.IsCompleted;
+            bool canEdit = IsOrganizer && Competition.IsCompleted && !Competition.IsArchived;
             bool canView = Competition.HasResults;
 
             if (canEdit)
@@ -181,6 +184,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand ExportCompetitionCommand { get; }
         public ICommand GoToResultsCommand { get; }
         public ICommand EditCompetitionCommand { get; }
+        public ICommand DeleteCompetitionCommand { get; }
+        public ICommand ArchiveCompetitionCommand { get; }
 
         public CompetitionDetailsViewModel()
         {
@@ -195,9 +200,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             ManageTeamCommand = new RelayCommand<TeamDto>(ManageTeam);
             EditCompetitionCommand = new RelayCommand(EditCompetition);
 
+            DeleteCompetitionCommand = new AsyncRelayCommand(
+                execute: async () => await DeleteCompetitionAsync(),
+                canExecute: () => Competition != null && IsOrganizer);
+
+            ArchiveCompetitionCommand = new AsyncRelayCommand(
+                execute: async () => await ArchiveCompetitionAsync(),
+                canExecute: () => Competition != null && IsOrganizer && !Competition.IsArchived);
+
             CreateTeamCommand = new AsyncRelayCommand(
                 execute: async () => await CreateTeamAsync(),
-                canExecute: () => Competition != null && !IsAlreadyInTeam && IsOrganizer);
+                canExecute: () => Competition != null && !IsAlreadyInTeam && IsOrganizer && !IsArchived);
 
             JoinTeamCommand = new AsyncRelayCommand(
                 execute: async () => await JoinTeamAsync(),
@@ -205,7 +218,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             DeleteTeamCommand = new AsyncRelayCommand<TeamDto>(
                 execute: async (team) => await DeleteTeamAsync(team),
-                canExecute: (team) => team != null && IsOrganizer);
+                canExecute: (team) => team != null && IsOrganizer && !IsArchived);
 
             ExportCompetitionCommand = new AsyncRelayCommand(
                 execute: async () => await ExportCompetitionAsync(),
@@ -252,6 +265,103 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private void EditCompetition()
         {
             _navigationService.NavigateTo(new EditCompetitionPage(Competition));
+        }
+
+        private async Task DeleteCompetitionAsync()
+        {
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    $"Вы уверены, что хотите удалить соревнование \"{Competition.Name}\"?\n\n" +
+                    "При удалении соревнования будут удалены:\n" +
+                    "• Все команды соревнований\n" +
+                    "• Все задачи и чаты команд\n" +
+                    "• Все этапы расписания\n" +
+                    "• Все результаты и фиксации составов\n\n" +
+                    "Это действие нельзя отменить!",
+                    "Подтверждение удаления",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+            });
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var deleteResult = await _competitionService.DeleteCompetitionAsync(Competition.Id);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (deleteResult.Success)
+                    {
+                        MessageBox.Show($"Соревнование \"{Competition.Name}\" успешно удалено!",
+                            "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _navigationService.NavigateTo(new CompetitionsPage());
+                    }
+                    else
+                    {
+                        MessageBox.Show(deleteResult.Message, "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+
+        private async Task ArchiveCompetitionAsync()
+        {
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return MessageBox.Show(
+                    $"Вы уверены, что хотите архивировать соревнование \"{Competition.Name}\"?\n\n" +
+                    "При архивировании будут удалены:\n" +
+                    "• Все этапы расписания\n" +
+                    "• Все чаты и сообщения команд\n" +
+                    "• Все задачи команд\n" +
+                    "• Все участники будут откреплены от команд\n\n" +
+                    "Результаты и финальные составы команд останутся в архиве.\n\n" +
+                    "Это действие нельзя отменить!",
+                    "Архивирование соревнования",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+            });
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var archiveResult = await _competitionService.ArchiveCompetitionAsync(Competition.Id);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (archiveResult.Success)
+                    {
+                        MessageBox.Show($"Соревнование \"{Competition.Name}\" успешно архивировано!",
+                            "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
+                        LoadCompetitionAsync(Competition.Id);
+                    }
+                    else
+                    {
+                        MessageBox.Show(archiveResult.Message, "Ошибка",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show($"Ошибка архивирования: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
         }
 
         public async void LoadCompetitionAsync(int competitionId)
@@ -401,7 +511,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             try
             {
-                var deleteResult = await _competitionService.DeleteTeamAsync(team.Id);
+                var deleteResult = await _teamService.DeleteTeamAsync(team.Id);
 
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -444,7 +554,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (viewModel != null)
             {
                 bool editMode = IsOrganizer && Competition.IsCompleted;
-                await viewModel.LoadCompetitionAsync(Competition, editMode);
+                await viewModel.LoadCompetitionAsync(Competition, editMode, IsOrganizer);
                 _navigationService.NavigateTo(resultsPage);
             }
         }

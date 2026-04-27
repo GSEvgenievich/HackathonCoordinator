@@ -5,6 +5,7 @@
         public int Id { get; set; }
         public string Username { get; set; }
         public string RoleName { get; set; }
+        public string PositionName { get; set; }
         public string IconName { get; set; }
         public bool IsCurrentUser { get; set; }
         public bool IsCaptain => RoleName == "Капитан";

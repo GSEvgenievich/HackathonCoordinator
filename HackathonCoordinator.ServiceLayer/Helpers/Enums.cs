@@ -41,7 +41,9 @@
         RoleChanged = 23,
         CompetitionResultsPublished = 24,
         CompetitionResultsUpdated = 25,
-        StageStarted = 26
+        StageStarted = 26,
+        CompetitionDeleted = 27,
+        CompetitionArchived = 28
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Services;
@@ -26,6 +27,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private bool _canMoveUp;
         private bool _canMoveDown;
         private bool _hasExistingResults;
+        private bool _isArchived;
+        private bool _isOrganizer;
+        public bool IsOrganizer
+        {
+            get => _isOrganizer;
+            set => SetProperty(ref _isOrganizer, value);
+        }
 
         public CompetitionDto Competition
         {
@@ -35,12 +43,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (SetProperty(ref _competition, value))
                 {
                     OnPropertyChanged(nameof(CompetitionName));
+                    OnPropertyChanged(nameof(IsArchived));
                 }
             }
         }
 
+        public bool IsArchived => Competition?.IsArchived ?? false;
+
         public string CompetitionName => Competition?.Name ?? "";
-        public string PageTitle => IsEditMode ? "🏆 Подведение итогов" : "📊 Результаты соревнования";
+        public string PageTitle
+        {
+            get
+            {
+                if (IsArchived) return "📦 Результаты (архив)";
+                return IsEditMode ? "🏆 Подведение итогов" : "📊 Результаты соревнования";
+            }
+        }
 
         public ObservableCollection<TeamResultDto> Teams
         {
@@ -92,6 +110,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (SetProperty(ref _isEditMode, value))
                 {
                     OnPropertyChanged(nameof(IsViewMode));
+                    OnPropertyChanged(nameof(PageTitle));
                 }
             }
         }
@@ -101,7 +120,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool HasExistingResults
         {
             get => _hasExistingResults;
-            set => SetProperty(ref _hasExistingResults, value); // Добавляем SetProperty
+            set => SetProperty(ref _hasExistingResults, value);
         }
 
         public string SaveButtonText => "💾 Сохранить результаты";
@@ -130,10 +149,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
 
             BackCommand = new RelayCommand(GoBack);
-            SaveResultsCommand = new AsyncRelayCommand(SaveResultsAsync);
+            SaveResultsCommand = new AsyncRelayCommand(SaveResultsAsync, () => IsEditMode && !IsArchived);
             ExportResultsCommand = new AsyncRelayCommand(ExportResults);
-            MoveUpCommand = new RelayCommand(MoveUp, () => CanMoveUp && IsEditMode);
-            MoveDownCommand = new RelayCommand(MoveDown, () => CanMoveDown && IsEditMode);
+            MoveUpCommand = new RelayCommand(MoveUp, () => CanMoveUp && IsEditMode && !IsArchived);
+            MoveDownCommand = new RelayCommand(MoveDown, () => CanMoveDown && IsEditMode && !IsArchived);
             AddCommentCommand = new RelayCommand<TeamResultDto>(ShowCommentDialogCommand);
             SaveCommentCommand = new AsyncRelayCommand(SaveCommentAsync);
             CancelCommentCommand = new RelayCommand(CancelComment);
@@ -142,7 +161,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private void UpdateMoveButtonsState()
         {
-            if (SelectedTeam == null || Teams == null || !IsEditMode)
+            if (SelectedTeam == null || Teams == null || !IsEditMode || IsArchived)
             {
                 CanMoveUp = false;
                 CanMoveDown = false;
@@ -161,7 +180,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private void MoveUp()
         {
-            if (SelectedTeam == null || !IsEditMode) return;
+            if (SelectedTeam == null || !IsEditMode || IsArchived) return;
 
             var index = Teams.IndexOf(SelectedTeam);
             if (index > 0)
@@ -172,7 +191,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private void MoveDown()
         {
-            if (SelectedTeam == null || !IsEditMode) return;
+            if (SelectedTeam == null || !IsEditMode || IsArchived) return;
 
             var index = Teams.IndexOf(SelectedTeam);
             if (index < Teams.Count - 1)
@@ -204,10 +223,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             UpdateMoveButtonsState();
         }
 
-        public async Task LoadCompetitionAsync(CompetitionDto competition, bool editMode = false)
+        public async Task LoadCompetitionAsync(CompetitionDto competition, bool editMode = false, bool isOrganizer = false)
         {
             Competition = competition;
-            IsEditMode = editMode;
+            IsOrganizer = isOrganizer;
+
+            // Если соревнование в архиве - режим только просмотра
+            if (IsArchived)
+            {
+                IsEditMode = false;
+            }
+            else
+            {
+                IsEditMode = editMode;
+            }
 
             try
             {
@@ -220,7 +249,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 if (savedResults.Success && savedResults.Data.Any())
                 {
-                    HasExistingResults = true; // Используем свойство с SetProperty
+                    HasExistingResults = true;
 
                     foreach (var savedTeam in savedResults.Data.OrderBy(r => r.Place))
                     {
@@ -237,9 +266,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    HasExistingResults = false; // Используем свойство с SetProperty
+                    HasExistingResults = false;
 
-                    if (IsEditMode)
+                    if (IsEditMode && !IsArchived)
                     {
                         var random = new Random();
                         foreach (var team in competitionData.Data.Teams)
@@ -260,12 +289,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        if (!IsArchived)
                         {
-                            MessageBox.Show("Результаты еще не опубликованы", "Информация",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
-                            GoBack();
-                        });
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                MessageBox.Show("Результаты еще не опубликованы", "Информация",
+                                    MessageBoxButton.OK, MessageBoxImage.Information);
+                                GoBack();
+                            });
+                        }
                     }
                 }
             }
@@ -288,7 +320,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task SaveCommentAsync()
         {
-            if (SelectedTeam == null) return;
+            if (SelectedTeam == null || IsArchived) return;
 
             SelectedTeam.Comment = CommentText;
 
@@ -304,7 +336,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task SaveResultsAsync()
         {
-            if (!IsEditMode) return;
+            if (!IsEditMode || IsArchived) return;
 
             var result = await Application.Current.Dispatcher.InvokeAsync(() =>
             {
@@ -332,10 +364,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                             team.IsSaved = true;
                         }
 
-                        // Обновляем флаг после успешного сохранения
                         HasExistingResults = true;
 
-                        // Обновляем объект соревнования после успешного сохранения
                         var updatedCompetition = await _competitionService.GetCompetitionAsync(Competition.Id);
                         if (updatedCompetition.Success)
                         {

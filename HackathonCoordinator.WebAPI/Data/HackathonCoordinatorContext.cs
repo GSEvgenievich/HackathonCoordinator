@@ -368,7 +368,6 @@ public partial class HackathonCoordinatorContext : DbContext
 
             entity.HasOne(d => d.Chat).WithMany(p => p.Teams)
                 .HasForeignKey(d => d.ChatId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Teams_Chats");
 
             entity.HasOne(d => d.Competition).WithMany(p => p.Teams)

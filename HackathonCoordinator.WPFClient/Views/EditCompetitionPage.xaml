@@ -23,8 +23,6 @@
                         <StackPanel>
                             <TextBlock Text="{Binding PageTitle}" 
                                        Style="{StaticResource PageHeaderStyle}"/>
-                            <TextBlock Text="{Binding PageSubtitle}"
-                                       Style="{StaticResource PageSubtitleStyle}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -131,6 +131,7 @@ namespace HackathonCoordinator.ServiceLayer.DTOs
         {
             get
             {
+                if (IsArchived) return "В архиве";
                 var now = DateTime.Now;
                 if (now < StartDate) return "Ожидается";
                 if (now > EndDate) return "Завершено";
@@ -143,6 +144,7 @@ namespace HackathonCoordinator.ServiceLayer.DTOs
             "Активно" => "Green",
             "Ожидается" => "Orange",
             "Завершено" => "Gray",
+            "В архиве" => "Archive",
             _ => "Gray"
         };
 
@@ -151,6 +153,7 @@ namespace HackathonCoordinator.ServiceLayer.DTOs
             "Активно" => "🏃",
             "Ожидается" => "⏰",
             "Завершено" => "✅",
+            "В архиве" => "📦",
             _ => "❓"
         };
 

@@ -12,8 +12,6 @@ namespace HackathonCoordinator.WPFClient
         private readonly AuthService _authService;
         private readonly UserService _userService;
 
-        public bool IsSidebarExpanded => _isExpanded;
-
         public MainWindow()
         {
             InitializeComponent();

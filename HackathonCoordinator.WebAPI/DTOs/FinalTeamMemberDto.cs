@@ -6,6 +6,7 @@
         public int? UserId { get; set; }
         public string Username { get; set; }
         public string PositionName { get; set; }
+        public int? RoleId { get; set; }
         public string RoleName { get; set; }
         public DateTime FixedAt { get; set; }
     }

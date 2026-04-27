@@ -66,6 +66,42 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
+        /// <summary>
+        /// Удалить соревнование
+        /// </summary>
+        public async Task<ApiResponse> DeleteCompetitionAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.DeleteAsync($"competitions/{competitionId}");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка удаления соревнования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Архивировать соревнование и очистить связанные данные
+        /// </summary>
+        public async Task<ApiResponse> ArchiveCompetitionAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"competitions/{competitionId}/archive", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка архивирования: {ex.Message}");
+            }
+        }
+
         public async Task<ApiResponse> CreateTeamAsync(int competitionId, string teamName)
         {
             SetAuthHeader();
@@ -79,21 +115,6 @@ namespace HackathonCoordinator.ServiceLayer.Services
             catch (Exception ex)
             {
                 return ApiResponse.Fail($"Ошибка создания команды: {ex.Message}");
-            }
-        }
-
-        public async Task<ApiResponse> DeleteTeamAsync(int teamId)
-        {
-            SetAuthHeader();
-
-            try
-            {
-                var response = await _client.DeleteAsync($"teams/{teamId}");
-                return await HandleResponseAsync(response);
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Fail($"Ошибка удаления команды: {ex.Message}");
             }
         }
 

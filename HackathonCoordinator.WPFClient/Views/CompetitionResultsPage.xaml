@@ -64,9 +64,22 @@
 
                 <!-- Подзаголовок -->
                 <TextBlock Text="{Binding CompetitionName, StringFormat='Соревнование: {0}'}"
-                           Style="{StaticResource PageSubtitleStyle}"
-                           Margin="0,0,0,15"/>
-
+                           Style="{StaticResource PageSubtitleStyle}"/>
+                
+                <Border Background="{DynamicResource DangerBrush}"
+                        CornerRadius="8"
+                        Padding="12,8"
+                        Margin="0,5,0,15"
+                        Visibility="{Binding IsArchived, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="📦 " FontSize="16" Foreground="White"/>
+                        <TextBlock Text="Соревнование находится в архиве. Редактирование результатов недоступно."
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"/>
+                    </StackPanel>
+                </Border>
+                
                 <!-- Кнопки действий -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,5,0,0">
                     <!-- Кнопка экспорта -->
@@ -86,7 +99,7 @@
                 </StackPanel>
             </StackPanel>
         </Border>
-
+        
         <!-- Список команд -->
         <ScrollViewer Grid.Row="1" 
                       VerticalScrollBarVisibility="Auto"
