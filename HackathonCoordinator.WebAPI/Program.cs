@@ -71,6 +71,7 @@ builder.Services.AddSignalR(options =>
 // Регистрация зависимостей
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<NotificationHelperService>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 // Конфигурация JWT аутентификации
 var jwt = builder.Configuration.GetSection("Jwt");

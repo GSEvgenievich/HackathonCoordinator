@@ -12,8 +12,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class EditCompetitionViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
         private readonly CompetitionService _competitionService;
+
+        private CompetitionDto? _competition = null;
 
         // Основные поля соревнования
         private string _name = "";
@@ -24,7 +25,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private string _endTime = "18:00";
         private string _errorMessage = "";
         private bool _isEditMode = false;
-        private int _competitionId = 0;
 
         // Stages
         private ObservableCollection<StageEditItem> _stages = new();
@@ -181,7 +181,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public EditCompetitionViewModel()
         {
-            _navigationService = App.NavigationService;
             _competitionService = new CompetitionService();
 
             SaveCommand = new AsyncRelayCommand(
@@ -189,15 +188,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 canExecute: () => !string.IsNullOrWhiteSpace(Name) &&
                                  IsValidTimeFormat(StartTime) &&
                                  IsValidTimeFormat(EndTime));
-
-            CancelCommand = new RelayCommand(() => _navigationService.NavigateTo(new CompetitionsPage()));
-
+            CancelCommand = new RelayCommand(Cancel);
             AddStageCommand = new RelayCommand(ShowAddStageDialog);
             EditStageCommand = new RelayCommand<StageEditItem>(ShowEditStageDialog);
             DeleteStageCommand = new RelayCommand<StageEditItem>(DeleteStage);
             SaveStageCommand = new RelayCommand(SaveStage);
             CancelStageDialogCommand = new RelayCommand(CancelStageDialog);
             ClearErrorCommand = new RelayCommand(ClearError);
+        }
+
+        private void Cancel()
+        {
+            _navigationService.GoBack();
         }
 
         private void ClearError()
@@ -207,8 +209,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public void LoadCompetitionData(CompetitionDto competition)
         {
-            _isEditMode = true;
-            _competitionId = competition.Id;
+            if (competition != null)
+            {
+                _isEditMode = true;
+                _competition = competition;
+            }
 
             Name = competition.Name;
             Description = competition.Description;
@@ -228,7 +233,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             try
             {
-                var result = await _competitionService.GetStagesAsync(_competitionId);
+                var result = await _competitionService.GetStagesAsync(_competition.Id);
                 if (result.Success && result.Data != null)
                 {
                     Stages.Clear();
@@ -507,7 +512,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 if (HasErrorMessage)
                 {
-                    return; 
+                    return;
                 }
             }
             else
@@ -631,8 +636,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         Location = s.Location,
                         Order = s.Order,
                         IsFinal = s.IsFinal,
-                        StartTime = s.StartTime, 
-                        EndTime = s.EndTime       
+                        StartTime = s.StartTime,
+                        EndTime = s.EndTime
                     })
                     .ToList();
 
@@ -640,7 +645,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 if (_isEditMode)
                 {
-                    result = await _competitionService.UpdateCompetitionWithStagesAsync(_competitionId, competitionDto, stagesToSave);
+                    result = await _competitionService.UpdateCompetitionWithStagesAsync(_competition.Id, competitionDto, stagesToSave);
                 }
                 else
                 {
@@ -656,7 +661,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                     if (result.Success)
                     {
-                        _navigationService.NavigateTo(new CompetitionsPage());
+                        Cancel();
                     }
                 });
             }

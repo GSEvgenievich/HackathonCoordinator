@@ -81,7 +81,8 @@
                 </Border>
                 
                 <!-- Кнопки действий -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,5,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,5,0,0" 
+                            Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <!-- Кнопка экспорта -->
                     <Button Content="{Binding ExportButtonText}"
                             Command="{Binding ExportResultsCommand}"
@@ -94,8 +95,7 @@
                     <Button Content="{Binding SaveButtonText}"
                             Command="{Binding SaveResultsCommand}"
                             Style="{StaticResource PrimaryButton}"
-                            Padding="20,12"
-                            Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            Padding="20,12"/>
                 </StackPanel>
             </StackPanel>
         </Border>

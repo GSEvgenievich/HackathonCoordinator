@@ -19,7 +19,11 @@ public partial class Message
 
     public DateTime? EditedAt { get; set; }
 
+    public bool HasAttachments { get; set; }
+
     public virtual Chat Chat { get; set; } = null!;
+
+    public virtual ICollection<MessageAttachment> MessageAttachments { get; set; } = new List<MessageAttachment>();
 
     public virtual User User { get; set; } = null!;
 }

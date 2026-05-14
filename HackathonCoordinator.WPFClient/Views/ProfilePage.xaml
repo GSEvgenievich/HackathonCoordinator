@@ -18,6 +18,7 @@
                     <DockPanel VerticalAlignment="Center">
                         <Button Content="← Назад" 
                                 IsCancel="True"
+                                Visibility="{Binding IsOwnProfile, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                 Command="{Binding BackCommand}"
                                 Style="{StaticResource NavigationButton}"
                                 Margin="0,0,20,0"/>
@@ -55,7 +56,8 @@
                               Margin="0,0,30,0"
                               VerticalAlignment="Center">
                             <uc:RoundAvatar Size="120" 
-                                            Source="{Binding User.IconPath}"
+                                            x:Name="MainAvatar"
+                                            Source="{Binding User.IconPath, UpdateSourceTrigger=PropertyChanged}"
                                             BorderBrush="{DynamicResource BorderColor}"
                                             BorderThickness="3"/>
 

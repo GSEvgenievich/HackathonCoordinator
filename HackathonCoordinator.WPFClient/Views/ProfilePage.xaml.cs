@@ -6,6 +6,8 @@ namespace HackathonCoordinator.WPFClient.Views
 {
     public partial class ProfilePage : Page
     {
+        private int? _userId;
+
         public ProfilePage()
         {
             InitializeComponent();
@@ -15,22 +17,21 @@ namespace HackathonCoordinator.WPFClient.Views
         public ProfilePage(int userId)
         {
             InitializeComponent();
-            Loaded += (s, e) => OnPageLoaded(userId);
+            _userId = userId;
+            Loaded += OnPageLoaded;
+        }
+
+        public void UpdateAvatar(string imagePath)
+        {
+            MainAvatar.ImagePath = imagePath;
         }
 
         private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is ProfileViewModel viewModel)
             {
-                await viewModel.LoadProfileAsync();
-            }
-        }
-
-        private async void OnPageLoaded(int userId)
-        {
-            if (DataContext is ProfileViewModel viewModel)
-            {
-                await viewModel.LoadProfileAsync(userId);
+                viewModel.doDispose = true;
+                await viewModel.InitializeAsync(_userId);
             }
         }
 
@@ -38,7 +39,8 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (DataContext is ProfileViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
     }

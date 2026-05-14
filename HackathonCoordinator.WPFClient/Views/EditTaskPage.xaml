@@ -15,7 +15,7 @@
                 <!-- Заголовок страницы -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="← Назад к проекту" 
+                        <Button Content="← Назад" 
                                 Command="{Binding CancelCommand}"
                                 Style="{StaticResource NavigationButton}"
                                 Margin="0,0,20,0"/>
@@ -121,17 +121,15 @@
 
                                     <!-- Дедлайн -->
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="📅 Дата окончания *"
+                                        <TextBlock Text="📅 Дата окончания"
                                                    Style="{StaticResource StatsHeaderStyle}"
                                                    Margin="0,0,0,8"/>
 
-                                        <!-- Дата -->
                                         <DatePicker SelectedDate="{Binding DeadlineDate}"
                                                     Style="{StaticResource ModernDatePicker}"
                                                     Margin="0,0,0,15"/>
 
-                                        <!-- Время -->
-                                        <TextBlock Text="⏰ Время окончания *"
+                                        <TextBlock Text="⏰ Время окончания"
                                                    Style="{StaticResource StatsHeaderStyle}"
                                                    Margin="0,0,0,8"/>
                                         <TextBox Text="{Binding DeadlineTime, UpdateSourceTrigger=PropertyChanged}"
@@ -143,39 +141,14 @@
                                     <Rectangle Grid.Column="1" Style="{StaticResource VerticalDividerStyle}"/>
 
                                     <!-- GitHub ветка -->
-                                    <StackPanel Grid.Column="2"
-                                                Visibility="{Binding ShowGitHubSection, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Grid.Column="2">
                                         <TextBlock Text="🔗 GitHub ветка"
                                                    Style="{StaticResource StatsHeaderStyle}"
                                                    Margin="0,0,0,8"/>
 
-                                        <!-- Режим просмотра для существующей ветки -->
                                         <TextBox Text="{Binding GitHubBranchName, UpdateSourceTrigger=PropertyChanged}"
-                                                 Tag="{Binding GithubBranchHint}"
                                                  Style="{StaticResource ModernTextBox}"
-                                                 IsReadOnly="{Binding IsBranchReadOnly}"
-                                                 ToolTip="{Binding BranchToolTip}"/>
-
-                                        <!-- Подсказки -->
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding GithubBranchHint, StringFormat='Рекомендуемый формат: {0}название-ветки'}"
-                                                        Style="{StaticResource CaptionSecondaryStyle}"
-                                                        Margin="0,5,0,0"/>
-
-                                            <!-- Сообщение о существующей ветке -->
-                                            <TextBlock Text="⚠️ Ветка уже создана в GitHub. Изменить нельзя."
-                                                        Style="{StaticResource CaptionSecondaryStyle}"
-                                                        Foreground="Orange"
-                                                        Margin="0,5,0,0"
-                                                        Visibility="{Binding ShowBranchWarning, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                                            <!-- Сообщение о создании новой ветки -->
-                                            <TextBlock Text="ℹ️ Будет создана новая ветка в GitHub репозитории команды"
-                                                   Style="{StaticResource CaptionSecondaryStyle}"
-                                                   Foreground="{DynamicResource PrimaryBrush}"
-                                                   Margin="0,5,0,0"
-                                                   Visibility="{Binding ShowBranchInfo, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                        </StackPanel>
+                                                 Tag="feature/my-feature"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>

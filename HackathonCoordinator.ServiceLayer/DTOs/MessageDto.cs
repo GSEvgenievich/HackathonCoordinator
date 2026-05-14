@@ -31,6 +31,8 @@ namespace HackathonCoordinator.ServiceLayer.DTOs
         public string SentAtFormatted => SentAt.ToString("HH:mm");
 
         public bool IsMyMessage { get; set; }
+        public bool HasAttachments { get; set; }
+        public List<MessageAttachmentDto> Attachments { get; set; } = new();
 
         public bool IsEdited
         {

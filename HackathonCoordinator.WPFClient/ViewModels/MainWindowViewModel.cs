@@ -3,7 +3,6 @@ using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Windows;
@@ -13,7 +12,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public partial class MainWindowViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
         private readonly TeamService _teamService;
         private readonly UserService _userService;
         private readonly AuthService _authService;
@@ -21,7 +19,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private HubConnection _notificationHubConnection;
         private readonly string[] _themes = { "Light", "Dark", "Summer", "Spring", "Winter", "Autumn" };
         private int _currentThemeIndex = 0;
-
+        private Type _currentPageType;
         private bool _isOrganizer = false;
         public bool IsOrganizer
         {
@@ -75,7 +73,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public MainWindowViewModel()
         {
-            _navigationService = App.NavigationService;
             _teamService = new TeamService();
             _userService = new UserService();
             _authService = new AuthService();
@@ -114,19 +111,16 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             Application.Current.Exit += async (s, e) => await DisposeNotificationHub();
         }
 
-        private async Task ExecuteOpenNotificationsAsync()
+        public void SetCurrentPageType(Type pageType)
         {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                _navigationService.NavigateTo(new NotificationsPage());
-            });
+            _currentPageType = pageType;
         }
 
         private async Task ExecuteOpenMainPageAsync()
         {
             try
             {
-                _navigationService.GoToMainPage();
+                await OpenMainPage();
             }
             catch (Exception ex)
             {
@@ -143,7 +137,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                _navigationService.NavigateTo(new ChatsPage());
+                _navigationService.NavigateToWithClearHistory(new ChatsPage());
             });
         }
 
@@ -151,7 +145,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                _navigationService.NavigateTo(new ProfilePage());
+                _navigationService.NavigateToWithClearHistory(new ProfilePage());
             });
         }
 
@@ -159,7 +153,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                _navigationService.NavigateTo(new UsersManagementPage());
+                _navigationService.NavigateToWithClearHistory(new UsersManagementPage());
+            });
+        }
+
+        private async Task ExecuteOpenNotificationsAsync()
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _navigationService.NavigateToWithClearHistory(new NotificationsPage());
             });
         }
 
@@ -305,6 +307,46 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                             await Logout();
                         }
                     }
+                    else if (notification.NotificationTypeId == (int)NotificationTypes.TeamDeleted)
+                    {
+                        if (_currentPageType == typeof(TeamPage) || _currentPageType == typeof(ChatPage))
+                        {
+                            var result = MessageBox.Show(
+                                $"{notification.Message}\n\n" +
+                                "Вы будете перенаправлены на главную страницу.",
+                                notification.Title,
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+
+                            if (result == MessageBoxResult.OK)
+                            {
+                                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                                {
+                                    await OpenMainPage();
+                                });
+                            }
+                        }
+                    }
+                    else if (notification.NotificationTypeId == (int)NotificationTypes.CompetitionDeleted)
+                    {
+                        if (_currentPageType == typeof(CompetitionDetailsPage))
+                        {
+                            var result = MessageBox.Show(
+                                $"{notification.Message}\n\n" +
+                                "Вы будете перенаправлены на главную страницу.",
+                                notification.Title,
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+
+                            if (result == MessageBoxResult.OK)
+                            {
+                                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                                {
+                                    await OpenMainPage();
+                                });
+                            }
+                        }
+                    }
                 });
             });
         }
@@ -352,14 +394,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        public async void OpenMainPage()
+        public async Task OpenMainPage()
         {
-            var teamId = await _teamService.GetCurrentTeamIdAsync();
+            var teamResponse = await _teamService.GetCurrentTeamAsync();
 
-            if (!teamId.Success)
-                _navigationService.NavigateTo(new CompetitionsPage());
+            if (!teamResponse.Success || teamResponse.Data == null)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    _navigationService.NavigateToWithClearHistory(new CompetitionsPage());
+                });
+            }
             else
-                _navigationService.NavigateTo(new TeamPage());
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    _navigationService.NavigateToWithClearHistory(new TeamPage(teamResponse.Data));
+                });
+            }
         }
 
         protected override void DisposeManagedResources()

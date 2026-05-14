@@ -1,14 +1,13 @@
-﻿using DocumentFormat.OpenXml.InkML;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace HackathonCoordinator.ServiceLayer.DTOs
 {
-    public class UserProfileExtendedDto : UserDto
+    public class UserProfileExtendedDto : UserDto, INotifyPropertyChanged
     {
+        private string? _gitHubUsername;
+        private string? _gitHubStatus;
+
         public List<UserResultDto> Results { get; set; } = new();
         public bool IsCurrentUser { get; set; }
 
@@ -20,8 +19,30 @@ namespace HackathonCoordinator.ServiceLayer.DTOs
             _ => "Участник"
         };
 
-        public string GitHubStatus => string.IsNullOrEmpty(GitHubUsername)
-            ? "Не привязан"
-            : $"Привязан ({GitHubUsername})";
+        public new string? GitHubUsername
+        {
+            get => _gitHubUsername;
+            set
+            {
+                if (_gitHubUsername != value)
+                {
+                    _gitHubUsername = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(GitHubStatus));
+                }
+            }
+        }
+
+        public string GitHubStatus
+        {
+            get => string.IsNullOrEmpty(GitHubUsername) ? "Не привязан" : $"Привязан ({GitHubUsername})";
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }

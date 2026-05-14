@@ -4,6 +4,7 @@ using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WebAPI.Services;
+using Humanizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -20,14 +21,17 @@ namespace HackathonCoordinator.WebAPI.Controllers
         private readonly HackathonCoordinatorContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly NotificationHelperService _notificationHelper;
+        private readonly IFileStorageService _fileStorageService;
 
         public ChatsController(
             HackathonCoordinatorContext context,
             NotificationHelperService notificationHelper,
+            IFileStorageService fileStorageService,
             IHubContext<ChatHub> hubContext)
         {
             _context = context;
             _hubContext = hubContext;
+            _fileStorageService = fileStorageService;
             _notificationHelper = notificationHelper;
         }
 
@@ -55,6 +59,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(c => c.Messages)
                         .ThenInclude(m => m.User)
                         .ThenInclude(u => u.ProfileIcon)
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.MessageAttachments)  // Добавляем загрузку вложений
                     .Include(c => c.Type)
                     .FirstOrDefaultAsync(c => c.Teams.Any(t => t.Id == teamId) &&
                                              c.TypeId == (int)ChatTypes.TeamChat);
@@ -120,6 +126,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(c => c.Messages)
                         .ThenInclude(m => m.User)
                         .ThenInclude(u => u.ProfileIcon)
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.MessageAttachments)  // Добавляем загрузку вложений
                     .Include(c => c.Type)
                     .FirstOrDefaultAsync(c => c.Tasks.Any(t => t.Id == taskId) &&
                                              c.TypeId == (int)ChatTypes.TaskChat);
@@ -148,6 +156,77 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Получить историю сообщений с пагинацией
+        /// </summary>
+        [HttpGet("{chatId}/messages")]
+        public async Task<ActionResult<ApiResponse<List<MessageDto>>>> GetChatMessages(
+            int chatId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (user == null)
+                    return HandleUnauthorized<List<MessageDto>>("Пользователь не найден");
+
+                var chat = await _context.Chats
+                    .Include(c => c.Teams)
+                    .Include(c => c.Tasks)
+                    .FirstOrDefaultAsync(c => c.Id == chatId);
+
+                if (chat == null)
+                    return HandleNotFound<List<MessageDto>>("Чат не найден");
+
+                // Проверка доступа
+                bool hasAccess = await CheckChatAccess(chat, userId);
+                if (!hasAccess)
+                    return HandleForbidden<List<MessageDto>>("Нет доступа к чату");
+
+                var messages = await _context.Messages
+                    .Where(m => m.ChatId == chatId)
+                    .Include(m => m.User)
+                        .ThenInclude(u => u.ProfileIcon)
+                    .Include(m => m.MessageAttachments)  // Добавляем загрузку вложений
+                    .OrderByDescending(m => m.SentAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .OrderBy(m => m.SentAt)
+                    .Select(m => new MessageDto
+                    {
+                        Id = m.Id,
+                        ChatId = m.ChatId,
+                        UserId = m.UserId,
+                        UserName = m.User.Username,
+                        UserIcon = m.User.ProfileIcon.Name,
+                        Text = m.Text,
+                        SentAt = m.SentAt,
+                        IsEdited = m.IsEdited,
+                        IsMyMessage = m.UserId == userId,
+                        HasAttachments = m.HasAttachments,
+                        Attachments = m.MessageAttachments.Select(a => new MessageAttachmentDto
+                        {
+                            Id = a.Id,
+                            MessageId = a.MessageId,
+                            FileName = a.FileName,
+                            FileSize = a.FileSize,
+                            ContentType = a.ContentType,
+                            FilePath = a.FilePath,
+                            ThumbnailBase64 = a.Thumbnail != null ? Convert.ToBase64String(a.Thumbnail) : null,
+                            UploadedAt = a.UploadedAt
+                        }).ToList()
+                    })
+                    .ToListAsync();
+
+                return HandleResult(messages);
+            }
+            catch (Exception ex)
+            {
+                return HandleError<List<MessageDto>>("Ошибка при получении сообщений");
+            }
+        }
+
+        /// <summary>
         /// Отправить сообщение
         /// </summary>
         [HttpPost("send")]
@@ -158,6 +237,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var userId = GetUserId();
                 var user = await _context.Users
                     .Include(u => u.ProfileIcon)
+                    .Include(u=>u.Role)
                     .FirstOrDefaultAsync(u => u.Id == userId);
 
                 if (user == null)
@@ -173,28 +253,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (chat == null)
                     return HandleNotFound<MessageDto>("Чат не найден");
 
-                // Проверка доступа в зависимости от типа чата
-                bool hasAccess = false;
-
-                if (chat.TypeId == (int)ChatTypes.TeamChat) // Чат команды
-                {
-                    hasAccess = chat.Teams.Any(t => t.Users.Any(u => u.Id == userId)) ||
-                                user.RoleId == (int)Roles.Organizer ||
-                                user.RoleId == (int)Roles.Admin;
-                }
-                else if (chat.TypeId == (int)ChatTypes.TaskChat) // Чат задачи
-                {
-                    var task = chat.Tasks.FirstOrDefault();
-                    if (task != null)
-                    {
-                        // Проверяем доступ: капитан, исполнитель или организатор
-                        hasAccess = user.RoleId == (int)Roles.Organizer || 
-                                    user.RoleId == (int)Roles.Admin ||
-                                    task.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
-                                    task.AssignedToId == userId;
-                    }
-                }
-
+                // Проверка доступа
+                bool hasAccess = await CheckChatAccess(chat, userId);
                 if (!hasAccess)
                     return HandleForbidden<MessageDto>("Нет доступа к чату");
 
@@ -204,7 +264,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     UserId = userId,
                     Text = dto.Text.Trim(),
                     SentAt = DateTime.Now,
-                    IsEdited = false
+                    IsEdited = false,
+                    HasAttachments = false
                 };
 
                 _context.Messages.Add(message);
@@ -226,7 +287,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     UserIcon = $"/Assets/Images/Profile/{message.User.ProfileIcon?.Name ?? "boy1"}.png",
                     Text = message.Text,
                     SentAt = message.SentAt,
-                    IsMyMessage = false
+                    IsMyMessage = false,
+                    HasAttachments = message.HasAttachments
                 };
 
                 // Отправляем сообщение через SignalR
@@ -234,7 +296,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .SendAsync("ReceiveMessage", messageDto);
 
                 // Обработка уведомлений через @notify
-                if (dto.Text.Contains("@notify") && user.RoleId == (int)Roles.Captain)
+                if (dto.Text.Contains("@notify") && user.RoleId != (int)Roles.Member)
                 {
                     await ProcessNotificationFromMessageAsync(chat, user, message);
                 }
@@ -327,60 +389,198 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Получить историю сообщений с пагинацией
+        /// Отправить сообщение с вложениями
         /// </summary>
-        [HttpGet("{chatId}/messages")]
-        public async Task<ActionResult<ApiResponse<List<MessageDto>>>> GetChatMessages(
-            int chatId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        [HttpPost("send-with-attachments")]
+        [RequestSizeLimit(50 * 1024 * 1024)] // 50 MB
+        public async Task<ActionResult<ApiResponse<MessageDto>>> SendMessageWithAttachments([FromForm] SendMessageWithAttachmentsDto request)
         {
             try
             {
                 var userId = GetUserId();
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                var user = await _context.Users
+                    .Include(u => u.ProfileIcon)
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
 
                 if (user == null)
-                    return HandleUnauthorized<List<MessageDto>>("Пользователь не найден");
+                    return HandleUnauthorized<MessageDto>("Пользователь не найден");
 
                 var chat = await _context.Chats
                     .Include(c => c.Teams)
                     .Include(c => c.Tasks)
-                    .FirstOrDefaultAsync(c => c.Id == chatId);
+                        .ThenInclude(t => t.Team)
+                        .ThenInclude(t => t.Users)
+                    .FirstOrDefaultAsync(c => c.Id == request.ChatId);
 
                 if (chat == null)
-                    return HandleNotFound<List<MessageDto>>("Чат не найден");
+                    return HandleNotFound<MessageDto>("Чат не найден");
 
                 // Проверка доступа
                 bool hasAccess = await CheckChatAccess(chat, userId);
                 if (!hasAccess)
-                    return HandleForbidden<List<MessageDto>>("Нет доступа к чату");
+                    return HandleForbidden<MessageDto>("Нет доступа к чату");
 
-                var messages = await _context.Messages
-                    .Where(m => m.ChatId == chatId)
-                    .Include(m => m.User)
-                    .ThenInclude(u => u.ProfileIcon)
-                    .OrderByDescending(m => m.SentAt)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .OrderBy(m => m.SentAt)
-                    .Select(m => new MessageDto
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    // Создаем сообщение
+                    var message = new Message
                     {
-                        Id = m.Id,
-                        ChatId = m.ChatId,
-                        UserId = m.UserId,
-                        UserName = m.User.Username,
-                        UserIcon = m.User.ProfileIcon.Name,
-                        Text = m.Text,
-                        SentAt = m.SentAt,
-                        IsEdited = m.IsEdited,
-                        IsMyMessage = m.UserId == userId
-                    })
-                    .ToListAsync();
+                        ChatId = request.ChatId,
+                        UserId = userId,
+                        Text = request.Text?.Trim() ?? "",
+                        SentAt = DateTime.Now,
+                        IsEdited = false,
+                        HasAttachments = request.Attachments != null && request.Attachments.Any()
+                    };
 
-                return HandleResult(messages);
+                    _context.Messages.Add(message);
+                    await _context.SaveChangesAsync();
+
+                    // Сохраняем вложения
+                    var attachments = new List<MessageAttachmentDto>();
+                    if (request.Attachments != null && request.Attachments.Any())
+                    {
+                        foreach (var file in request.Attachments)
+                        {
+                            using var ms = new MemoryStream();
+                            await file.CopyToAsync(ms);
+                            var fileData = ms.ToArray();
+
+                            var uploadResult = await _fileStorageService.UploadFileAsync(fileData, file.FileName, file.ContentType, message.Id);
+
+                            var attachment = new MessageAttachment
+                            {
+                                MessageId = message.Id,
+                                FileName = uploadResult.FileName,
+                                FileSize = uploadResult.FileSize,
+                                ContentType = uploadResult.ContentType,
+                                FilePath = uploadResult.FilePath,
+                                Thumbnail = uploadResult.Thumbnail,
+                                UploadedAt = DateTime.Now
+                            };
+
+                            _context.MessageAttachments.Add(attachment);
+                            await _context.SaveChangesAsync();
+
+                            attachments.Add(new MessageAttachmentDto
+                            {
+                                Id = attachment.Id,
+                                MessageId = attachment.MessageId,
+                                FileName = attachment.FileName,
+                                FileSize = attachment.FileSize,
+                                ContentType = attachment.ContentType,
+                                FilePath = attachment.FilePath,
+                                ThumbnailBase64 = attachment.Thumbnail != null ? Convert.ToBase64String(attachment.Thumbnail) : null,
+                                UploadedAt = attachment.UploadedAt
+                            });
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+
+                    // Формируем DTO ответа
+                    var messageDto = new MessageDto
+                    {
+                        Id = message.Id,
+                        ChatId = message.ChatId,
+                        UserId = message.UserId,
+                        UserName = user.Username,
+                        UserIcon = $"/Assets/Images/Profile/{user.ProfileIcon?.Name ?? "boy1"}.png",
+                        Text = message.Text,
+                        SentAt = message.SentAt,
+                        IsMyMessage = false,
+                        HasAttachments = message.HasAttachments,
+                        Attachments = attachments
+                    };
+
+                    // Отправляем через SignalR
+                    await _hubContext.Clients.Group($"chat-{request.ChatId}")
+                        .SendAsync("ReceiveMessage", messageDto);
+
+                    // Обработка уведомлений через @notify
+                    if (request.Text.Contains("@notify") && user.RoleId != (int)Roles.Member)
+                    {
+                        await ProcessNotificationFromMessageAsync(chat, user, message);
+                    }
+
+                    return HandleResult(messageDto, "Сообщение отправлено");
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                return HandleError<List<MessageDto>>("Ошибка при получении сообщений");
+                return HandleError<MessageDto>($"Ошибка при отправке сообщения: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить полное изображение для просмотра
+        /// </summary>
+        [HttpGet("image/{attachmentId}")]
+        public async Task<ActionResult<ApiResponse>> GetFullImage(int attachmentId)
+        {
+            try
+            {
+                var attachment = await _context.MessageAttachments
+                    .Include(a => a.Message)
+                    .ThenInclude(m => m.Chat)
+                    .FirstOrDefaultAsync(a => a.Id == attachmentId);
+
+                if (attachment == null)
+                    return HandleNotFound();
+
+                var userId = GetUserId();
+                var hasAccess = await CheckChatAccess(attachment.Message.Chat, userId);
+                if (!hasAccess)
+                    return HandleForbidden();
+
+                if (!attachment.ContentType.StartsWith("image/"))
+                    return HandleError("Файл не является изображением");
+
+                // Используем один метод
+                var fileBytes = await _fileStorageService.GetFileBytesAsync(attachment.FilePath);
+                return File(fileBytes, attachment.ContentType);
+            }
+            catch (Exception ex)
+            {
+                return HandleError($"Ошибка при загрузке изображения: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Скачать вложение
+        /// </summary>
+        [HttpGet("download/{attachmentId}")]
+        public async Task<ActionResult<ApiResponse>> DownloadAttachment(int attachmentId)
+        {
+            try
+            {
+                var attachment = await _context.MessageAttachments
+                    .Include(a => a.Message)
+                    .ThenInclude(m => m.Chat)
+                    .FirstOrDefaultAsync(a => a.Id == attachmentId);
+
+                if (attachment == null)
+                    return HandleNotFound();
+
+                var userId = GetUserId();
+                var hasAccess = await CheckChatAccess(attachment.Message.Chat, userId);
+                if (!hasAccess)
+                    return HandleForbidden();
+
+                var fileBytes = await _fileStorageService.GetFileBytesAsync(attachment.FilePath);
+                return File(fileBytes, attachment.ContentType, attachment.FileName);
+            }
+            catch (Exception ex)
+            {
+                return HandleError($"Ошибка при загрузке вложения: {ex.Message}");
             }
         }
 
@@ -389,27 +589,33 @@ namespace HackathonCoordinator.WebAPI.Controllers
         private async Task<bool> CheckChatAccess(Chat chat, int userId)
         {
             var user = await _context.Users
-                .Include(u => u.Team)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+                .Where(u => u.Id == userId)
+                .Select(u => new { u.RoleId, u.TeamId })
+                .FirstOrDefaultAsync();
 
-            if (user == null)
-                return false;
+            if (user == null) return false;
 
             if (user.RoleId == (int)Roles.Organizer || user.RoleId == (int)Roles.Admin)
                 return true;
 
             if (chat.TypeId == (int)ChatTypes.TeamChat)
             {
-                return chat.Teams.Any(t => t.Users.Any(u => u.Id == userId));
+                // Проверяем, состоит ли пользователь в команде
+                var teamId = await _context.Teams
+                    .Where(t => t.ChatId == chat.Id)
+                    .Select(t => t.Id)
+                    .FirstOrDefaultAsync();
+
+                return user.TeamId == teamId;
             }
-            else if (chat.TypeId == (int)ChatTypes.TaskChat)
+
+            if (chat.TypeId == (int)ChatTypes.TaskChat)
             {
-                var task = chat.Tasks.FirstOrDefault();
-                if (task != null)
-                {
-                    return task.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
-                           task.AssignedToId == userId;
-                }
+                // Проверяем доступ к чату задачи
+                return await _context.Tasks
+                    .Where(t => t.ChatId == chat.Id)
+                    .AnyAsync(t => t.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain) ||
+                                  t.AssignedToId == userId);
             }
 
             return false;
@@ -429,7 +635,19 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     Text = m.Text,
                     SentAt = m.SentAt,
                     IsEdited = m.IsEdited,
-                    IsMyMessage = m.UserId == currentUserId
+                    IsMyMessage = m.UserId == currentUserId,
+                    HasAttachments = m.HasAttachments,
+                    Attachments = m.MessageAttachments.Select(a => new MessageAttachmentDto
+                    {
+                        Id = a.Id,
+                        MessageId = a.MessageId,
+                        FileName = a.FileName,
+                        FileSize = a.FileSize,
+                        ContentType = a.ContentType,
+                        FilePath = a.FilePath,
+                        ThumbnailBase64 = a.Thumbnail != null ? Convert.ToBase64String(a.Thumbnail) : null,
+                        UploadedAt = a.UploadedAt
+                    }).ToList()
                 })
                 .ToList();
 
@@ -457,7 +675,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             };
         }
 
-        private async Task ProcessNotificationFromMessageAsync(Chat chat, User captain, Message message)
+        private async Task ProcessNotificationFromMessageAsync(Chat chat, User sender, Message message)
         {
             try
             {
@@ -469,7 +687,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         await _notificationHelper.NotifyImportantTeamChatMessage(
                             chat.Id,
                             team.Id,
-                            captain.Username,
+                            $"({sender.Role.Name}) {sender.Username}",
+                            sender.Id,
                             message.Text.Replace("@notify", "").Trim());
                     }
                 }
@@ -481,9 +700,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         await _notificationHelper.NotifyImportantTaskChatMessage(
                             chat.Id,
                             task.AssignedToId.Value,
+                            task.TeamId,
                             task.Id,
                             task.Title,
-                            captain.Username,
+                            $"({sender.Role.Name}) {sender.Username}",
+                            sender.RoleId,
                             message.Text.Replace("@notify", "").Trim());
                     }
                 }

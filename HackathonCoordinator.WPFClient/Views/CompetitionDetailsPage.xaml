@@ -17,7 +17,7 @@
                     <StackPanel>
                         <!-- Заголовок и кнопка возврата -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <Button Content="← Назад к соревнованиям" 
+                            <Button Content="← Назад" 
                                     Command="{Binding BackCommand}"
                                     Style="{StaticResource SecondaryButton}"
                                     Margin="0,0,20,0"/>

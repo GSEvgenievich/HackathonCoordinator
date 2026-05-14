@@ -1,4 +1,5 @@
-﻿using HackathonCoordinator.WPFClient.ViewModels;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.WPFClient.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -6,27 +7,36 @@ namespace HackathonCoordinator.WPFClient.Views
 {
     public partial class EditTaskPage : Page
     {
-        private readonly int _id;
+        private readonly int _teamId;
+        private readonly TaskDetailsDto _task;
         private readonly bool _isCreateMode;
 
-        public EditTaskPage(int id, bool isCreateMode = true)
+        public EditTaskPage(int teamId, bool isCreateMode = true)
         {
             InitializeComponent();
-            _id = id;
+            _teamId = teamId;
             _isCreateMode = isCreateMode;
             Loaded += OnPageLoaded;
         }
 
-        private void OnPageLoaded(object sender, RoutedEventArgs e)
+        public EditTaskPage(TaskDetailsDto task, bool isCreateMode = false)
+        {
+            InitializeComponent();
+            _task = task;
+            _isCreateMode = isCreateMode;
+            Loaded += OnPageLoaded;
+        }
+
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is EditTaskViewModel viewModel)
             {
-                if (_isCreateMode)
-                    viewModel.InitializeForCreate(_id);
-                else
-                    viewModel.InitializeForEdit(_id);
-
                 viewModel.ScrollToBottomRequested += ViewModel_ScrollToBottomRequested;
+
+                if (_isCreateMode && _teamId > 0)
+                    await viewModel.InitializeForCreateAsync(_teamId);
+                else if (_task != null)
+                    await viewModel.InitializeForEditAsync(_task);
             }
         }
 
@@ -34,26 +44,18 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (DataContext is EditTaskViewModel viewModel)
             {
-                viewModel.Dispose();
                 viewModel.ScrollToBottomRequested -= ViewModel_ScrollToBottomRequested;
+                viewModel.Dispose();
             }
         }
 
-        private void ViewModel_ScrollToBottomRequested(object sender, System.EventArgs e)
-        {
-            // Прокручиваем к низу когда ViewModel запрашивает
-            ScrollToBottom();
-        }
+        private void ViewModel_ScrollToBottomRequested(object sender, System.EventArgs e) => ScrollToBottom();
 
         private void ScrollToBottom()
         {
             if (MainScrollViewer != null)
             {
-                // Небольшая задержка чтобы UI успел обновиться
-                Dispatcher.BeginInvoke(() =>
-                {
-                    MainScrollViewer.ScrollToEnd();
-                });
+                Dispatcher.BeginInvoke(() => MainScrollViewer.ScrollToEnd());
             }
         }
     }

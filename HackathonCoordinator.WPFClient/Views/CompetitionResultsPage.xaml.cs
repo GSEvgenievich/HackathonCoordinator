@@ -23,7 +23,11 @@ namespace HackathonCoordinator.WPFClient.Views
         private double _itemHeight = 80;
         private List<Border> _teamBorders = new List<Border>();
 
-        public CompetitionResultsPage()
+        private CompetitionDto _competition;
+        private bool _editMode;
+        private bool _isOrganizer;
+
+        public CompetitionResultsPage(CompetitionDto competition, bool editMode, bool isOrganizer)
         {
             InitializeComponent();
             Loaded += OnPageLoaded;
@@ -31,12 +35,17 @@ namespace HackathonCoordinator.WPFClient.Views
 
             // Подписываемся на событие смены темы
             App.ThemeChanged += OnThemeChanged;
+
+            _competition = competition;
+            _editMode = editMode;
+            _isOrganizer = isOrganizer;
         }
 
-        private void OnPageLoaded(object sender, RoutedEventArgs e)
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is CompetitionResultsViewModel viewModel)
             {
+                await viewModel.InitializeAsync(_competition, _editMode, _isOrganizer);
                 viewModel.TeamsReordered += OnTeamsReordered;
                 viewModel.PositionUpdated += OnPositionUpdated;
                 CreateTeamCards();

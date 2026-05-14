@@ -38,6 +38,15 @@ namespace HackathonCoordinator.WebAPI.Services
             string owner,
             string repoName);
 
+        /// <summary>
+        /// Добавить collaborator в репозиторий
+        /// </summary>
+        Task<GitHubCollaboratorResult> AddCollaboratorAsync(
+            string accessToken,
+            string owner,
+            string repoName,
+            string collaboratorUsername,
+            string permission = "push"); // permission: pull, push, admin, maintain, triage
         // --- Работа с ветками ---
 
         /// <summary>
@@ -114,6 +123,16 @@ namespace HackathonCoordinator.WebAPI.Services
         public bool Success { get; set; }
         public string RepoUrl { get; set; }
         public string RepoName { get; set; }
+        public string Message { get; set; }
+        public string ErrorMessage { get; set; }
+    }
+
+    /// <summary>
+    /// Результат создания коллаборации на GitHub
+    /// </summary>
+    public class GitHubCollaboratorResult
+    {
+        public bool Success { get; set; }
         public string Message { get; set; }
         public string ErrorMessage { get; set; }
     }

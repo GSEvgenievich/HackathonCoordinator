@@ -9,7 +9,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class RegistrationViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
         private readonly AuthService _authService;
 
         private string _username = "";
@@ -70,7 +69,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public RegistrationViewModel()
         {
-            _navigationService = App.NavigationService;
             _authService = new AuthService();
 
             // AsyncRelayCommand для безопасной регистрации

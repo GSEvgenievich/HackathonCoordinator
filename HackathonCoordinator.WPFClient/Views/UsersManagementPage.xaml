@@ -4,8 +4,7 @@
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
       xmlns:uc="clr-namespace:HackathonCoordinator.WPFClient.UserControls"
       Title="Управление участниками"
-      Unloaded="Page_Unloaded"
-      Loaded="Page_Loaded">
+      Unloaded="Page_Unloaded">
 
     <Page.DataContext>
         <vm:UsersManagementViewModel/>
@@ -16,19 +15,11 @@
             <StackPanel>
                 <!-- Заголовок -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="← Назад"
-                                IsCancel="True" 
-                                Command="{Binding BackCommand}"
-                                Style="{StaticResource NavigationButton}"
-                                Margin="0,0,20,0"/>
-
-                        <StackPanel>
-                            <TextBlock Text="👥 Управление участниками" 
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="👥 Управление участниками" 
                                    Style="{StaticResource PageHeaderStyle}"/>
-                            <TextBlock Text="Просмотр и управление всеми участниками системы"
+                        <TextBlock Text="Просмотр и управление всеми участниками системы"
                                    Style="{StaticResource PageSubtitleStyle}"/>
-                        </StackPanel>
                     </StackPanel>
                 </Border>
 

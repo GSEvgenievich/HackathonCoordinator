@@ -37,6 +37,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("join")]
         public async Task<ActionResult<ApiResponse>> JoinTeam([FromBody] JoinTeamDto dto)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 if (string.IsNullOrWhiteSpace(dto.InviteCode))
@@ -68,8 +70,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 user.TeamId = team.Id;
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                // Уведомление о новом участнике команды
                 try
                 {
                     await _notificationHelper.NotifyNewTeamMember(team.Id, user.Id, user.Username);
@@ -83,6 +85,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при присоединении к команде: {ex.Message}");
             }
         }
@@ -477,7 +480,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Получить команду по ID (только организатор)
+        /// Получить команду по ID 
         /// </summary>
         [HttpGet("{teamId}")]
         public async Task<ActionResult<ApiResponse<TeamDto>>> GetTeamById(int teamId)
@@ -493,7 +496,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (user == null)
                     return HandleNotFound<TeamDto>("Пользователь не найден");
 
-                if (user.RoleId != (int)Roles.Organizer && user.RoleId != (int)Roles.Admin)
+                if (user.RoleId != (int)Roles.Organizer && user.RoleId != (int)Roles.Admin && user.TeamId != teamId)
                     return HandleForbidden<TeamDto>("Недостаточно прав для доступа к данным команд");
 
                 var teamData = await _context.Teams
@@ -600,6 +603,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("leave")]
         public async Task<ActionResult<ApiResponse>> LeaveTeam()
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
@@ -619,9 +624,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 var team = user.Team;
                 var membersCount = team.Users.Count;
+                var wasCaptain = user.RoleId == (int)Roles.Captain;
 
-                if (user.RoleId == (int)Roles.Captain)
+                if (wasCaptain)
                 {
+                    // Очищаем GitHub репозиторий команды при уходе капитана
                     team.GitRepoName = null;
 
                     if (membersCount > 1)
@@ -640,8 +647,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 user.RoleId = (int)Roles.Member;
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                // Уведомление о выходе участника из команды
                 try
                 {
                     await _notificationHelper.NotifyTeamMemberLeft(team.Id, user.Id, user.Username);
@@ -655,6 +662,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при выходе из команды: {ex.Message}");
             }
         }
@@ -665,6 +673,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("{teamId}/assign-captain")]
         public async Task<ActionResult<ApiResponse>> AssignCaptain(int teamId, [FromBody] AssignCaptainDto dto)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
@@ -704,11 +714,12 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 }
 
                 newCaptain.RoleId = (int)Roles.Captain;
+
                 team.GitRepoName = null;
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                // Уведомления о назначении капитана
                 try
                 {
                     await _notificationHelper.NotifyCaptainAssignment(teamId, newCaptain.Id, team.Name);
@@ -723,6 +734,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при назначении капитана: {ex.Message}");
             }
         }
@@ -839,6 +851,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpDelete("members/{memberId}/kick")]
         public async Task<ActionResult<ApiResponse>> KickMember(int memberId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
@@ -861,12 +875,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleError("Нельзя выгнать капитана команды");
 
                 var teamName = memberToKick.Team?.Name;
-                var teamId = memberToKick.Team?.Id;
                 memberToKick.TeamId = null;
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                // Уведомление об исключении из команды
                 try
                 {
                     await _notificationHelper.NotifyMemberKicked(memberId, teamName);
@@ -880,6 +893,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при исключении участника: {ex.Message}");
             }
         }
@@ -893,14 +907,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
             try
             {
                 var userId = GetUserId();
-                var user = await _context.Users.FindAsync(userId);
+                var captain = await _context.Users.FindAsync(userId);
 
-                if (user == null)
+                if (captain == null)
                     return HandleUnauthorized<GitHubRepoCreationResponseDto>("Пользователь не найден");
 
                 var team = await _context.Teams
                     .Include(t => t.Competition)
                     .Include(t => t.Users)
+                        .ThenInclude(u => u.Role)
                     .FirstOrDefaultAsync(t => t.Id == teamId);
 
                 if (team == null)
@@ -909,16 +924,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (team.Competition.IsArchived)
                     return HandleError<GitHubRepoCreationResponseDto>("Невозможно создать репозиторий, так как соревнование в архиве");
 
-                if (user.RoleId != (int)Roles.Captain)
+                if (captain.RoleId != (int)Roles.Captain)
                     return HandleForbidden<GitHubRepoCreationResponseDto>("Только капитан команды может создавать GitHub репозиторий");
 
-                if (string.IsNullOrEmpty(user.GitHubAccessToken))
+                if (string.IsNullOrEmpty(captain.GitHubAccessToken))
                     return HandleError<GitHubRepoCreationResponseDto>("У капитана команды не привязан GitHub аккаунт");
 
                 if (team.GitRepoName != null)
                     return HandleError<GitHubRepoCreationResponseDto>("К команде уже подключен GitHub репозиторий");
 
-                var decryptedToken = _encryptionService.Decrypt(user.GitHubAccessToken);
+                var decryptedToken = _encryptionService.Decrypt(captain.GitHubAccessToken);
 
                 var result = await _gitHubService.CreateRepositoryAsync(decryptedToken, dto.RepoName, dto.Description, dto.IsPrivate);
 
@@ -935,7 +950,103 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     RepoName = result.RepoName
                 };
 
-                // Уведомление о создании репозитория
+                // ✅ Отправляем приглашения в GitHub
+                var collaboratorsAdded = new List<string>();
+                var collaboratorsFailed = new List<string>();
+
+                // Получаем всех участников команды с привязанным GitHub
+                var teamMembersWithGitHub = team.Users
+                    .Where(u => !string.IsNullOrEmpty(u.GitHubUsername) && u.Id != captain.Id)
+                    .ToList();
+
+                // Получаем всех организаторов с привязанным GitHub
+                var organizersWithGitHub = await _context.Users
+                    .Where(u => (u.RoleId == (int)Roles.Organizer || u.RoleId == (int)Roles.Admin) &&
+                                !string.IsNullOrEmpty(u.GitHubUsername))
+                    .ToListAsync();
+
+                // Добавляем участников команды
+                foreach (var member in teamMembersWithGitHub)
+                {
+                    try
+                    {
+                        var collabResult = await _gitHubService.AddCollaboratorAsync(
+                            decryptedToken,
+                            captain.GitHubUsername,
+                            dto.RepoName,
+                            member.GitHubUsername,
+                            "push");  // push доступ для участников
+
+                        if (collabResult.Success)
+                        {
+                            collaboratorsAdded.Add(member.GitHubUsername);
+
+                            // Уведомление участнику о доступе к репозиторию
+                            await _notificationHelper.NotifySystemMessage(
+                                member.Id,
+                                "🔗 Доступ к GitHub репозиторию",
+                                $"Вам предоставлен доступ к репозиторию команды: {dto.RepoName}\nСсылка: {result.RepoUrl}",
+                                "team",
+                                teamId);
+                        }
+                        else
+                        {
+                            collaboratorsFailed.Add($"{member.GitHubUsername} ({collabResult.ErrorMessage})");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        collaboratorsFailed.Add($"{member.GitHubUsername} (Ошибка: {ex.Message})");
+                    }
+                }
+
+                // Добавляем организаторов (с правом read/admin?)
+                foreach (var org in organizersWithGitHub)
+                {
+                    try
+                    {
+                        // Организаторам даем admin доступ (или pull только для просмотра)
+                        var collabResult = await _gitHubService.AddCollaboratorAsync(
+                            decryptedToken,
+                            captain.GitHubUsername,
+                            dto.RepoName,
+                            org.GitHubUsername,
+                            "pull");  // или "admin" если нужно полное управление
+
+                        if (collabResult.Success)
+                        {
+                            collaboratorsAdded.Add(org.GitHubUsername);
+
+                            await _notificationHelper.NotifySystemMessage(
+                                org.Id,
+                                "🔗 Доступ к GitHub репозиторию команды",
+                                $"Команда \"{team.Name}\" создала репозиторий: {dto.RepoName}\nСсылка: {result.RepoUrl}",
+                                "team",
+                                teamId);
+                        }
+                        else
+                        {
+                            collaboratorsFailed.Add($"{org.GitHubUsername} ({collabResult.ErrorMessage})");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        collaboratorsFailed.Add($"{org.GitHubUsername} (Ошибка: {ex.Message})");
+                    }
+                }
+
+                // Формируем сообщение о результате
+                if (collaboratorsAdded.Any())
+                {
+                    response.Message += $"\n\n✅ Приглашения отправлены: {string.Join(", ", collaboratorsAdded)}";
+                }
+
+                if (collaboratorsFailed.Any())
+                {
+                    response.Message += $"\n\n⚠️ Не удалось отправить приглашения: {string.Join(", ", collaboratorsFailed)}";
+                }
+
+                // Уведомление о создании репозитория через существующий метод
                 try
                 {
                     await _notificationHelper.NotifyGitHubRepoCreated(teamId, team.Name, result.RepoName, result.RepoUrl);
@@ -943,7 +1054,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 catch
                 {
                     response.Message += "\n!Ошибка отправки уведомления!";
-                    return HandleResult(response);
                 }
 
                 return HandleResult(response);

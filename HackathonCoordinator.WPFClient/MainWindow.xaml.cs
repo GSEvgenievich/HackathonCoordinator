@@ -3,6 +3,7 @@ using HackathonCoordinator.WPFClient.ViewModels;
 using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
 using System.Windows.Media.Animation;
+using System.Windows.Navigation;
 
 namespace HackathonCoordinator.WPFClient
 {
@@ -10,6 +11,7 @@ namespace HackathonCoordinator.WPFClient
     {
         private bool _isExpanded = false;
         private readonly AuthService _authService;
+        private readonly TeamService _teamService;
         private readonly UserService _userService;
 
         public MainWindow()
@@ -17,8 +19,10 @@ namespace HackathonCoordinator.WPFClient
             InitializeComponent();
 
             _authService = new AuthService();
+            _teamService = new TeamService();
             _userService = new UserService();
             Loaded += OnMainWindowLoadedAsync;
+            MainFrame.Navigated += MainFrame_Navigated;
         }
 
         private async void OnMainWindowLoadedAsync(object sender, RoutedEventArgs e)
@@ -48,21 +52,25 @@ namespace HackathonCoordinator.WPFClient
                     viewModel.InitializeNotificationsSignalR();
                     viewModel.CheckUserRole();
                     viewModel.GetUsername();
-                }
 
-                if (!string.IsNullOrEmpty(user.Data.TeamName))
-                {
-                    App.NavigationService.NavigateTo(new TeamPage());
-                }
-                else
-                {
-                    App.NavigationService.NavigateTo(new CompetitionsPage());
+                    // Используем метод ViewModel для перехода на главную
+                    await viewModel.OpenMainPage();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки: {ex.Message}");
                 App.NavigationService.NavigateTo(new AuthorizationPage());
+            }
+        }
+
+        private void MainFrame_Navigated(object sender, NavigationEventArgs e)
+        {
+            // Получаем тип текущей страницы и передаем в ViewModel
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                var pageType = e.Content?.GetType();
+                viewModel.SetCurrentPageType(pageType);
             }
         }
 

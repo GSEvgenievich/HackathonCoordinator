@@ -198,17 +198,28 @@ namespace HackathonCoordinator.WebAPI.Services
         /// <summary>
         /// Создать уведомление о важном сообщении в чате задачи
         /// </summary>
-        public async Task NotifyImportantTaskChatMessage(int chatId, int userId, int taskId, string taskName, string captain, string messagePreview)
+        public async Task NotifyImportantTaskChatMessage(int chatId, int userId, int teamId, int taskId, string taskName, string sender, int senderRoleId, string messagePreview)
         {
-            await CreateNotificationAsync(userId, new CreateNotificationDto
+            var recipientsIds = new List<int>() { userId };
+
+            if (senderRoleId == (int)Roles.Organizer)
             {
-                UserId = userId,
-                NotificationTypeId = (int)NotificationTypes.ImportantTaskChatMessage,
-                Title = $"Важное сообщение от капитана в чате задачи {taskName}",
-                Message = $"{captain} (капитан): {messagePreview}",
-                RelatedEntityType = "task chat",
-                RelatedEntityId = taskId
-            });
+                var captainId = await GetTeamCaptainIdAsync(teamId);
+                recipientsIds.Add(captainId);
+            }
+
+            foreach (var recipientId in recipientsIds)
+            {
+                await CreateNotificationAsync(recipientId, new CreateNotificationDto
+                {
+                    UserId = recipientId,
+                    NotificationTypeId = (int)NotificationTypes.ImportantTaskChatMessage,
+                    Title = $"Важное сообщение в чате задачи {taskName}",
+                    Message = $"{sender}: {messagePreview}",
+                    RelatedEntityType = "task chat",
+                    RelatedEntityId = taskId
+                });
+            }
         }
 
         // --- Методы для уведомлений о командах ---
@@ -330,9 +341,10 @@ namespace HackathonCoordinator.WebAPI.Services
         /// <summary>
         /// Создать уведомление о важном сообщении в чате команды
         /// </summary>
-        public async Task NotifyImportantTeamChatMessage(int chatId, int teamId, string captain, string messagePreview)
+        public async Task NotifyImportantTeamChatMessage(int chatId, int teamId, string sender, int senderId, string messagePreview)
         {
             var memberIds = await GetTeamMemberIdsAsync(teamId);
+            memberIds.Remove(senderId);
 
             foreach (var memberId in memberIds)
             {
@@ -340,8 +352,8 @@ namespace HackathonCoordinator.WebAPI.Services
                 {
                     UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.ImportantTeamChatMessage,
-                    Title = "Важное сообщение от капитана в чате команды",
-                    Message = $"{captain} (капитан): {messagePreview}",
+                    Title = "Важное сообщение в чате команды",
+                    Message = $"{sender}: {messagePreview}",
                     RelatedEntityType = "team chat",
                     RelatedEntityId = teamId
                 });
@@ -360,7 +372,9 @@ namespace HackathonCoordinator.WebAPI.Services
                     UserId = memberId,
                     NotificationTypeId = (int)NotificationTypes.MemberKickedFromTeam,
                     Title = "Команда расформирована",
-                    Message = $"Команда «{teamName}» была расформирована организатором {deletedBy}"
+                    Message = $"Команда «{teamName}» была расформирована организатором {deletedBy}",
+                    RelatedEntityType = "team",
+                    RelatedEntityId = null
                 });
             }
         }
@@ -425,7 +439,7 @@ namespace HackathonCoordinator.WebAPI.Services
                     Title = "Соревнование удалено",
                     Message = $"Соревнование \"{competitionName}\" было удалено организатором {deletedBy}",
                     RelatedEntityType = "competition",
-                    RelatedEntityId = competitionId
+                    RelatedEntityId = null
                 });
             }
         }

@@ -1,13 +1,23 @@
-﻿using System.ComponentModel;
+﻿using HackathonCoordinator.WPFClient.Services;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public abstract class BaseViewModel : INotifyPropertyChanged, IDisposable
     {
         public event PropertyChangedEventHandler PropertyChanged;
+        protected readonly NavigationService _navigationService = App.NavigationService;
 
         private bool _disposed = false;
+        private bool _isLoading = false;
+
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
@@ -21,6 +31,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             field = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+
+        protected static async Task ShowErrorAsync(string message)
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            });
+        }
+        protected void Back()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _navigationService.GoBack();
+            });
         }
 
         // Метод для очистки управляемых ресурсов (переопределяется в наследниках)

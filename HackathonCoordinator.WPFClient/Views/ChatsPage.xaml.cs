@@ -9,13 +9,24 @@ namespace HackathonCoordinator.WPFClient.Views
         public ChatsPage()
         {
             InitializeComponent();
+            Loaded += OnPageLoaded;
+        }
+
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ChatsViewModel viewModel)
+            {
+                viewModel.doDispose = true;
+                await viewModel.InitializeAsync();
+            }
         }
 
         private void Page_Unloaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is ChatsViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
     }

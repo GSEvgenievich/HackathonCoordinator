@@ -1,8 +1,6 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
@@ -14,9 +12,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     public class CompetitionResultsViewModel : BaseViewModel
     {
         private readonly IPdfExportService _pdfExportService;
-        private readonly NavigationService _navigationService;
         private readonly CompetitionService _competitionService;
         private readonly UserService _userService;
+
+        private bool _isInitialized = false;
+        private int _competitionId;
 
         private CompetitionDto _competition;
         private ObservableCollection<TeamResultDto> _teams = new();
@@ -27,8 +27,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private bool _canMoveUp;
         private bool _canMoveDown;
         private bool _hasExistingResults;
-        private bool _isArchived;
         private bool _isOrganizer;
+
         public bool IsOrganizer
         {
             get => _isOrganizer;
@@ -44,13 +44,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     OnPropertyChanged(nameof(CompetitionName));
                     OnPropertyChanged(nameof(IsArchived));
+                    OnPropertyChanged(nameof(PageTitle));
                 }
             }
         }
 
         public bool IsArchived => Competition?.IsArchived ?? false;
-
         public string CompetitionName => Competition?.Name ?? "";
+
         public string PageTitle
         {
             get
@@ -72,9 +73,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set
             {
                 if (SetProperty(ref _selectedTeam, value))
-                {
                     UpdateMoveButtonsState();
-                }
             }
         }
 
@@ -116,7 +115,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         }
 
         public bool IsViewMode => !IsEditMode;
-
         public bool HasExistingResults
         {
             get => _hasExistingResults;
@@ -144,11 +142,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public CompetitionResultsViewModel()
         {
             _pdfExportService = new PdfExportService();
-            _navigationService = App.NavigationService;
             _competitionService = new CompetitionService();
             _userService = new UserService();
 
-            BackCommand = new RelayCommand(GoBack);
             SaveResultsCommand = new AsyncRelayCommand(SaveResultsAsync, () => IsEditMode && !IsArchived);
             ExportResultsCommand = new AsyncRelayCommand(ExportResults);
             MoveUpCommand = new RelayCommand(MoveUp, () => CanMoveUp && IsEditMode && !IsArchived);
@@ -157,6 +153,126 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             SaveCommentCommand = new AsyncRelayCommand(SaveCommentAsync);
             CancelCommentCommand = new RelayCommand(CancelComment);
             SelectTeamCommand = new RelayCommand<TeamResultDto>(SelectTeam);
+            BackCommand = new RelayCommand(() => _navigationService.GoBack());
+        }
+
+        /// <summary>
+        /// Первичная инициализация с готовым объектом (при навигации)
+        /// </summary>
+        public async Task InitializeAsync(CompetitionDto competition, bool editMode = false, bool isOrganizer = false)
+        {
+            if (_isInitialized && _competitionId == competition.Id) return;
+
+            _competitionId = competition.Id;
+            Competition = competition;
+            IsOrganizer = isOrganizer;
+            IsEditMode = IsArchived ? false : editMode;
+
+            IsLoading = true;
+
+            await LoadCompetitionDataAsync();
+            _isInitialized = true;
+
+            IsLoading = false;
+        }
+
+        /// <summary>
+        /// Обновление данных (после изменений)
+        /// </summary>
+        public async Task RefreshDataAsync()
+        {
+            if (Competition?.Id == null)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                {
+                    await ShowErrorAsync("Не удалось обновить данные!");
+
+                    if (Application.Current.MainWindow is MainWindow mainWindow)
+                    {
+                        if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                        {
+                            await mainViewModel.OpenMainPage();
+                        }
+                    }
+                });
+                return;
+            }
+
+            var competitionData = await _competitionService.GetCompetitionAsync(Competition.Id);
+            if (!competitionData.Success)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                {
+                    await ShowErrorAsync(competitionData.Message);
+
+                    if (Application.Current.MainWindow is MainWindow mainWindow)
+                    {
+                        if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                        {
+                            await mainViewModel.OpenMainPage();
+                        }
+                    }
+                });
+                return;
+            }
+
+            Competition = competitionData.Data;
+            await LoadCompetitionDataAsync();
+        }
+
+        private async Task LoadCompetitionDataAsync()
+        {
+            var competitionData = await _competitionService.GetCompetitionAsync(Competition.Id);
+            if (!competitionData.Success)
+            {
+                await ShowErrorAsync(competitionData.Message);
+                return;
+            }
+
+            var savedResults = await _competitionService.GetCompetitionResultsAsync(Competition.Id);
+            var teams = new List<TeamResultDto>();
+
+            if (savedResults.Success && savedResults.Data.Any())
+            {
+                HasExistingResults = true;
+
+                foreach (var savedTeam in savedResults.Data.OrderBy(r => r.Place))
+                {
+                    var team = competitionData.Data.Teams.FirstOrDefault(t => t.Id == savedTeam.TeamId);
+                    if (team != null)
+                    {
+                        savedTeam.TeamName = team.Name;
+                        savedTeam.MembersCount = team.Members.Count.ToString();
+                        savedTeam.IsSaved = true;
+                        teams.Add(savedTeam);
+                    }
+                }
+                Teams = new ObservableCollection<TeamResultDto>(teams);
+            }
+            else if (IsEditMode && !IsArchived)
+            {
+                var random = new Random();
+                foreach (var team in competitionData.Data.Teams)
+                {
+                    teams.Add(new TeamResultDto
+                    {
+                        TeamId = team.Id,
+                        TeamName = team.Name,
+                        Place = null,
+                        PlaceDisplay = "?",
+                        Comment = "",
+                        MembersCount = team.Members.Count.ToString(),
+                        IsSaved = false
+                    });
+                }
+                Teams = new ObservableCollection<TeamResultDto>(teams.OrderBy(x => random.Next()));
+                UpdateAllPlaces();
+            }
+            else if (!IsArchived)
+            {
+                await ShowErrorAsync("Результаты еще не опубликованы");
+                await Application.Current.Dispatcher.InvokeAsync(() => Back());
+            }
         }
 
         private void UpdateMoveButtonsState()
@@ -173,31 +289,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             CanMoveDown = index < Teams.Count - 1;
         }
 
-        private void SelectTeam(TeamResultDto team)
-        {
-            SelectedTeam = team;
-        }
+        private void SelectTeam(TeamResultDto team) => SelectedTeam = team;
 
         private void MoveUp()
         {
             if (SelectedTeam == null || !IsEditMode || IsArchived) return;
-
             var index = Teams.IndexOf(SelectedTeam);
-            if (index > 0)
-            {
-                MoveTeam(index, index - 1);
-            }
+            if (index > 0) MoveTeam(index, index - 1);
         }
 
         private void MoveDown()
         {
             if (SelectedTeam == null || !IsEditMode || IsArchived) return;
-
             var index = Teams.IndexOf(SelectedTeam);
-            if (index < Teams.Count - 1)
-            {
-                MoveTeam(index, index + 1);
-            }
+            if (index < Teams.Count - 1) MoveTeam(index, index + 1);
         }
 
         public void MoveTeam(int fromIndex, int toIndex)
@@ -223,94 +328,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             UpdateMoveButtonsState();
         }
 
-        public async Task LoadCompetitionAsync(CompetitionDto competition, bool editMode = false, bool isOrganizer = false)
-        {
-            Competition = competition;
-            IsOrganizer = isOrganizer;
-
-            // Если соревнование в архиве - режим только просмотра
-            if (IsArchived)
-            {
-                IsEditMode = false;
-            }
-            else
-            {
-                IsEditMode = editMode;
-            }
-
-            try
-            {
-                var competitionData = await _competitionService.GetCompetitionAsync(competition.Id);
-                if (!competitionData.Success) return;
-
-                var savedResults = await _competitionService.GetCompetitionResultsAsync(competition.Id);
-
-                var teams = new List<TeamResultDto>();
-
-                if (savedResults.Success && savedResults.Data.Any())
-                {
-                    HasExistingResults = true;
-
-                    foreach (var savedTeam in savedResults.Data.OrderBy(r => r.Place))
-                    {
-                        var team = competitionData.Data.Teams.FirstOrDefault(t => t.Id == savedTeam.TeamId);
-                        if (team != null)
-                        {
-                            savedTeam.TeamName = team.Name;
-                            savedTeam.MembersCount = team.Members.Count.ToString();
-                            savedTeam.IsSaved = true;
-                            teams.Add(savedTeam);
-                        }
-                    }
-                    Teams = new ObservableCollection<TeamResultDto>(teams);
-                }
-                else
-                {
-                    HasExistingResults = false;
-
-                    if (IsEditMode && !IsArchived)
-                    {
-                        var random = new Random();
-                        foreach (var team in competitionData.Data.Teams)
-                        {
-                            teams.Add(new TeamResultDto
-                            {
-                                TeamId = team.Id,
-                                TeamName = team.Name,
-                                Place = null,
-                                PlaceDisplay = "?",
-                                Comment = "",
-                                MembersCount = team.Members.Count.ToString(),
-                                IsSaved = false
-                            });
-                        }
-                        Teams = new ObservableCollection<TeamResultDto>(teams.OrderBy(x => random.Next()));
-                        UpdateAllPlaces();
-                    }
-                    else
-                    {
-                        if (!IsArchived)
-                        {
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                MessageBox.Show("Результаты еще не опубликованы", "Информация",
-                                    MessageBoxButton.OK, MessageBoxImage.Information);
-                                GoBack();
-                            });
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка загрузки: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
-        }
-
         private void ShowCommentDialogCommand(TeamResultDto team)
         {
             SelectedTeam = team;
@@ -323,7 +340,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (SelectedTeam == null || IsArchived) return;
 
             SelectedTeam.Comment = CommentText;
-
             ShowCommentDialog = false;
             CommentText = "";
         }
@@ -339,119 +355,65 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (!IsEditMode || IsArchived) return;
 
             var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    HasExistingResults
-                        ? "Сохранить изменения результатов?\n\nПосле сохранения новые места будут зафиксированы."
-                        : "Сохранить результаты соревнования?\n\nПосле сохранения порядок мест будет зафиксирован и станет доступен для просмотра участниками.",
-                    "Подтверждение сохранения",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+                MessageBox.Show(HasExistingResults
+                    ? "Сохранить изменения результатов?\n\nПосле сохранения новые места будут зафиксированы."
+                    : "Сохранить результаты соревнования?\n\nПосле сохранения порядок мест будет зафиксирован и станет доступен для просмотра участниками.",
+                    "Подтверждение сохранения", MessageBoxButton.YesNo, MessageBoxImage.Question));
 
             if (result != MessageBoxResult.Yes) return;
 
-            try
+            var saveResult = await _competitionService.SaveAllResultsAsync(Competition.Id, Teams.ToList());
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
-                var saveResult = await _competitionService.SaveAllResultsAsync(Competition.Id, Teams.ToList());
-
-                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                if (saveResult.Success)
                 {
-                    if (saveResult.Success)
-                    {
-                        foreach (var team in Teams)
-                        {
-                            team.IsSaved = true;
-                        }
+                    foreach (var team in Teams) team.IsSaved = true;
+                    HasExistingResults = true;
 
-                        HasExistingResults = true;
+                    var updatedCompetition = await _competitionService.GetCompetitionAsync(Competition.Id);
+                    if (updatedCompetition.Success) Competition = updatedCompetition.Data;
 
-                        var updatedCompetition = await _competitionService.GetCompetitionAsync(Competition.Id);
-                        if (updatedCompetition.Success)
-                        {
-                            Competition = updatedCompetition.Data;
-                        }
-
-                        MessageBox.Show("Результаты успешно сохранены!", "Успешно",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show(saveResult.Message, "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                    MessageBox.Show("Результаты успешно сохранены!", "Успешно",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
                 {
-                    MessageBox.Show($"Ошибка сохранения: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
+                    await ShowErrorAsync(saveResult.Message);
+                }
+            });
         }
 
         private async Task ExportResults()
         {
             if (Competition == null || Teams == null || !Teams.Any())
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show("Нет данных для экспорта", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                });
+                await ShowErrorAsync("Нет данных для экспорта");
                 return;
             }
 
-            try
+            var saveFileDialog = new SaveFileDialog
             {
-                var saveFileDialog = new SaveFileDialog
-                {
-                    FileName = $"Результаты_{Competition.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
-                    Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
-                    DefaultExt = ".pdf"
-                };
+                FileName = $"Результаты_{Competition.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
+                Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
+                DefaultExt = ".pdf"
+            };
 
-                if (saveFileDialog.ShowDialog() == true)
-                {
-                    var success = await _pdfExportService.ExportResultsToPdfAsync(Competition, Teams.ToList(), saveFileDialog.FileName);
+            if (saveFileDialog.ShowDialog() != true) return;
 
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (success)
-                        {
-                            MessageBox.Show($"Результаты успешно экспортированы в PDF файл:\n{saveFileDialog.FileName}",
-                                "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information);
-                        }
-                        else
-                        {
-                            MessageBox.Show("Ошибка при создании PDF файла", "Ошибка",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                        }
-                    });
+            var success = await _pdfExportService.ExportResultsToPdfAsync(Competition, Teams.ToList(), saveFileDialog.FileName);
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (success)
+                {
+                    MessageBox.Show($"Результаты успешно экспортированы в PDF файл:\n{saveFileDialog.FileName}",
+                        "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                else
                 {
-                    MessageBox.Show($"Ошибка экспорта: {ex.Message}", "Ошибка",
+                    MessageBox.Show("Ошибка при создании PDF файла", "Ошибка",
                         MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
-        }
-
-        private void GoBack()
-        {
-            if (Competition != null)
-            {
-                _navigationService.NavigateTo(new CompetitionDetailsPage(Competition));
-            }
-            else
-            {
-                _navigationService.GoBack();
-            }
+                }
+            });
         }
 
         protected override void DisposeManagedResources()
@@ -459,10 +421,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             base.DisposeManagedResources();
             Teams?.Clear();
 
-            if (_competitionService is IDisposable compDisposable)
-                compDisposable.Dispose();
-            if (_userService is IDisposable userDisposable)
-                userDisposable.Dispose();
+            if (_competitionService is IDisposable compDisposable) compDisposable.Dispose();
+            if (_userService is IDisposable userDisposable) userDisposable.Dispose();
         }
     }
 }

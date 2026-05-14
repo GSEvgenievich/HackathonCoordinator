@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using HackathonCoordinator.WebAPI.Models;
+﻿using HackathonCoordinator.WebAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Task = HackathonCoordinator.WebAPI.Models.Task;
 using TaskStatus = HackathonCoordinator.WebAPI.Models.TaskStatus;
@@ -27,6 +25,8 @@ public partial class HackathonCoordinatorContext : DbContext
     public virtual DbSet<FinalTeamMember> FinalTeamMembers { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
+
+    public virtual DbSet<MessageAttachment> MessageAttachments { get; set; }
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
@@ -168,6 +168,20 @@ public partial class HackathonCoordinatorContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Messages)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK_Messages_UserId");
+        });
+
+        modelBuilder.Entity<MessageAttachment>(entity =>
+        {
+            entity.HasIndex(e => e.MessageId, "IX_MessageAttachments_MessageId");
+
+            entity.Property(e => e.ContentType).HasMaxLength(100);
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FilePath).HasMaxLength(500);
+            entity.Property(e => e.UploadedAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.Message).WithMany(p => p.MessageAttachments)
+                .HasForeignKey(d => d.MessageId)
+                .HasConstraintName("FK_MessageAttachments_Message");
         });
 
         modelBuilder.Entity<Notification>(entity =>

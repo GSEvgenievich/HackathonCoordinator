@@ -12,7 +12,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class GitHubAuthViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
         private readonly GitHubOAuthService _gitHubService;
         private readonly UserService _userService;
 
@@ -72,7 +71,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public GitHubAuthViewModel()
         {
-            _navigationService = App.NavigationService;
             _gitHubService = new GitHubOAuthService();
             _userService = new UserService();
 

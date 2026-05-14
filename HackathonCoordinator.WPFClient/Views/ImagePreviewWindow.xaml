@@ -1,0 +1,91 @@
+﻿<Window x:Class="HackathonCoordinator.WPFClient.Views.ImagePreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Просмотр изображения" 
+        Height="700" 
+        Width="900"
+        Icon="/Assets/Images/Icon.ico"
+        WindowStartupLocation="CenterOwner"
+        Background="#1A1A1A">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <Border Grid.Row="0" Background="#2A2A2A" Height="50">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding FileName}" 
+                           Foreground="White" 
+                           FontSize="14"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="10,0"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,15,0">
+                    <Button Content="100%" 
+                            Click="ResetZoomButton_Click"
+                            Width="60" Height="30"
+                            Margin="0,0,10,0"
+                            ToolTip="Сбросить масштаб (Ctrl+0)"/>
+                    <Button Content="⬇" 
+                            Click="DownloadButton_Click"
+                            Width="40" Height="30"
+                            Margin="0,0,5,0"
+                            ToolTip="Скачать"/>
+                    <Button Content="✕" 
+                            Click="CloseButton_Click"
+                            Width="40" Height="30"
+                            ToolTip="Закрыть"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Область просмотра с масштабированием -->
+        <ScrollViewer Grid.Row="1" 
+                      x:Name="MainScrollViewer"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="#1A1A1A"
+                      PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+
+            <Grid x:Name="ImageContainer">
+                <Image x:Name="PreviewImage" 
+                       Stretch="Uniform"
+                       RenderTransformOrigin="0.5,0.5"
+                       Loaded="Image_Loaded">
+                    <Image.RenderTransform>
+                        <ScaleTransform x:Name="ImageScaleTransform"
+                                        ScaleX="1" 
+                                        ScaleY="1"/>
+                    </Image.RenderTransform>
+                </Image>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Индикатор масштаба (поверх всего) -->
+        <Border Grid.Row="0" Grid.RowSpan="3"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center"
+                Background="#80000000" 
+                CornerRadius="20" 
+                Padding="15,8"
+                Visibility="{Binding ZoomIndicatorVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                Panel.ZIndex="1000">
+            <TextBlock x:Name="ZoomIndicatorText" 
+                       Text="100%" 
+                       Foreground="White" 
+                       FontSize="18"
+                       FontWeight="Bold"/>
+        </Border>
+    </Grid>
+</Window>

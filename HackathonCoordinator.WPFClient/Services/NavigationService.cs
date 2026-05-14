@@ -101,6 +101,24 @@ namespace HackathonCoordinator.WPFClient.Services
         }
 
         /// <summary>
+        /// Навигация на новую страницу с очисткой стека
+        /// (использовать для переходов по главным разделам из меню)
+        /// </summary>
+        public void NavigateToWithClearHistory(Page page)
+        {
+            if (_currentFrame != null && _currentPage != page)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    // Очищаем стек
+                    ClearHistory();
+
+                    _currentFrame.Navigate(page);
+                });
+            }
+        }
+
+        /// <summary>
         /// Возврат на предыдущую страницу
         /// </summary>
         public bool GoBack()
@@ -121,47 +139,6 @@ namespace HackathonCoordinator.WPFClient.Services
         /// Проверка, можно ли вернуться назад
         /// </summary>
         public bool CanGoBack => _backStack.Count > 0;
-
-        /// <summary>
-        /// Возврат на главную страницу (очищает стек)
-        /// </summary>
-        public async void GoToMainPage()
-        {
-            if (_currentFrame != null)
-            {
-                try
-                {
-                    var teamService = new TeamService();
-                    var teamId = await teamService.GetCurrentTeamIdAsync();
-
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        Page mainPage;
-                        if (!teamId.Success || teamId.Data == 0)
-                        {
-                            mainPage = new CompetitionsPage();
-                        }
-                        else
-                        {
-                            mainPage = new TeamPage();
-                        }
-
-                        // Очищаем стек навигации
-                        _backStack.Clear();
-
-                        _currentFrame.Navigate(mainPage);
-                    });
-                }
-                catch
-                {
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        _backStack.Clear();
-                        _currentFrame.Navigate(new CompetitionsPage());
-                    });
-                }
-            }
-        }
 
         /// <summary>
         /// Очистка истории навигации

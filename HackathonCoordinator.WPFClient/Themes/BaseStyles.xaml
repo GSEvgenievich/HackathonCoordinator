@@ -21,12 +21,14 @@
     <converters:BoolToMessageStyleConverter x:Key="BoolToMessageStyleConverter"/>
     <converters:BoolToMessageTextColorConverter x:Key="BoolToMessageTextColorConverter"/>
     <converters:BoolToMessageTimeColorConverter x:Key="BoolToMessageTimeColorConverter"/>
+    <converters:Base64ToImageConverter x:Key="Base64ToImageConverter"/>
     
     <!-- Конвертеры для соревнований -->
     <converters:CompetitionStatusToBrushConverter x:Key="CompetitionStatusToBrushConverter"/>
     <converters:BoolToSavedBrushConverter x:Key="BoolToSavedBrushConverter"/>
     <converters:BoolToActiveBrushConverter x:Key="BoolToActiveBrushConverter"/> 
     <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>
+    <converters:DeadlineDisplayConverter x:Key="DeadlineDisplayConverter"/>
     <converters:WidthToColumnsConverter x:Key="WidthToColumnsConverter"/>
     
     <!-- Конвертеры для пользователей -->
@@ -894,94 +896,98 @@
     <!-- SCROLLBARS -->
     <!-- ==================================================================== -->
 
-    <!-- Вертикальный ScrollBar -->
     <Style TargetType="ScrollBar">
+        <!-- Общие свойства для обоих ориентаций -->
         <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-        <Setter Property="Margin" Value="3 0"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ScrollBar">
-                    <Grid Width="10">
-                        <Border Background="{TemplateBinding Background}" 
-                            CornerRadius="5"/>
-                        <Track x:Name="PART_Track" IsDirectionReversed="True">
-                            <Track.Thumb>
-                                <Thumb>
-                                    <Thumb.Style>
-                                        <Style TargetType="Thumb">
-                                            <Setter Property="Background" Value="{DynamicResource ScrollBarColor}"/>
-                                            <Setter Property="BorderBrush" Value="Transparent"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Thumb">
-                                                        <Border CornerRadius="4" 
-                                                            Background="{TemplateBinding Background}"
-                                                            Margin="1,0"/>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="AliceBlue"/>
-                                                </Trigger>
-                                                <Trigger Property="IsDragging" Value="True">
-                                                    <Setter Property="Background" Value="#222222"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Thumb.Style>
-                                </Thumb>
-                            </Track.Thumb>
-                        </Track>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
 
-    <!-- Горизонтальный ScrollBar -->
-    <Style x:Key="HorizontalScrollBarStyle" TargetType="ScrollBar">
-        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
-        <Setter Property="Margin" Value="0 3"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ScrollBar">
-                    <Grid Height="10">
-                        <Border Background="{TemplateBinding Background}" 
-                            CornerRadius="5"/>
-                        <Track x:Name="PART_Track" IsDirectionReversed="False">
-                            <Track.Thumb>
-                                <Thumb>
-                                    <Thumb.Style>
-                                        <Style TargetType="Thumb">
-                                            <Setter Property="Background" Value="{DynamicResource ScrollBarColor}"/>
-                                            <Setter Property="BorderBrush" Value="Transparent"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Thumb">
-                                                        <Border CornerRadius="4" 
-                                                            Background="{TemplateBinding Background}"
-                                                            Margin="0,1"/>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="AliceBlue"/>
-                                                </Trigger>
-                                                <Trigger Property="IsDragging" Value="True">
-                                                    <Setter Property="Background" Value="#222222"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Thumb.Style>
-                                </Thumb>
-                            </Track.Thumb>
-                        </Track>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+        <Style.Triggers>
+            <!-- Вертикальная ориентация -->
+            <Trigger Property="Orientation" Value="Vertical">
+                <Setter Property="Margin" Value="3 0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Width="10">
+                                <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="5"/>
+                                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Style>
+                                                <Style TargetType="Thumb">
+                                                    <Setter Property="Background" Value="{DynamicResource ScrollBarColor}"/>
+                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Thumb">
+                                                                <Border CornerRadius="4" 
+                                                                    Background="{TemplateBinding Background}"
+                                                                    Margin="1,0"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="AliceBlue"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsDragging" Value="True">
+                                                            <Setter Property="Background" Value="#222222"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Thumb.Style>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
 
+            <!-- Горизонтальная ориентация -->
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Margin" Value="0 3"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Height="10">
+                                <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="5"/>
+                                <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Style>
+                                                <Style TargetType="Thumb">
+                                                    <Setter Property="Background" Value="{DynamicResource ScrollBarColor}"/>
+                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Thumb">
+                                                                <Border CornerRadius="4" 
+                                                                    Background="{TemplateBinding Background}"
+                                                                    Margin="0,1"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="AliceBlue"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsDragging" Value="True">
+                                                            <Setter Property="Background" Value="#222222"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Thumb.Style>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
 </ResourceDictionary>

@@ -285,35 +285,44 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("me/github/unlink")]
         public async Task<ActionResult<ApiResponse>> UnlinkGitHubAccount()
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
                 if (userId == 0)
                     return HandleUnauthorized();
 
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _context.Users
+                    .Include(u => u.Team)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
                 if (user == null)
                     return HandleNotFound("Пользователь не найден");
+
+                // Если пользователь - капитан команды, очищаем GitHub репозиторий команды
+                if (user.RoleId == (int)Roles.Captain && user.TeamId.HasValue)
+                {
+                    var team = await _context.Teams.FindAsync(user.TeamId.Value);
+                    if (team != null)
+                    {
+                        team.GitRepoName = null;
+                    }
+                }
 
                 user.GitHubUsername = null;
                 user.GitHubAccessToken = null;
                 user.GitHubAvatarUrl = null;
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 return HandleSuccess("GitHub аккаунт отвязан");
             }
-            catch (DbUpdateException ex)
-            {
-                return HandleError("Ошибка базы данных при отвязке GitHub аккаунта");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return HandleUnauthorized("Пользователь не найден");
-            }
             catch (Exception ex)
             {
-                return HandleError("Внутренняя ошибка сервера при отвязке GitHub аккаунта");
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка при отвязке GitHub аккаунта: {ex.Message}");
             }
         }
 
@@ -421,6 +430,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("{userId}/make-organizer")]
         public async Task<ActionResult<ApiResponse>> MakeOrganizer(int userId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var currentUserId = GetUserId();
@@ -429,7 +440,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (currentUser?.RoleId != (int)Roles.Admin)
                     return HandleForbidden("Только администратор может назначать организаторов");
 
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _context.Users
+                    .Include(u => u.Team)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
                 if (user == null)
                     return HandleNotFound("Пользователь не найден");
 
@@ -447,8 +461,27 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     _ => "Пользователь"
                 };
 
+                string oldTeamName = null;
+
+                // Если пользователь был капитаном команды, нужно очистить GitHub репозиторий команды
+                if (user.RoleId == (int)Roles.Captain && user.TeamId.HasValue)
+                {
+                    var team = await _context.Teams.FindAsync(user.TeamId.Value);
+                    if (team != null)
+                    {
+                        oldTeamName = team.Name;
+                        team.GitRepoName = null;
+                    }
+
+                    // Очищаем связь пользователя с командой
+                    user.TeamId = null;
+                }
+
                 user.RoleId = (int)Roles.Organizer;
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var error = "";
 
                 // Отправляем уведомление об изменении роли
                 try
@@ -460,12 +493,21 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         currentUser.Username);
                 }
                 catch (Exception ex)
-                { }
+                {
+                    error = $"\n!Ошибка отправки уведомления!";
+                }
 
-                return HandleSuccess($"Пользователь {user.Username} назначен организатором");
+                var message = $"Пользователь {user.Username} назначен организатором";
+                if (!string.IsNullOrEmpty(oldTeamName))
+                {
+                    message += $"\nПользователь был откреплен от команды \"{oldTeamName}\"";
+                }
+
+                return HandleSuccess(message + error);
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при назначении организатора: {ex.Message}");
             }
         }
@@ -476,6 +518,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("{userId}/remove-organizer")]
         public async Task<ActionResult<ApiResponse>> RemoveOrganizer(int userId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var currentUserId = GetUserId();
@@ -493,6 +537,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 user.RoleId = (int)Roles.Member;
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 // Отправляем уведомление об изменении роли
                 try
@@ -504,12 +549,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         currentUser.Username);
                 }
                 catch (Exception ex)
-                { }
+                {
+                    // Уведомление не отправилось, но основная операция выполнена
+                }
 
                 return HandleSuccess($"Права организатора сняты с пользователя {user.Username}");
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 return HandleError($"Ошибка при снятии прав организатора: {ex.Message}");
             }
         }
@@ -520,6 +568,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpDelete("{memberId}")]
         public async Task<ActionResult<ApiResponse>> DeleteUser(int memberId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
@@ -542,7 +592,9 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 if (currentUser.RoleId == (int)Roles.Admin)
                 {
-                    return HandleError("Нельзя удалить администратора");
+                    if (member.RoleId == (int)Roles.Admin)
+                        return HandleError("Нельзя удалить администратора");
+                    canDelete = true;
                 }
                 else if (currentUser.RoleId == (int)Roles.Organizer)
                 {
@@ -555,35 +607,26 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     return HandleForbidden("Недостаточно прав для удаления пользователя");
                 }
 
-                using var transaction = await _context.Database.BeginTransactionAsync();
-
-                try
+                // Если пользователь - капитан, очищаем GitHub репозиторий команды
+                if (member.RoleId == (int)Roles.Captain && member.TeamId.HasValue)
                 {
-                    // Если пользователь - капитан, сбрасываем его связь с командой
-                    if (member.RoleId == (int)Roles.Captain && member.TeamId.HasValue)
+                    var team = await _context.Teams.FindAsync(member.TeamId.Value);
+                    if (team != null)
                     {
-                        var team = await _context.Teams.FindAsync(member.TeamId.Value);
-                        if (team != null)
-                        {
-                            team.GitRepoName = null;
-                        }
+                        team.GitRepoName = null;
                     }
-
-                    _context.Users.Remove(member);
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    return HandleSuccess("Пользователь успешно удален");
                 }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    return HandleError($"Ошибка при удалении пользователя: {ex.Message}");
-                }
+
+                _context.Users.Remove(member);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return HandleSuccess("Пользователь успешно удален");
             }
             catch (Exception ex)
             {
-                return HandleError($"Внутренняя ошибка сервера: {ex.Message}");
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка при удалении пользователя: {ex.Message}");
             }
         }
 

@@ -14,7 +14,7 @@ namespace HackathonCoordinator.WPFClient.Converters
             if (value is bool isMyMessage)
             {
                 // Для своих сообщений - светло-серый, для чужих - темно-серый
-                return isMyMessage ? new SolidColorBrush(Color.FromRgb(200, 200, 200)) : new SolidColorBrush(Color.FromRgb(120, 120, 120));
+                return isMyMessage ? new SolidColorBrush(Color.FromRgb(220, 220, 220)) : new SolidColorBrush(Color.FromRgb(120, 120, 120));
             }
             return new SolidColorBrush(Color.FromRgb(120, 120, 120));
         }

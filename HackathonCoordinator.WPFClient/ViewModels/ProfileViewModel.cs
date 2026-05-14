@@ -1,23 +1,26 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class ProfileViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
+        public bool doDispose = true;
+        private bool _isInitialized = false;
+
         private readonly UserService _userService;
         private readonly AuthService _authService;
         private readonly PositionService _positionService;
 
         private UserProfileExtendedDto _user;
+        private int _targetUserId;
+        private bool _isOwnProfile;
+
         public UserProfileExtendedDto User
         {
             get => _user;
@@ -31,9 +34,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private int _targetUserId;
-        private bool _isOwnProfile;
-
         public bool IsOwnProfile
         {
             get => _isOwnProfile;
@@ -42,7 +42,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public string PageTitle => IsOwnProfile ? "Мой профиль" : $"Профиль: {User?.Username}";
         public string PageSubtitle => IsOwnProfile ? "Управление учетной записью" : "Информация об участнике";
-
         public bool HasResults => User?.Results?.Any() == true;
         public bool HasNoResults => !HasResults;
 
@@ -99,7 +98,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         // Команды
         public ICommand BackCommand { get; }
         public ICommand ChangeIconCommand { get; }
-        public RelayCommand<IconDto> SelectIconCommand { get; }
+        public ICommand SelectIconCommand { get; }
         public ICommand SaveUsernameCommand { get; }
         public ICommand LogoutCommand { get; }
         public ICommand LinkGitHubCommand { get; }
@@ -107,22 +106,25 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public ProfileViewModel()
         {
-            _navigationService = App.NavigationService;
             _userService = new UserService();
             _authService = new AuthService();
             _positionService = new PositionService();
 
             BackCommand = new RelayCommand(GoBack);
             ChangeIconCommand = new RelayCommand(() => IsIconPanelVisible = !IsIconPanelVisible);
-            SelectIconCommand = new RelayCommand<IconDto>(SelectIcon);
+            SelectIconCommand = new AsyncRelayCommand<IconDto>(SelectIcon);
             SaveUsernameCommand = new AsyncRelayCommand(SaveUsernameAsync);
             LogoutCommand = new AsyncRelayCommand(ExecuteLogoutAsync);
             LinkGitHubCommand = new AsyncRelayCommand(ExecuteLinkGitHubAsync);
             ViewTeamCompositionCommand = new RelayCommand<UserResultDto>(ShowTeamComposition);
         }
 
-        public async Task LoadProfileAsync(int? userId = null)
+        public async Task InitializeAsync(int? userId = null)
         {
+            if (_isInitialized) return;
+
+            IsLoading = true;
+
             try
             {
                 var currentUser = await _userService.GetCurrentUserAsync();
@@ -154,66 +156,64 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 OnPropertyChanged(nameof(IsOwnProfile));
                 OnPropertyChanged(nameof(GitHubButtonText));
+
+                _isInitialized = true;
             }
             catch (Exception ex)
             {
                 await ShowErrorAsync($"Ошибка загрузки профиля: {ex.Message}");
             }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        public async Task RefreshAsync()
+        {
+            _isInitialized = false;
+            await InitializeAsync(_targetUserId);
         }
 
         private async Task LoadPositionsAsync()
         {
-            try
+            var positions = await _positionService.GetAllPositionsAsync();
+            if (positions.Success)
             {
-                var positions = await _positionService.GetAllPositionsAsync();
-                if (positions.Success)
+                AvailablePositions.Clear();
+                foreach (var pos in positions.Data)
                 {
-                    AvailablePositions.Clear();
-                    foreach (var pos in positions.Data)
+                    AvailablePositions.Add(pos);
+                    if (pos.Id == User.PositionId)
                     {
-                        AvailablePositions.Add(pos);
-                        if (pos.Id == User.PositionId)
-                        {
-                            _selectedPosition = pos;
-                        }
+                        _selectedPosition = pos;
                     }
-                    OnPropertyChanged(nameof(SelectedPosition));
                 }
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка загрузки должностей: {ex.Message}");
+                OnPropertyChanged(nameof(SelectedPosition));
             }
         }
 
         private async Task LoadIconsAsync()
         {
-            try
+            var icons = await _userService.GetAllIconsAsync();
+            if (icons.Success)
             {
-                var icons = await _userService.GetAllIconsAsync();
-                if (icons.Success)
+                AvailableIcons.Clear();
+                foreach (var icon in icons.Data)
                 {
-                    AvailableIcons.Clear();
-                    foreach (var icon in icons.Data)
+                    if (icon.Id == User.IconId)
                     {
-                        if (icon.Id == User.IconId)
-                        {
-                            icon.IsSelected = true;
-                            SelectedIcon = icon;
-                            User.IconName = icon.Name;
-                        }
-                        AvailableIcons.Add(icon);
+                        icon.IsSelected = true;
+                        SelectedIcon = icon;
+                        User.IconName = icon.Name;
                     }
-
-                    if (User.IconId == null)
-                    {
-                        AvailableIcons[0].IsSelected = true;
-                    }
+                    AvailableIcons.Add(icon);
                 }
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка загрузки иконок: {ex.Message}");
+
+                if (User.IconId == null && AvailableIcons.Any())
+                {
+                    AvailableIcons[0].IsSelected = true;
+                }
             }
         }
 
@@ -221,27 +221,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (SelectedPosition == null || SelectedPosition.Id == User.PositionId) return;
 
-            try
+            var result = await _userService.UpdateUserPositionAsync(SelectedPosition.Id);
+            if (result.Success)
             {
-                var result = await _userService.UpdateUserPositionAsync(SelectedPosition.Id);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (result.Success)
-                    {
-                        User.PositionId = SelectedPosition.Id;
-                        User.PositionName = SelectedPosition.Name;
-                    }
-                    else
-                    {
-                        MessageBox.Show(result.Message, "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                });
+                User.PositionId = SelectedPosition.Id;
+                User.PositionName = SelectedPosition.Name;
             }
-            catch (Exception ex)
+            else
             {
-                await ShowErrorAsync($"Ошибка обновления должности: {ex.Message}");
+                await ShowErrorAsync(result.Message);
             }
         }
 
@@ -249,98 +237,93 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (string.IsNullOrWhiteSpace(EditUsername) || EditUsername == User.Username) return;
 
-            try
+            var result = await _userService.UpdateProfileAsync(EditUsername, User.IconId);
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var result = await _userService.UpdateProfileAsync(EditUsername, User.IconId);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                if (result.Success)
                 {
-                    if (result.Success)
-                    {
-                        User.Username = EditUsername;
-                        MessageBox.Show("Имя пользователя обновлено!", "Успешно",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    User.Username = EditUsername;
 
-                        if (Application.Current.MainWindow is MainWindow mainWindow &&
-                            mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                        {
-                            mainViewModel.GetUsername();
-                        }
-                    }
-                    else
+                    if (Application.Current.MainWindow is MainWindow mainWindow &&
+                        mainWindow.DataContext is MainWindowViewModel mainViewModel)
                     {
-                        MessageBox.Show(result.Message, "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        mainViewModel.GetUsername();
                     }
-                });
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка обновления имени: {ex.Message}");
-            }
+                }
+                else
+                {
+                    MessageBox.Show(result.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
         }
 
-        private void SelectIcon(IconDto icon)
+        private async Task SelectIcon(IconDto icon)
         {
             if (icon == null) return;
 
-            SelectedIcon.IsSelected = false;
-            SelectedIcon = icon;
-            User.IconName = icon.Name;
-            User.IconId = icon.Id;
-            IsIconPanelVisible = false;
-            icon.IsSelected = true;
+            var result = await _userService.UpdateProfileAsync(User.Username, icon.Id);
 
-            _userService.UpdateProfileAsync(User.Username, icon.Id);
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (result.Success)
+                {
+                    if (SelectedIcon != null) SelectedIcon.IsSelected = false;
+
+                    SelectedIcon = icon;
+                    User.IconName = icon.Name;
+                    User.IconId = icon.Id;
+
+                    if (_navigationService.CurrentPage is ProfilePage profilePage)
+                    {
+                        var newPath = $"pack://application:,,,/Assets/Images/Profile/{icon.Name}.png";
+                        profilePage.UpdateAvatar(newPath);
+                    }
+
+                    IsIconPanelVisible = false;
+                    icon.IsSelected = true;
+                }
+                else
+                {
+                    MessageBox.Show(result.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
         }
 
         private async Task ExecuteLinkGitHubAsync()
         {
-            try
+            if (string.IsNullOrEmpty(User.GitHubUsername))
             {
-                if (string.IsNullOrEmpty(User.GitHubUsername))
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        _navigationService.NavigateTo(new GitHubAuthPage());
-                    });
-                }
-                else
+                    _navigationService.NavigateTo(new GitHubAuthPage());
+                });
+            }
+            else
+            {
+                var result = await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        return MessageBox.Show(
-                            $"Вы уверены, что хотите отвязать аккаунт {User.GitHubUsername}?",
-                            "Подтверждение",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Question);
-                    });
+                    return MessageBox.Show(
+                        $"Вы уверены, что хотите отвязать аккаунт {User.GitHubUsername}?",
+                        "Подтверждение",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+                });
 
-                    if (result == MessageBoxResult.Yes)
+                if (result == MessageBoxResult.Yes)
+                {
+                    var unlinkResult = await _userService.UnlinkGitHubAsync();
+                    if (unlinkResult.Success)
                     {
-                        var unlinkResult = await _userService.UnlinkGitHubAsync();
-
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
-                        {
-                            if (unlinkResult.Success)
-                            {
-                                User.GitHubUsername = null;
-                                OnPropertyChanged(nameof(GitHubButtonText));
-                                MessageBox.Show("GitHub аккаунт отвязан", "Успешно",
-                                    MessageBoxButton.OK, MessageBoxImage.Information);
-                            }
-                            else
-                            {
-                                MessageBox.Show(unlinkResult.Message, "Ошибка",
-                                    MessageBoxButton.OK, MessageBoxImage.Error);
-                            }
-                        });
+                        User.GitHubUsername = null;
+                        OnPropertyChanged(nameof(GitHubButtonText));
+                        OnPropertyChanged(nameof(User.GitHubUsername));
+                        OnPropertyChanged(nameof(User.GitHubStatus));
+                    }
+                    else
+                    {
+                        await ShowErrorAsync(unlinkResult.Message);
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка при работе с GitHub: {ex.Message}");
             }
         }
 
@@ -360,11 +343,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void GoBack()
-        {
-            _navigationService.GoBack();
-        }
-
         private async Task ExecuteLogoutAsync()
         {
             var result = await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -378,26 +356,25 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                try
+                if (Application.Current.MainWindow is MainWindow mainWindow &&
+                    mainWindow.DataContext is MainWindowViewModel mainViewModel)
                 {
-                    if (Application.Current.MainWindow is MainWindow mainWindow &&
-                        mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                    {
-                        await mainViewModel.DisposeNotificationHub();
-                    }
-
-                    _authService.Logout();
-
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        _navigationService.NavigateTo(new AuthorizationPage());
-                    });
+                    await mainViewModel.DisposeNotificationHub();
                 }
-                catch (Exception ex)
+
+                _authService.Logout();
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    await ShowErrorAsync($"Ошибка при выходе: {ex.Message}");
-                }
+                    _navigationService.NavigateTo(new AuthorizationPage());
+                });
             }
+        }
+
+
+        private void GoBack()
+        {
+            _navigationService.GoBack();
         }
 
         private async Task NavigateToAuthAsync()
@@ -408,26 +385,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        private async Task ShowErrorAsync(string message)
-        {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            });
-        }
-
         protected override void DisposeManagedResources()
         {
+            if (!doDispose) return;
+
             base.DisposeManagedResources();
             AvailableIcons?.Clear();
             AvailablePositions?.Clear();
 
-            if (_userService is IDisposable userDisposable)
-                userDisposable.Dispose();
-            if (_authService is IDisposable authDisposable)
-                authDisposable.Dispose();
-            if (_positionService is IDisposable positionDisposable)
-                positionDisposable.Dispose();
+            if (_userService is IDisposable userDisposable) userDisposable.Dispose();
+            if (_authService is IDisposable authDisposable) authDisposable.Dispose();
+            if (_positionService is IDisposable positionDisposable) positionDisposable.Dispose();
         }
     }
 }

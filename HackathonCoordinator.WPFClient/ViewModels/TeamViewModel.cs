@@ -1,9 +1,7 @@
-﻿using HackathonCoordinator.ServiceLayer;
-using HackathonCoordinator.ServiceLayer.DTOs;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -15,24 +13,23 @@ namespace HackathonCoordinator.WPFClient.ViewModels
     public class TeamViewModel : BaseViewModel
     {
         public bool doDispose = true;
+        private bool _isInitialized = false;
 
         private readonly TeamService _teamService;
         private readonly CompetitionService _competitionService;
         private readonly TaskService _taskService;
         private readonly ChatService _chatService;
         private readonly UserService _userService;
-        private readonly NavigationService _navigationService;
 
         private TeamDto _currentTeam;
         public TeamDto CurrentTeam
         {
             get => _currentTeam;
-            set { _currentTeam = value; OnPropertyChanged(); }
+            set => SetProperty(ref _currentTeam, value);
         }
 
         public string TeamName => CurrentTeam?.Name ?? "";
         public string GitHubRepoUrl => CurrentTeam?.GitHubUrl ?? "Не указан";
-
         public bool HasGitHubRepo => !string.IsNullOrEmpty(GitHubRepoUrl) && GitHubRepoUrl != "Не указан";
         public bool CanConnectGitHub => IsCaptain && !HasGitHubRepo;
         public string GitHubButtonText => HasGitHubRepo ? "🔗 Открыть" : "🔗 Подключить";
@@ -42,14 +39,23 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool HasNoTasks => TotalTasksCount == 0;
         public int CompletedTasksCount => TaskSections.FirstOrDefault(s => s.StatusId == 4)?.Tasks.Count ?? 0;
 
+        private bool _canGoBack;
+        public bool CanGoBack
+        {
+            get => _canGoBack;
+            set
+            {
+                SetProperty(ref _canGoBack, value);
+            }
+        }
+
         private bool _isCaptain;
         public bool IsCaptain
         {
             get => _isCaptain;
             set
             {
-                _isCaptain = value;
-                OnPropertyChanged();
+                SetProperty(ref _isCaptain, value);
                 OnPropertyChanged(nameof(IsCaptainOrOrganizer));
                 OnPropertyChanged(nameof(IsGitHubButtonVisible));
             }
@@ -61,8 +67,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _isOrganizer;
             set
             {
-                _isOrganizer = value;
-                OnPropertyChanged();
+                SetProperty(ref _isOrganizer, value);
                 OnPropertyChanged(nameof(IsCaptainOrOrganizer));
             }
         }
@@ -76,42 +81,42 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool ShowTransferDialog
         {
             get => _showTransferDialog;
-            set { _showTransferDialog = value; OnPropertyChanged(); }
+            set => SetProperty(ref _showTransferDialog, value);
         }
 
         private MemberDto _selectedNewCaptain;
         public MemberDto SelectedNewCaptain
         {
             get => _selectedNewCaptain;
-            set { _selectedNewCaptain = value; OnPropertyChanged(); }
+            set => SetProperty(ref _selectedNewCaptain, value);
         }
 
         private bool _showCreateRepoDialog;
         public bool ShowCreateRepoDialog
         {
             get => _showCreateRepoDialog;
-            set { _showCreateRepoDialog = value; OnPropertyChanged(); }
+            set => SetProperty(ref _showCreateRepoDialog, value);
         }
 
         private string _newRepoName;
         public string NewRepoName
         {
             get => _newRepoName;
-            set { _newRepoName = value; OnPropertyChanged(); }
+            set => SetProperty(ref _newRepoName, value);
         }
 
         private string _newRepoDescription;
         public string NewRepoDescription
         {
             get => _newRepoDescription;
-            set { _newRepoDescription = value; OnPropertyChanged(); }
+            set => SetProperty(ref _newRepoDescription, value);
         }
 
         private bool _newRepoIsPrivate = true;
         public bool NewRepoIsPrivate
         {
             get => _newRepoIsPrivate;
-            set { _newRepoIsPrivate = value; OnPropertyChanged(); }
+            set => SetProperty(ref _newRepoIsPrivate, value);
         }
 
         private bool _isArchived;
@@ -120,8 +125,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _isArchived;
             set
             {
-                _isArchived = value;
-                OnPropertyChanged();
+                SetProperty(ref _isArchived, value);
                 OnPropertyChanged(nameof(PageSubtitle));
                 OnPropertyChanged(nameof(MembersSectionTitle));
             }
@@ -160,34 +164,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        public string PlaceDisplay
+        public string PlaceDisplay => !Place.HasValue ? "—" : Place.Value switch
         {
-            get
-            {
-                if (!Place.HasValue) return "—";
-                return Place.Value switch
-                {
-                    1 => "🥇 1 место",
-                    2 => "🥈 2 место",
-                    3 => "🥉 3 место",
-                    _ => $"{Place.Value} место"
-                };
-            }
-        }
+            1 => "🥇 1 место",
+            2 => "🥈 2 место",
+            3 => "🥉 3 место",
+            _ => $"{Place.Value} место"
+        };
 
-        public Brush PlaceBrush
+        public Brush PlaceBrush => Place switch
         {
-            get
-            {
-                return Place switch
-                {
-                    1 => new SolidColorBrush(Color.FromRgb(255, 215, 0)),   // Золотой
-                    2 => new SolidColorBrush(Color.FromRgb(192, 192, 192)), // Серебряный
-                    3 => new SolidColorBrush(Color.FromRgb(205, 127, 50)),  // Бронзовый
-                    _ => new SolidColorBrush(Color.FromRgb(108, 117, 125))  // Серый
-                };
-            }
-        }
+            1 => new SolidColorBrush(Color.FromRgb(255, 215, 0)),
+            2 => new SolidColorBrush(Color.FromRgb(192, 192, 192)),
+            3 => new SolidColorBrush(Color.FromRgb(205, 127, 50)),
+            _ => new SolidColorBrush(Color.FromRgb(108, 117, 125))
+        };
 
         private string _resultComment;
         public string ResultComment
@@ -205,15 +196,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             get => _finalTeamMembers;
             set => SetProperty(ref _finalTeamMembers, value);
         }
+
         public ObservableCollection<MemberDto> Members { get; set; } = new();
         public ObservableCollection<TaskSection> TaskSections { get; set; } = new();
         public ObservableCollection<MemberDto> AvailableMembers { get; set; } = new();
 
-        public ICommand LeaveTeamCommand { get; }
+        // Команды
         public ICommand CreateTaskCommand { get; }
         public ICommand EditTaskCommand { get; }
         public ICommand DeleteTaskCommand { get; }
-        public ICommand OpenTaskCommand { get; }
         public ICommand ToggleSectionCommand { get; }
         public ICommand CopyInviteCodeCommand { get; }
         public ICommand GitHubCommand { get; }
@@ -221,11 +212,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public ICommand ConfirmTransferCommand { get; }
         public ICommand CancelTransferCommand { get; }
         public ICommand OpenTeamChatCommand { get; }
-        public ICommand BackCommand { get; }
         public ICommand CreateGitHubRepoCommand { get; }
         public ICommand CancelCreateRepoCommand { get; }
         public ICommand KickMemberCommand { get; }
+        public ICommand BackCommand { get; }
         public ICommand ViewMemberProfileCommand { get; }
+        public ICommand LeaveTeamCommand { get; }
+        public ICommand OpenTaskCommand { get; }
 
         public TeamViewModel()
         {
@@ -234,232 +227,117 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _userService = new UserService();
             _chatService = new ChatService();
             _taskService = new TaskService();
-            _navigationService = App.NavigationService;
 
-            LeaveTeamCommand = new AsyncRelayCommand(
-                execute: async () => await ExecuteLeaveTeamAsync(),
-                canExecute: () => CurrentTeam != null);
-
-            GitHubCommand = new AsyncRelayCommand(
-                execute: async () => await ExecuteGitHubCommandAsync(),
-                canExecute: () => CurrentTeam != null);
-
-            OpenTeamChatCommand = new AsyncRelayCommand(
-                execute: async () => await OpenTeamChat(),
-                canExecute: () => CurrentTeam?.ChatId != null);
-
-            ConfirmTransferCommand = new AsyncRelayCommand(
-                execute: async () => await ExecuteConfirmTransferAsync(),
-                canExecute: () => SelectedNewCaptain != null && CurrentTeam != null);
-
-            CreateGitHubRepoCommand = new AsyncRelayCommand(
-                execute: async () => await ExecuteCreateGitHubRepoAsync(),
-                canExecute: () => CurrentTeam != null && !string.IsNullOrWhiteSpace(NewRepoName));
-
-            KickMemberCommand = new AsyncRelayCommand<MemberDto>(
-                execute: async (member) => await ExecuteKickMemberAsync(member),
-                canExecute: (member) => member != null && !member.IsCurrentUser && !member.IsCaptain);
-
-            CreateTaskCommand = new RelayCommand(() => ExecuteCreateTask(),
+            CreateTaskCommand = new RelayCommand(ExecuteCreateTask,
                 () => CurrentTeam?.Id != null && (IsCaptainOrOrganizer || CurrentTeam?.Tasks.Count < 10));
 
-            EditTaskCommand = new RelayCommand<TaskDto>(
-                task => ExecuteEditTask(task),
-                task => task != null && (IsCaptainOrOrganizer || task.AssignedToId == _currentUser?.Id));
-
-            DeleteTaskCommand = new RelayCommand<TaskDto>(
-                task => ExecuteDeleteTask(task),
+            DeleteTaskCommand = new RelayCommand<TaskDto>(ExecuteDeleteTask,
                 task => task != null && IsCaptainOrOrganizer);
 
-            OpenTaskCommand = new RelayCommand<TaskDto>(
-                task => ExecuteOpenTask(task),
+            OpenTaskCommand = new AsyncRelayCommand<TaskDto>(ExecuteOpenTaskAsync,
                 task => task != null);
 
-            ViewMemberProfileCommand = new AsyncRelayCommand<MemberDto>(
-                execute: async (member) => await ExecuteViewMemberProfileAsync(member),
-                canExecute: (member) => member != null);
-
-            ToggleSectionCommand = new RelayCommand<int>(
-                statusId => ToggleSection(statusId));
-
-            CopyInviteCodeCommand = new RelayCommand(
-                () => ExecuteCopyInviteCode(),
-                () => !string.IsNullOrEmpty(InviteCode));
-
-            TransferLeadershipCommand = new RelayCommand(
-                () => ExecuteTransferLeadership(),
-                () => IsCaptain || IsOrganizer && Members.Count > 0);
-
-            CancelTransferCommand = new RelayCommand(
-                () => ExecuteCancelTransfer());
-
-            BackCommand = new RelayCommand(
-                ExecuteBackCommand,
-                () => CurrentTeam != null);
-
-            CancelCreateRepoCommand = new RelayCommand(
-                ExecuteCancelCreateRepo);
+            ToggleSectionCommand = new RelayCommand<int>(ToggleSection);
+            CopyInviteCodeCommand = new RelayCommand(ExecuteCopyInviteCode, () => !string.IsNullOrEmpty(InviteCode));
+            TransferLeadershipCommand = new RelayCommand(ExecuteTransferLeadership, () => IsCaptain || (IsOrganizer && Members.Count > 0));
+            CancelTransferCommand = new RelayCommand(ExecuteCancelTransfer);
+            CancelCreateRepoCommand = new RelayCommand(ExecuteCancelCreateRepo);
+            BackCommand = new RelayCommand(ExecuteBackCommand, () => CurrentTeam != null);
+            EditTaskCommand = new AsyncRelayCommand<TaskDto>(ExecuteEditTask,
+                task => task != null && (IsCaptainOrOrganizer || task.AssignedToId == _currentUser?.Id));
+            LeaveTeamCommand = new AsyncRelayCommand(ExecuteLeaveTeamAsync, () => CurrentTeam != null);
+            GitHubCommand = new AsyncRelayCommand(ExecuteGitHubCommandAsync, () => CurrentTeam != null);
+            OpenTeamChatCommand = new AsyncRelayCommand(OpenTeamChatAsync, () => CurrentTeam?.ChatId != null);
+            ConfirmTransferCommand = new AsyncRelayCommand(ExecuteConfirmTransferAsync, () => SelectedNewCaptain != null && CurrentTeam != null);
+            CreateGitHubRepoCommand = new AsyncRelayCommand(ExecuteCreateGitHubRepoAsync, () => CurrentTeam != null && !string.IsNullOrWhiteSpace(NewRepoName));
+            KickMemberCommand = new AsyncRelayCommand<MemberDto>(ExecuteKickMemberAsync, member => member != null && !member.IsCurrentUser && !member.IsCaptain);
+            ViewMemberProfileCommand = new AsyncRelayCommand<MemberDto>(ExecuteViewMemberProfileAsync, member => member != null);
         }
 
-        private async Task ExecuteLeaveTeamAsync()
+        public async Task InitializeAsync(TeamDto team)
         {
-            var message = "Вы уверены, что хотите покинуть команду?";
+            CanGoBack = _navigationService.CanGoBack;
 
-            if (HasGitHubRepo && IsCaptain)
-            {
-                message += "\n\n⚠️ Внимание: GitHub репозиторий команды будет отсоединен из-за ограничения доступа!";
-            }
+            if (_isInitialized && CurrentTeam?.Id == team.Id) return;
 
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(message, "Подтверждение выхода",
-                                      MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            });
-
-            if (result != MessageBoxResult.Yes)
-                return;
+            IsLoading = true;
 
             try
             {
-                var leaveResult = await _teamService.LeaveTeamAsync();
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show(leaveResult.Message,
-                        leaveResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        leaveResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
-
-                    if (leaveResult.Success)
-                    {
-                        _navigationService.NavigateTo(new CompetitionsPage());
-                    }
-                });
+                CurrentTeam = team;
+                await LoadTeamDataAsync();
+                _isInitialized = true;
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка при выходе из команды: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка загрузки команды: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() => Back());
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
-        private async Task ExecuteKickMemberAsync(MemberDto member)
+        public async Task RefreshTeamDataAsync(int? teamId)
         {
             try
             {
-                var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    return MessageBox.Show(
-                        $"Вы уверены, что хотите выгнать участника {member.Username} из команды?",
-                        "Подтверждение выгона",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-                });
-
-                if (result != MessageBoxResult.Yes)
-                    return;
-
-                var kickResult = await _teamService.KickMemberAsync(member.Id);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show(kickResult.Message,
-                        kickResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        kickResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
-
-                    if (kickResult.Success)
-                    {
-                        // Обновляем данные команды
-                        LoadTeamDataAsync(CurrentTeam?.Id);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка при выгоне участника: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
-        }
-
-        public async Task LoadTeamDataAsync(int? teamId)
-        {
-            try
-            {
-                ApiResponse<TeamDto> teamResponse;
-
-                if (teamId == null)
-                {
-                    teamResponse = await _teamService.GetCurrentTeamAsync();
-                }
-                else
-                {
-                    teamResponse = await _teamService.GetTeamByIdAsync(teamId.Value);
-                }
+                var teamResponse = teamId == null
+                    ? await _teamService.GetCurrentTeamAsync()
+                    : await _teamService.GetTeamByIdAsync(teamId.Value);
 
                 if (!teamResponse.Success || teamResponse.Data == null)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show("Команда не найдена", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                        _navigationService.NavigateTo(new CompetitionsPage());
-                    });
+                    await ShowErrorAsync("Команда не найдена");
+                    await Application.Current.Dispatcher.InvokeAsync(() => Back());
                     return;
                 }
 
                 CurrentTeam = teamResponse.Data;
-
-                // Проверяем статус соревнования
-                var competition = await _competitionService.GetCompetitionAsync(CurrentTeam.CompetitionId);
-                if (competition.Success)
-                {
-                    IsArchived = competition.Data.IsArchived;
-                    CompetitionStatusText = competition.Data.StatusText;
-                    CompetitionStatusColor = competition.Data.StatusColor;
-                    HasResult = competition.Data.HasResults;
-                }
-
-                var userResponse = await _userService.GetCurrentUserAsync();
-                if (userResponse.Success)
-                {
-                    _currentUser = userResponse.Data;
-                }
-
-                if (IsArchived)
-                {
-                    // Загружаем финальный состав и результат
-                    await LoadFinalTeamDataAsync();
-                }
-                else
-                {
-                    await LoadMembersAsync();
-                    await LoadTasksAsync();
-                }
-
-                // Загружаем результат команды (если есть)
-                if (HasResult)
-                {
-                    await LoadTeamResultAsync();
-                }
-
-                CheckUserRole();
-                UpdateAllProperties();
+                await LoadTeamDataAsync();
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка загрузки данных команды: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    _navigationService.NavigateTo(new CompetitionsPage());
-                });
+                await ShowErrorAsync($"Ошибка загрузки команды: {ex.Message}");
+                await Application.Current.Dispatcher.InvokeAsync(() => Back());
             }
+        }
+
+        private async Task LoadTeamDataAsync()
+        {
+            var competition = await _competitionService.GetCompetitionAsync(CurrentTeam.CompetitionId);
+            if (competition.Success)
+            {
+                IsArchived = competition.Data.IsArchived;
+                CompetitionStatusText = competition.Data.StatusText;
+                CompetitionStatusColor = competition.Data.StatusColor;
+                HasResult = competition.Data.HasResults;
+            }
+
+            var userResponse = await _userService.GetCurrentUserAsync();
+            if (userResponse.Success)
+            {
+                _currentUser = userResponse.Data;
+            }
+
+            if (IsArchived)
+            {
+                await LoadFinalTeamDataAsync();
+            }
+            else
+            {
+                await LoadMembersAsync();
+                await LoadTasksAsync();
+            }
+
+            if (HasResult)
+            {
+                await LoadTeamResultAsync();
+            }
+
+            CheckUserRole();
+            UpdateAllProperties();
         }
 
         private async Task LoadFinalTeamDataAsync()
@@ -471,7 +349,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     FinalTeamMembers = new ObservableCollection<FinalTeamMemberDto>(finalMembers.Data);
 
-                    // Формируем Members из финального состава
                     Members.Clear();
                     foreach (var member in finalMembers.Data)
                     {
@@ -510,289 +387,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private async void ExecuteBackCommand()
-        {
-            if (CurrentTeam != null)
-            {
-                var competition = (await _competitionService.GetCompetitionAsync(CurrentTeam.CompetitionId)).Data;
-                _navigationService.NavigateTo(new CompetitionDetailsPage(competition));
-            }
-        }
-
-        private async Task CreateGitHubRepositoryAsync()
-        {
-            var user = await _userService.GetCurrentUserAsync();
-            if (string.IsNullOrEmpty(user.Data.GitHubUsername))
-            {
-                MessageBox.Show("Для создания репозитория необходимо сначала привязать GitHub аккаунт в профиле");
-                _navigationService.NavigateTo(new ProfilePage());
-                return;
-            }
-
-            NewRepoName = "NewRepository";
-            NewRepoDescription = $"Проект команды {TeamName} для хакатона";
-            ShowCreateRepoDialog = true;
-        }
-
-        private async Task ExecuteCreateGitHubRepoAsync()
-        {
-            if (string.IsNullOrWhiteSpace(NewRepoName))
-            {
-                ShowErrorMessage("Ошибка", "Введите название репозитория");
-                return;
-            }
-
-            try
-            {
-                var result = await _teamService.CreateGitHubRepositoryAsync(
-                    CurrentTeam.Id,
-                    NewRepoName,
-                    NewRepoDescription,
-                    NewRepoIsPrivate);
-
-                if (result.Success)
-                {
-                    ShowSuccessMessage("Репозиторий создан",
-                        $"{result.Message}\n\nURL репозитория: {result.Data.RepoUrl}");
-                    ShowCreateRepoDialog = false;
-
-                    await LoadTeamDataAsync(null);
-                }
-                else
-                {
-                    ShowErrorMessage("Ошибка создания репозитория", result.Message);
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowErrorMessage("Ошибка", $"Неожиданная ошибка: {ex.Message}");
-            }
-        }
-
-        private void ShowSuccessMessage(string title, string message)
-        {
-            MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void ShowErrorMessage(string title, string message)
-        {
-            MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-
-        private void ExecuteCancelCreateRepo()
-        {
-            ShowCreateRepoDialog = false;
-            NewRepoName = string.Empty;
-            NewRepoDescription = string.Empty;
-        }
-
-        private async Task ExecuteGitHubCommandAsync()
-        {
-            if (HasGitHubRepo)
-            {
-                if (!string.IsNullOrEmpty(GitHubRepoUrl))
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = GitHubRepoUrl,
-                        UseShellExecute = true
-                    });
-                }
-            }
-            else
-            {
-                if (IsCaptain)
-                {
-                    await CreateGitHubRepositoryAsync();
-                }
-                else
-                {
-                    MessageBox.Show("Только капитан команды может подключать GitHub репозиторий");
-                }
-            }
-        }
-
-        private async Task OpenTeamChat()
-        {
-            if (CurrentTeam?.ChatId != null)
-            {
-                var chat = await _chatService.GetTeamChatAsync(CurrentTeam.Id);
-
-                if (chat.Success)
-                {
-                    var chatPage = new ChatPage();
-                    var viewModel = chatPage.DataContext as ChatViewModel;
-                    if (viewModel != null)
-                    {
-                        await viewModel.LoadTeamChatAsync(chat.Data);
-                        _navigationService.NavigateTo(chatPage);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show($"Не удалось открыть чат команды:\n{chat.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Чат команды не найден");
-            }
-
-        }
-
-        private void ExecuteCreateTask()
-        {
-            if (CurrentTeam?.Id != null)
-            {
-                _navigationService.NavigateTo(new EditTaskPage(CurrentTeam.Id, true));
-            }
-        }
-
-        private void ExecuteEditTask(TaskDto task)
-        {
-            if (task != null)
-            {
-                _navigationService.NavigateTo(new EditTaskPage(task.Id, false));
-            }
-        }
-
-        private async void ExecuteDeleteTask(TaskDto task)
-        {
-            if (task == null) return;
-
-            var result = MessageBox.Show(
-                $"Вы уверены, что хотите удалить задачу \"{task.Title}\"?",
-                "Подтверждение удаления",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                var deleteResult = await _taskService.DeleteTaskAsync(task.Id);
-                MessageBox.Show(deleteResult.Message);
-
-                if (deleteResult.Success)
-                {
-                    await LoadTasksAsync();
-                }
-            }
-        }
-
-        private void ExecuteOpenTask(TaskDto task)
-        {
-            if (task != null)
-            {
-                _navigationService.NavigateTo(new TaskDetailsPage(task.Id));
-            }
-        }
-
-        private void ToggleSection(int statusId)
-        {
-            var section = TaskSections.FirstOrDefault(s => s.StatusId == statusId);
-            if (section != null)
-            {
-                section.IsExpanded = !section.IsExpanded;
-            }
-        }
-
-        private async Task ExecuteViewMemberProfileAsync(MemberDto member)
-        {
-            if (member == null) return;
-
-            try
-            {
-                doDispose = false;
-                var profilePage = new ProfilePage(member.Id);
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    _navigationService.NavigateTo(profilePage);
-                });
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка открытия профиля: {ex.Message}");
-                doDispose = true;
-            }
-        }
-
-        private void ExecuteTransferLeadership()
-        {
-            AvailableMembers.Clear();
-            foreach (var member in Members.Where(m => !m.IsCaptain))
-            {
-                AvailableMembers.Add(member);
-            }
-
-            if (!AvailableMembers.Any())
-            {
-                MessageBox.Show("В команде нет других участников для передачи прав.");
-                return;
-            }
-
-            SelectedNewCaptain = AvailableMembers.FirstOrDefault();
-            ShowTransferDialog = true;
-        }
-
-        private async Task ExecuteConfirmTransferAsync()
-        {
-            if (SelectedNewCaptain == null)
-            {
-                MessageBox.Show("Выберите участника для передачи прав.");
-                return;
-            }
-
-            var message = $"Вы уверены, что хотите передать права капитана участнику {SelectedNewCaptain.Username}?";
-
-            if (HasGitHubRepo)
-            {
-                message += "\n\n⚠️ Внимание: GitHub репозиторий команды будет отсоединен из-за ограничения доступа!";
-            }
-
-            if (MessageBox.Show(message, "Подтверждение передачи прав",
-                              MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-            {
-                return;
-            }
-
-            try
-            {
-                var result = await _teamService.AssignCaptainAsync(CurrentTeam.Id, SelectedNewCaptain.Id);
-
-                if (result.Success)
-                {
-                    MessageBox.Show($"Права капитана успешно переданы участнику {SelectedNewCaptain.Username}");
-                    ShowTransferDialog = false;
-
-                    if (IsOrganizer)
-                        await LoadTeamDataAsync(CurrentTeam.Id);
-                    else
-                        await LoadTeamDataAsync(null);
-
-                }
-                else
-                {
-                    MessageBox.Show(result.Message);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при передаче прав: {ex.Message}");
-            }
-        }
-
-        private void ExecuteCancelTransfer()
-        {
-            ShowTransferDialog = false;
-            SelectedNewCaptain = null;
-        }
-
-        private void ExecuteCopyInviteCode()
-        {
-            Clipboard.SetText(InviteCode ?? "");
-            MessageBox.Show("Код приглашения скопирован!");
-        }
-
         private async Task LoadMembersAsync()
         {
             Members.Clear();
@@ -801,7 +395,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 member.IsCurrentUser = member.Id == _currentUser?.Id;
                 Members.Add(member);
             }
-
             OnPropertyChanged(nameof(MembersCount));
         }
 
@@ -811,19 +404,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             var tasks = CurrentTeam.Tasks;
 
-            var taskSections = new System.Collections.Generic.List<TaskSection>
+            var taskSections = new List<TaskSection>
             {
-                new TaskSection { StatusId = 1, StatusName = "В планах", Tasks = new ObservableCollection<TaskDto>(), IsExpanded = true },
-                new TaskSection { StatusId = 2, StatusName = "В процессе", Tasks = new ObservableCollection<TaskDto>(), IsExpanded = true },
-                new TaskSection { StatusId = 3, StatusName = "На проверке", Tasks = new ObservableCollection<TaskDto>(), IsExpanded = true },
-                new TaskSection { StatusId = 4, StatusName = "Завершена", Tasks = new ObservableCollection<TaskDto>(), IsExpanded = false },
-                new TaskSection { StatusId = 5, StatusName = "Отменена", Tasks = new ObservableCollection<TaskDto>(), IsExpanded = false }
+                new TaskSection { StatusId = 1, StatusName = "В планах", IsExpanded = true },
+                new TaskSection { StatusId = 2, StatusName = "В процессе", IsExpanded = true },
+                new TaskSection { StatusId = 3, StatusName = "На проверке", IsExpanded = true },
+                new TaskSection { StatusId = 4, StatusName = "Завершена", IsExpanded = false },
+                new TaskSection { StatusId = 5, StatusName = "Отменена", IsExpanded = false }
             };
 
             foreach (var task in tasks)
             {
-                task.IsMyTask = task.AssignedToId == _currentUser.Id;
-
+                task.IsMyTask = task.AssignedToId == _currentUser?.Id;
                 var section = taskSections.FirstOrDefault(s => s.StatusId == task.StatusId);
                 section?.Tasks.Add(task);
             }
@@ -842,25 +434,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private void CheckUserRole()
         {
-            IsCaptain = _currentUser.RoleId == (int)Roles.Captain;
-            IsOrganizer = _currentUser.RoleId == (int)Roles.Organizer ||
-                          _currentUser.RoleId == (int)Roles.Admin;
-
+            IsCaptain = _currentUser?.RoleId == (int)Roles.Captain;
+            IsOrganizer = _currentUser?.RoleId == (int)Roles.Organizer || _currentUser?.RoleId == (int)Roles.Admin;
             OnPropertyChanged(nameof(IsCaptain));
             OnPropertyChanged(nameof(IsOrganizer));
             OnPropertyChanged(nameof(IsCaptainOrOrganizer));
             OnPropertyChanged(nameof(IsTeamMember));
         }
 
-        private async Task ShowErrorAsync(string message)
-        {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            });
-        }
-
-        private void UpdateDerivedProperties()
+        private void UpdateAllProperties()
         {
             OnPropertyChanged(nameof(TeamName));
             OnPropertyChanged(nameof(InviteCode));
@@ -869,42 +451,284 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             OnPropertyChanged(nameof(CanConnectGitHub));
             OnPropertyChanged(nameof(GitHubButtonText));
             OnPropertyChanged(nameof(IsGitHubButtonVisible));
-        }
-
-        private void UpdateAllProperties()
-        {
-            UpdateDerivedProperties();
             OnPropertyChanged(nameof(MembersCount));
             OnPropertyChanged(nameof(TotalTasksCount));
             OnPropertyChanged(nameof(CompletedTasksCount));
             OnPropertyChanged(nameof(HasNoTasks));
         }
 
-        protected override void DisposeManagedResources()
+        private async void ExecuteBackCommand()
         {
-            if (!doDispose)
+            if (CurrentTeam != null)
+            {
+                if(_navigationService.CanGoBack)
+                    _navigationService.GoBack();
+            }
+        }
+
+        private void ToggleSection(int statusId)
+        {
+            var section = TaskSections.FirstOrDefault(s => s.StatusId == statusId);
+            if (section != null) section.IsExpanded = !section.IsExpanded;
+        }
+
+        private void ExecuteCopyInviteCode() => Clipboard.SetText(InviteCode ?? "");
+
+        private void ExecuteTransferLeadership()
+        {
+            AvailableMembers.Clear();
+            foreach (var member in Members.Where(m => !m.IsCaptain))
+                AvailableMembers.Add(member);
+
+            if (!AvailableMembers.Any())
+            {
+                MessageBox.Show("В команде нет других участников для передачи прав.");
+                return;
+            }
+
+            SelectedNewCaptain = AvailableMembers.FirstOrDefault();
+            ShowTransferDialog = true;
+        }
+
+        private void ExecuteCancelTransfer()
+        {
+            ShowTransferDialog = false;
+            SelectedNewCaptain = null;
+        }
+
+        private void ExecuteCancelCreateRepo()
+        {
+            ShowCreateRepoDialog = false;
+            NewRepoName = string.Empty;
+            NewRepoDescription = string.Empty;
+        }
+
+        private void ExecuteCreateTask()
+        {
+            doDispose = false;
+            if (CurrentTeam?.Id != null)
+                _navigationService.NavigateTo(new EditTaskPage(CurrentTeam.Id, true));
+        }
+
+        private async Task ExecuteEditTask(TaskDto task)
+        {
+            if (task != null)
+            {
+                var taskDetails = await _taskService.GetTaskDetailsAsync(task.Id);
+
+                if (!taskDetails.Success || taskDetails.Data == null)
+                    return;
+
+                doDispose = false;
+                _navigationService.NavigateTo(new EditTaskPage(taskDetails.Data, false));
+            }
+        }
+
+        private async Task ExecuteOpenTaskAsync(TaskDto task)
+        {
+            if (task == null) return;
+
+            var taskDetails = await _taskService.GetTaskDetailsAsync(task.Id);
+            if (taskDetails.Success && taskDetails.Data != null)
+            {
+                doDispose = false;
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                    _navigationService.NavigateTo(new TaskDetailsPage(taskDetails.Data)));
+            }
+            else
+            {
+                await ShowErrorAsync($"Задача не найдена или была удалена.\n{taskDetails.Message}");
+            }
+        }
+
+        private async void ExecuteDeleteTask(TaskDto task)
+        {
+            if (task == null) return;
+
+            var result = MessageBox.Show($"Вы уверены, что хотите удалить задачу \"{task.Title}\"?",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                var deleteResult = await _taskService.DeleteTaskAsync(task.Id);
+                MessageBox.Show(deleteResult.Message);
+                if (deleteResult.Success) await LoadTasksAsync();
+            }
+        }
+
+        private async Task ExecuteLeaveTeamAsync()
+        {
+            var message = "Вы уверены, что хотите покинуть команду?";
+            if (HasGitHubRepo && IsCaptain)
+                message += "\n\n⚠️ Внимание: GitHub репозиторий команды будет отсоединен!";
+
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+                MessageBox.Show(message, "Подтверждение выхода", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+
+            if (result != MessageBoxResult.Yes) return;
+
+            var leaveResult = await _teamService.LeaveTeamAsync();
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                MessageBox.Show(leaveResult.Message, leaveResult.Success ? "Успешно" : "Ошибка",
+                    MessageBoxButton.OK, leaveResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+
+                if (leaveResult.Success)
+                {
+                    if (Application.Current.MainWindow is MainWindow mainWindow)
+                    {
+                        if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                        {
+                            await mainViewModel.OpenMainPage();
+                        }
+                    }
+                }
+            });
+        }
+
+        private async Task ExecuteKickMemberAsync(MemberDto member)
+        {
+            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
+                MessageBox.Show($"Вы уверены, что хотите выгнать участника {member.Username} из команды?",
+                    "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+
+            if (result != MessageBoxResult.Yes) return;
+
+            var kickResult = await _teamService.KickMemberAsync(member.Id);
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                MessageBox.Show(kickResult.Message, kickResult.Success ? "Успешно" : "Ошибка",
+                    MessageBoxButton.OK, kickResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                if (kickResult.Success) await RefreshTeamDataAsync(CurrentTeam?.Id);
+            });
+        }
+
+        private async Task ExecuteConfirmTransferAsync()
+        {
+            if (SelectedNewCaptain == null)
+            {
+                MessageBox.Show("Выберите участника для передачи прав.");
+                return;
+            }
+
+            var message = $"Вы уверены, что хотите передать права капитана участнику {SelectedNewCaptain.Username}?";
+            if (HasGitHubRepo) message += "\n\n⚠️ GitHub репозиторий будет отсоединен!";
+
+            if (MessageBox.Show(message, "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
+            var result = await _teamService.AssignCaptainAsync(CurrentTeam.Id, SelectedNewCaptain.Id);
+            if (result.Success)
+            {
+                MessageBox.Show($"Права капитана переданы {SelectedNewCaptain.Username}");
+                ShowTransferDialog = false;
+                await RefreshTeamDataAsync(IsOrganizer ? CurrentTeam.Id : null);
+            }
+            else
+            {
+                MessageBox.Show(result.Message);
+            }
+        }
+
+        private async Task CreateGitHubRepositoryAsync()
+        {
+            var user = await _userService.GetCurrentUserAsync();
+            if (string.IsNullOrEmpty(user.Data?.GitHubUsername))
+            {
+                MessageBox.Show("Для создания репозитория необходимо сначала привязать GitHub аккаунт в профиле");
+                _navigationService.NavigateTo(new ProfilePage());
+                return;
+            }
+
+            NewRepoName = "NewRepository";
+            NewRepoDescription = $"Проект команды {TeamName} для хакатона";
+            ShowCreateRepoDialog = true;
+        }
+
+        private async Task ExecuteCreateGitHubRepoAsync()
+        {
+            if (string.IsNullOrWhiteSpace(NewRepoName))
+            {
+                await ShowErrorAsync("Введите название репозитория");
+                return;
+            }
+
+            var result = await _teamService.CreateGitHubRepositoryAsync(
+                CurrentTeam.Id, NewRepoName, NewRepoDescription, NewRepoIsPrivate);
+
+            if (result.Success)
+            {
+                MessageBox.Show($"{result.Message}\n\nURL: {result.Data.RepoUrl}", "Репозиторий создан",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowCreateRepoDialog = false;
+                await RefreshTeamDataAsync(null);
+            }
+            else
+            {
+                await ShowErrorAsync(result.Message);
+            }
+        }
+
+        private async Task ExecuteGitHubCommandAsync()
+        {
+            if (HasGitHubRepo)
+            {
+                if (!string.IsNullOrEmpty(GitHubRepoUrl))
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = GitHubRepoUrl, UseShellExecute = true });
+            }
+            else if (IsCaptain)
+            {
+                await CreateGitHubRepositoryAsync();
+            }
+            else
+            {
+                MessageBox.Show("Только капитан команды может подключать GitHub репозиторий");
+            }
+        }
+
+        private async Task OpenTeamChatAsync()
+        {
+            if (CurrentTeam?.ChatId == null)
+            {
+                await ShowErrorAsync("Чат команды не найден");
+                return;
+            }
+
+            doDispose = false;
+            var chat = await _chatService.GetTeamChatAsync(CurrentTeam.Id);
+            if (chat.Success)
+            {
+                _navigationService.NavigateTo(new ChatPage(chat.Data, true));
+            }
+            else
+            {
+                doDispose = true;
+                await ShowErrorAsync($"Не удалось открыть чат команды:\n{chat.Message}");
+            }
+        }
+
+        private async Task ExecuteViewMemberProfileAsync(MemberDto member)
+        {
+            if (member == null) return;
+
+            doDispose = false;
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+                _navigationService.NavigateTo(new ProfilePage(member.Id)));
+        }
+
+        protected override void DisposeManagedResources()
+        {
+            if (!doDispose) return;
             base.DisposeManagedResources();
 
             Members?.Clear();
             TaskSections?.Clear();
             AvailableMembers?.Clear();
+            FinalTeamMembers?.Clear();
 
-            CurrentTeam = null;
-            _currentUser = null;
-            SelectedNewCaptain = null;
-            NewRepoName = null;
-            NewRepoDescription = null;
-
-            if (_teamService is IDisposable teamDisposable)
-                teamDisposable.Dispose();
-
-            if (_taskService is IDisposable taskDisposable)
-                taskDisposable.Dispose();
-
-            if (_userService is IDisposable userDisposable)
-                userDisposable.Dispose();
+            if (_teamService is IDisposable teamDisposable) teamDisposable.Dispose();
+            if (_taskService is IDisposable taskDisposable) taskDisposable.Dispose();
+            if (_userService is IDisposable userDisposable) userDisposable.Dispose();
         }
     }
 

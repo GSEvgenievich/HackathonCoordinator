@@ -9,8 +9,8 @@
         public string UserIcon { get; set; }
         public string Text { get; set; }
         public DateTime SentAt { get; set; }
-        public string SentAtFormatted => SentAt.ToString("HH:mm");
-        public string SentAtFull => SentAt.ToString("dd.MM.yyyy HH:mm");
+        public bool HasAttachments { get; set; }
+        public List<MessageAttachmentDto> Attachments { get; set; } = new();
         public bool IsEdited { get; set; }
         public bool IsMyMessage { get; set; }
     }
