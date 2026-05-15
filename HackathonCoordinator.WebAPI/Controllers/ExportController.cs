@@ -55,8 +55,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         {
             return await _context.Competitions
                 .Include(c => c.CreatedBy)
-                .Include(c => c.ResultsCreatedBy)      // Добавляем создателя результатов
-                .Include(c => c.ResultsUpdatedBy)      // Добавляем редактора результатов
+                .Include(c => c.ResultsCreatedBy)
+                .Include(c => c.ResultsUpdatedBy)
                 .Include(c => c.Teams)
                     .ThenInclude(t => t.Users)
                     .ThenInclude(t => t.Role)
@@ -88,7 +88,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 Teams = teamExportDtos,
                 Stats = competitionStats,
                 Results = results,
-                SuggestedFileName = GenerateFileName(competition.Name)
+                SuggestedFileName = GenerateSafeFileName(competition.Name, "competition_export")
             };
         }
 
@@ -247,29 +247,57 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// <summary>
         /// Генерация безопасного имени файла
         /// </summary>
-        private string GenerateFileName(string competitionName)
+        /// <param name="sourceName">Исходное название (например, имя соревнования)</param>
+        /// <param name="prefix">Префикс для файла</param>
+        /// <returns>Безопасное имя файла</returns>
+        private string GenerateSafeFileName(string sourceName, string prefix)
         {
-            if (string.IsNullOrWhiteSpace(competitionName))
-                return $"competition_export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            if (string.IsNullOrWhiteSpace(sourceName))
+                return $"{prefix}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
+            // Список недопустимых символов для Windows
             var invalidChars = Path.GetInvalidFileNameChars();
-            var safeName = new string(competitionName
+
+            // Замена недопустимых символов на '_'
+            var safeName = new string(sourceName
                 .Select(ch => invalidChars.Contains(ch) ? '_' : ch)
                 .ToArray());
 
+            // Удаляем специальные символы
+            safeName = System.Text.RegularExpressions.Regex.Replace(safeName, @"[\""\'\`\~\@\$\%\^\&\*\(\)\=\+\{\}\[\]\|\\\/\?\<\>\:\;]", "_");
+
+            // Удаляем двойные кавычки и другие проблемные символы
+            safeName = safeName.Replace("\"", "_")
+                               .Replace("'", "_")
+                               .Replace("`", "_")
+                               .Replace("«", "_")
+                               .Replace("»", "_")
+                               .Replace("„", "_")
+                               .Replace("“", "_")
+                               .Replace("”", "_");
+
+            // Обрезаем пробелы в начале и конце
             safeName = safeName.Trim();
 
+            // Заменяем множественные пробелы на один
             while (safeName.Contains("  "))
                 safeName = safeName.Replace("  ", " ");
 
-            if (safeName.Length > 50)
-                safeName = safeName.Substring(0, 50).Trim();
+            // Заменяем пробелы на знак подчеркивания (опционально, для читаемости)
+            // safeName = safeName.Replace(' ', '_');
 
+            // Ограничиваем длину имени (максимум 50 символов + префикс)
+            const int maxNameLength = 50;
+            if (safeName.Length > maxNameLength)
+                safeName = safeName.Substring(0, maxNameLength).Trim();
+
+            // Если после очистки имя пустое, используем дефолтное
             if (string.IsNullOrWhiteSpace(safeName))
-                safeName = "competition";
+                safeName = "export";
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            return $"{safeName}_export_{timestamp}.xlsx";
+            return $"{prefix}_{safeName}_{timestamp}.xlsx";
         }
+       
     }
 }

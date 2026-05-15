@@ -69,11 +69,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var user = await _userService.GetCurrentUserAsync();
                 if (!user.Success)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show("Ошибка загрузки пользователя", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
+                    await ShowErrorAsync("Ошибка загрузки пользователя");
                     return;
                 }
 
@@ -128,11 +124,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка загрузки чатов: {ex.Message}",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка загрузки чатов: {ex.Message}");
             }
             finally
             {

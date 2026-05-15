@@ -1,6 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
 using System.Windows.Input;
@@ -88,11 +87,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (Password != ConfirmPassword)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show("Пароли не совпадают!", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await ShowErrorAsync("Пароли не совпадают!");
                 });
+
                 return;
             }
 
@@ -100,12 +99,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var registration = await _authService.RegisterAsync(Username, Login, Email, Password);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(registration.Message,
-                        registration.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        registration.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if(registration.Success)
+                        await ShowSuccessAsync(registration.Message);
+                    else
+                        await ShowErrorAsync(registration.Message);
 
                     if (registration.Success)
                         _navigationService.NavigateTo(new AuthorizationPage());
@@ -113,10 +112,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show($"Ошибка регистрации: {ex.Message}\n\nПроверьте подключение к серверу.",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync($"Ошибка регистрации: {ex.Message}\n\nПроверьте подключение к серверу.");
                 });
             }
         }

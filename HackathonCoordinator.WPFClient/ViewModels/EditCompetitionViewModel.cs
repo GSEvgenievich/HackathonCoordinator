@@ -2,8 +2,6 @@
 using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
-using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -189,7 +187,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                                  IsValidTimeFormat(StartTime) &&
                                  IsValidTimeFormat(EndTime));
             CancelCommand = new RelayCommand(Cancel);
-            AddStageCommand = new RelayCommand(ShowAddStageDialog);
+            AddStageCommand = new AsyncRelayCommand(ShowAddStageDialogAsync);
             EditStageCommand = new RelayCommand<StageEditItem>(ShowEditStageDialog);
             DeleteStageCommand = new RelayCommand<StageEditItem>(DeleteStage);
             SaveStageCommand = new RelayCommand(SaveStage);
@@ -260,11 +258,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка загрузки расписания: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка загрузки расписания: {ex.Message}", "Ошибка");
             }
         }
 
@@ -301,12 +295,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         }
 
         // Обновите ShowAddStageDialog
-        private void ShowAddStageDialog()
+        private async Task ShowAddStageDialogAsync()
         {
             // Проверяем, можно ли добавить новый этап
             if (!CanAddMoreStages())
             {
-                ShowError(ErrorMessage);
+                await ShowErrorAsync(ErrorMessage);
                 return;
             }
 
@@ -346,14 +340,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
 
             ShowStageDialog = true;
-        }
-
-        private void ShowError(string message)
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-            });
         }
 
         private void RecalculateAllStagesTimes()
@@ -652,12 +638,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     result = await _competitionService.CreateCompetitionWithStagesAsync(competitionDto, stagesToSave);
                 }
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(result.Message,
-                        result.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (result.Success)
+                        await ShowSuccessAsync(result.Message);
+                    else
+                        await ShowErrorAsync(result.Message);
 
                     if (result.Success)
                     {

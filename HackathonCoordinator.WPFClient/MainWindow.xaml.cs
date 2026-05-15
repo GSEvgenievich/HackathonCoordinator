@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.ServiceLayer.Services;
+using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.ViewModels;
 using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
@@ -53,20 +54,18 @@ namespace HackathonCoordinator.WPFClient
                     viewModel.CheckUserRole();
                     viewModel.GetUsername();
 
-                    // Используем метод ViewModel для перехода на главную
                     await viewModel.OpenMainPage();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки: {ex.Message}");
+                await DialogHelper.ShowErrorAsync($"Ошибка загрузки: {ex.Message}");
                 App.NavigationService.NavigateTo(new AuthorizationPage());
             }
         }
 
         private void MainFrame_Navigated(object sender, NavigationEventArgs e)
         {
-            // Получаем тип текущей страницы и передаем в ViewModel
             if (DataContext is MainWindowViewModel viewModel)
             {
                 var pageType = e.Content?.GetType();

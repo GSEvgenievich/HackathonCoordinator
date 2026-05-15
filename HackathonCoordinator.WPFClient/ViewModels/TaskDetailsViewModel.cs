@@ -171,7 +171,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var task = await _taskService.GetTaskDetailsAsync(taskId);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (task.Success)
                     {
@@ -179,8 +179,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка загрузки задачи: {task.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка загрузки задачи: {task.Message}");
                         BackToTeam();
                     }
                 });
@@ -192,10 +191,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show($"Ошибка загрузки задачи: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync($"Ошибка загрузки задачи: {ex.Message}");
                     BackToTeam();
                 });
             }
@@ -305,12 +303,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var result = await _taskService.AssignTaskAsync(Task.Id, SelectedAssignee.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(result.Message,
-                        result.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (result.Success)
+                        await ShowSuccessAsync(result.Message);
+                    else
+                        await ShowErrorAsync(result.Message);
                 });
 
                 if (result.Success)
@@ -327,31 +325,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task CompleteTaskAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите запросить завершение этой задачи?",
-                    "Подтверждение",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите запросить завершение этой задачи?");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {
                 var completionResult = await _taskService.RequestCompletionAsync(Task.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(completionResult.Message,
-                        completionResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        completionResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (completionResult.Success)
+                        await ShowSuccessAsync(completionResult.Message);
+                    else
+                        await ShowErrorAsync(completionResult.Message);
 
                     if (completionResult.Success)
                     {
-                        RefreshAsync();
+                        await RefreshAsync();
                     }
                 });
             }
@@ -363,31 +354,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task CancelTaskAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите запросить отмену этой задачи?",
-                    "Подтверждение",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите запросить отмену этой задачи?");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {
                 var cancellationResult = await _taskService.RequestCancellationAsync(Task.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(cancellationResult.Message,
-                        cancellationResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        cancellationResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (cancellationResult.Success)
+                        await ShowSuccessAsync(cancellationResult.Message);
+                    else
+                        await ShowErrorAsync(cancellationResult.Message);
 
                     if (cancellationResult.Success)
                     {
-                        RefreshAsync();
+                        await RefreshAsync();
                     }
                 });
             }
@@ -399,31 +383,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task ConfirmCompletionAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите подтвердить завершение этой задачи?",
-                    "Подтверждение завершения",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите подтвердить завершение этой задачи?");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {
                 var completionResult = await _taskService.ConfirmCompletionAsync(Task.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(completionResult.Message,
-                        completionResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        completionResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (completionResult.Success)
+                        await ShowSuccessAsync(completionResult.Message);
+                    else
+                        await ShowErrorAsync(completionResult.Message);
 
                     if (completionResult.Success)
                     {
-                        RefreshAsync();
+                        await RefreshAsync();
                     }
                 });
             }
@@ -435,31 +412,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task RejectCompletionAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите отклонить завершение этой задачи? Задача вернется в работу.",
-                    "Отклонение завершения",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите отклонить завершение этой задачи? Задача вернется в работу.","Отклонение завершения");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {
                 var rejectionResult = await _taskService.RejectCompletionAsync(Task.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(rejectionResult.Message,
-                        rejectionResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        rejectionResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (rejectionResult.Success)
+                        await ShowSuccessAsync(rejectionResult.Message);
+                    else
+                        await ShowErrorAsync(rejectionResult.Message); 
 
                     if (rejectionResult.Success)
                     {
-                        RefreshAsync();
+                        await RefreshAsync();
                     }
                 });
             }
@@ -471,31 +441,24 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task CancelTaskAsCaptainAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите отменить эту задачу?",
-                    "Отмена задачи",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-            });
-
-            if (result != MessageBoxResult.Yes) return;
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите отменить эту задачу?", "Отмена задачи");
+           
+            if (result != true) return;
 
             try
             {
                 var cancellationResult = await _taskService.CancelTaskAsync(Task.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show(cancellationResult.Message,
-                        cancellationResult.Success ? "Успешно" : "Ошибка",
-                        MessageBoxButton.OK,
-                        cancellationResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                    if (cancellationResult.Success)
+                        await ShowSuccessAsync(cancellationResult.Message);
+                    else
+                        await ShowErrorAsync(cancellationResult.Message);
 
                     if (cancellationResult.Success)
                     {
-                        RefreshAsync();
+                        await RefreshAsync();
                     }
                 });
             }

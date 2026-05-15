@@ -1,9 +1,9 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Views;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 
@@ -354,13 +354,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (!IsEditMode || IsArchived) return;
 
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show(HasExistingResults
-                    ? "Сохранить изменения результатов?\n\nПосле сохранения новые места будут зафиксированы."
-                    : "Сохранить результаты соревнования?\n\nПосле сохранения порядок мест будет зафиксирован и станет доступен для просмотра участниками.",
-                    "Подтверждение сохранения", MessageBoxButton.YesNo, MessageBoxImage.Question));
+            var result = await ShowYesNoCancelAsync(HasExistingResults
+                ? "Сохранить изменения результатов?\n\nПосле сохранения новые места будут зафиксированы."
+                : "Сохранить результаты соревнования?\n\nПосле сохранения порядок мест будет зафиксирован и станет доступен для просмотра участниками.",
+                "Подтверждение сохранения");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             var saveResult = await _competitionService.SaveAllResultsAsync(Competition.Id, Teams.ToList());
             await Application.Current.Dispatcher.InvokeAsync(async () =>
@@ -373,8 +372,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     var updatedCompetition = await _competitionService.GetCompetitionAsync(Competition.Id);
                     if (updatedCompetition.Success) Competition = updatedCompetition.Data;
 
-                    MessageBox.Show("Результаты успешно сохранены!", "Успешно",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    await ShowSuccessAsync("Результаты успешно сохранены!");
                 }
                 else
                 {
@@ -391,9 +389,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 return;
             }
 
+            var safeFileName = GenerateResultsFileName(Competition.Name);
+
             var saveFileDialog = new SaveFileDialog
             {
-                FileName = $"Результаты_{Competition.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
+                FileName = safeFileName,
                 Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
                 DefaultExt = ".pdf"
             };
@@ -401,19 +401,58 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (saveFileDialog.ShowDialog() != true) return;
 
             var success = await _pdfExportService.ExportResultsToPdfAsync(Competition, Teams.ToList(), saveFileDialog.FileName);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (success)
                 {
-                    MessageBox.Show($"Результаты успешно экспортированы в PDF файл:\n{saveFileDialog.FileName}",
-                        "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await ShowInfoAsync($"Результаты успешно экспортированы в PDF файл:\n{saveFileDialog.FileName}", "Экспорт завершен");
                 }
                 else
                 {
-                    MessageBox.Show("Ошибка при создании PDF файла", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync("Ошибка при создании PDF файла");
                 }
             });
+        }
+
+        /// <summary>
+        /// Генерация безопасного имени файла для результатов
+        /// </summary>
+        public static string GenerateResultsFileName(string sourceName)
+        {
+            if (string.IsNullOrWhiteSpace(sourceName))
+                return $"results_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+
+            var safeName = new string(sourceName
+                .Select(ch => invalidChars.Contains(ch) ? '_' : ch)
+                .ToArray());
+
+            safeName = System.Text.RegularExpressions.Regex.Replace(safeName, @"[\""\'\`\~\@\$\%\^\&\*\(\)\=\+\{\}\[\]\|\\\/\?\<\>\:\;]", "_");
+
+            safeName = safeName.Replace("\"", "_")
+                               .Replace("'", "_")
+                               .Replace("`", "_")
+                               .Replace("«", "_")
+                               .Replace("»", "_")
+                               .Replace("„", "_")
+                               .Replace("“", "_")
+                               .Replace("”", "_");
+
+            safeName = safeName.Trim();
+
+            while (safeName.Contains("  "))
+                safeName = safeName.Replace("  ", " ");
+
+            const int maxNameLength = 50;
+            if (safeName.Length > maxNameLength)
+                safeName = safeName.Substring(0, maxNameLength).Trim();
+
+            if (string.IsNullOrWhiteSpace(safeName))
+                safeName = "export";
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            return $"results__{safeName}_{timestamp}.pdf";
         }
 
         protected override void DisposeManagedResources()

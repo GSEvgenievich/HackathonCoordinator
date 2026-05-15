@@ -116,7 +116,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             SaveUsernameCommand = new AsyncRelayCommand(SaveUsernameAsync);
             LogoutCommand = new AsyncRelayCommand(ExecuteLogoutAsync);
             LinkGitHubCommand = new AsyncRelayCommand(ExecuteLinkGitHubAsync);
-            ViewTeamCompositionCommand = new RelayCommand<UserResultDto>(ShowTeamComposition);
+            ViewTeamCompositionCommand = new AsyncRelayCommand<UserResultDto>(ShowTeamComposition);
         }
 
         public async Task InitializeAsync(int? userId = null)
@@ -238,7 +238,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (string.IsNullOrWhiteSpace(EditUsername) || EditUsername == User.Username) return;
 
             var result = await _userService.UpdateProfileAsync(EditUsername, User.IconId);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -252,7 +252,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    MessageBox.Show(result.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync(result.Message);
                 }
             });
         }
@@ -263,7 +263,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             var result = await _userService.UpdateProfileAsync(User.Username, icon.Id);
 
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -284,7 +284,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    MessageBox.Show(result.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync(result.Message);
                 }
             });
         }
@@ -300,16 +300,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             else
             {
-                var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    return MessageBox.Show(
-                        $"Вы уверены, что хотите отвязать аккаунт {User.GitHubUsername}?",
-                        "Подтверждение",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-                });
+                var result = await ShowYesNoCancelAsync(
+                    $"Вы уверены, что хотите отвязать аккаунт {User.GitHubUsername}?");
 
-                if (result == MessageBoxResult.Yes)
+                if (result == true)
                 {
                     var unlinkResult = await _userService.UnlinkGitHubAsync();
                     if (unlinkResult.Success)
@@ -327,7 +321,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private void ShowTeamComposition(UserResultDto result)
+        private async Task ShowTeamComposition(UserResultDto result)
         {
             if (result?.FinalTeamMembers == null) return;
 
@@ -339,22 +333,16 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 compositionText += $"{roleIcon}{member.Username} - {member.PositionName} ({member.RoleName})\n";
             }
 
-            MessageBox.Show(compositionText, $"Состав команды - {result.TeamName}",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            await ShowInfoAsync(compositionText, $"Состав команды - {result.TeamName}");
         }
 
         private async Task ExecuteLogoutAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите выйти?",
-                    "Подтверждение выхода",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync(
+                "Вы уверены, что хотите выйти?",
+                "Подтверждение выхода");
 
-            if (result == MessageBoxResult.Yes)
+            if (result == true)
             {
                 if (Application.Current.MainWindow is MainWindow mainWindow &&
                     mainWindow.DataContext is MainWindowViewModel mainViewModel)

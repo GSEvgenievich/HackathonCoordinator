@@ -171,16 +171,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task ChangeGitHubAccountAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите отвязать текущий GitHub аккаунт и привязать новый?",
-                    "Смена GitHub аккаунта",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result =await ShowYesNoCancelAsync(
+                "Вы уверены, что хотите отвязать текущий GitHub аккаунт и привязать новый?",
+                "Смена GitHub аккаунта");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {

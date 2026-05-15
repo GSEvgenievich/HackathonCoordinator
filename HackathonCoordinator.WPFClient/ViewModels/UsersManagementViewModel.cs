@@ -2,7 +2,6 @@
 using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -281,7 +280,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private async Task LoadUsersAsync()
         {
             var result = await _userService.GetAllUsersAsync();
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -290,7 +289,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    ShowError(result.Message);
+                    await ShowErrorAsync(result.Message);
                 }
             });
         }
@@ -386,7 +385,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (UserToDelete == null) return;
 
             var result = await _userService.DeleteUserAsync(UserToDelete.Id);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -396,7 +395,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    ShowError(result.Message);
+                    await ShowErrorAsync(result.Message);
                 }
                 ShowDeleteDialog = false;
                 UserToDelete = null;
@@ -408,7 +407,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (UserToManage == null) return;
 
             var result = await _userService.MakeOrganizerAsync(UserToManage.Id);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -418,7 +417,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    ShowError(result.Message);
+                    await ShowErrorAsync(result.Message);
                 }
                 ShowManageRoleDialog = false;
                 UserToManage = null;
@@ -430,7 +429,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (UserToManage == null) return;
 
             var result = await _userService.RemoveOrganizerAsync(UserToManage.Id);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -440,7 +439,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    ShowError(result.Message);
+                    await ShowErrorAsync(result.Message);
                 }
                 ShowManageRoleDialog = false;
                 UserToManage = null;
@@ -470,7 +469,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (string.IsNullOrWhiteSpace(NewPositionName)) return;
 
             var result = await _positionService.CreatePositionAsync(NewPositionName.Trim());
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (result.Success)
                 {
@@ -479,7 +478,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 }
                 else
                 {
-                    ShowError(result.Message);
+                    await ShowErrorAsync(result.Message);
                 }
             });
         }
@@ -494,10 +493,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (!string.IsNullOrWhiteSpace(newName) && newName != position.Name)
             {
                 var result = await _positionService.UpdatePositionAsync(position.Id, newName.Trim());
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    if (result.Success) position.Name = newName.Trim();
-                    else ShowError(result.Message);
+                    if (result.Success)
+                        position.Name = newName.Trim();
+                    else
+                        await ShowErrorAsync(result.Message);
                 });
             }
         }
@@ -506,24 +507,22 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (position == null || position.IsProtected) return;
 
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show($"Вы уверены, что хотите удалить должность \"{position.Name}\"?\n\nЭто действие нельзя отменить!",
-                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Question));
+            var result = await ShowYesNoCancelAsync($"Вы уверены, что хотите удалить должность \"{position.Name}\"?\n\nЭто действие нельзя отменить!", "Подтверждение удаления");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             var deleteResult = await _positionService.DeletePositionAsync(position.Id);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                if (deleteResult.Success) AllPositions.Remove(position);
-                else ShowError(deleteResult.Message);
-            });
-        }
 
-        private void ShowError(string message)
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                if (deleteResult.Success)
+                {
+                    await ShowSuccessAsync(deleteResult.Message);
+                    AllPositions.Remove(position);
+                }
+                else
+                    await ShowErrorAsync(deleteResult.Message);
+            });
         }
 
         protected override void DisposeManagedResources()

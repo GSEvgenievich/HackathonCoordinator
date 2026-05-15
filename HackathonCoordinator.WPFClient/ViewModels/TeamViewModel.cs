@@ -43,10 +43,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool CanGoBack
         {
             get => _canGoBack;
-            set
-            {
-                SetProperty(ref _canGoBack, value);
-            }
+            set => SetProperty(ref _canGoBack, value);
         }
 
         private bool _isCaptain;
@@ -231,7 +228,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             CreateTaskCommand = new RelayCommand(ExecuteCreateTask,
                 () => CurrentTeam?.Id != null && (IsCaptainOrOrganizer || CurrentTeam?.Tasks.Count < 10));
 
-            DeleteTaskCommand = new RelayCommand<TaskDto>(ExecuteDeleteTask,
+            DeleteTaskCommand = new AsyncRelayCommand<TaskDto>(ExecuteDeleteTaskAsync,
                 task => task != null && IsCaptainOrOrganizer);
 
             OpenTaskCommand = new AsyncRelayCommand<TaskDto>(ExecuteOpenTaskAsync,
@@ -239,7 +236,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             ToggleSectionCommand = new RelayCommand<int>(ToggleSection);
             CopyInviteCodeCommand = new RelayCommand(ExecuteCopyInviteCode, () => !string.IsNullOrEmpty(InviteCode));
-            TransferLeadershipCommand = new RelayCommand(ExecuteTransferLeadership, () => IsCaptain || (IsOrganizer && Members.Count > 0));
+            TransferLeadershipCommand = new AsyncRelayCommand(ExecuteTransferLeadership, () => IsCaptain || (IsOrganizer && Members.Count > 0));
             CancelTransferCommand = new RelayCommand(ExecuteCancelTransfer);
             CancelCreateRepoCommand = new RelayCommand(ExecuteCancelCreateRepo);
             BackCommand = new RelayCommand(ExecuteBackCommand, () => CurrentTeam != null);
@@ -461,7 +458,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             if (CurrentTeam != null)
             {
-                if(_navigationService.CanGoBack)
+                if (_navigationService.CanGoBack)
                     _navigationService.GoBack();
             }
         }
@@ -474,7 +471,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private void ExecuteCopyInviteCode() => Clipboard.SetText(InviteCode ?? "");
 
-        private void ExecuteTransferLeadership()
+        private async Task ExecuteTransferLeadership()
         {
             AvailableMembers.Clear();
             foreach (var member in Members.Where(m => !m.IsCaptain))
@@ -482,7 +479,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (!AvailableMembers.Any())
             {
-                MessageBox.Show("В команде нет других участников для передачи прав.");
+                await ShowErrorAsync("В команде нет других участников для передачи прав.");
                 return;
             }
 
@@ -541,18 +538,23 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
         }
 
-        private async void ExecuteDeleteTask(TaskDto task)
+        private async Task ExecuteDeleteTaskAsync(TaskDto task)
         {
             if (task == null) return;
 
-            var result = MessageBox.Show($"Вы уверены, что хотите удалить задачу \"{task.Title}\"?",
-                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var result = await ShowConfirmationAsync($"Вы уверены, что хотите удалить задачу \"{task.Title}\"?", "Подтверждение удаления");
 
-            if (result == MessageBoxResult.Yes)
+            if (result)
             {
                 var deleteResult = await _taskService.DeleteTaskAsync(task.Id);
-                MessageBox.Show(deleteResult.Message);
-                if (deleteResult.Success) await LoadTasksAsync();
+
+                if (deleteResult.Success)
+                    await ShowSuccessAsync(deleteResult.Message);
+                else
+                    await ShowErrorAsync(deleteResult.Message);
+
+                if (deleteResult.Success)
+                    await LoadTasksAsync();
             }
         }
 
@@ -562,71 +564,71 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (HasGitHubRepo && IsCaptain)
                 message += "\n\n⚠️ Внимание: GitHub репозиторий команды будет отсоединен!";
 
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show(message, "Подтверждение выхода", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+            var result = await ShowConfirmationAsync(message, "Подтверждение выхода");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (!result) return;
 
             var leaveResult = await _teamService.LeaveTeamAsync();
-            await Application.Current.Dispatcher.InvokeAsync(async () =>
-            {
-                MessageBox.Show(leaveResult.Message, leaveResult.Success ? "Успешно" : "Ошибка",
-                    MessageBoxButton.OK, leaveResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
 
-                if (leaveResult.Success)
+            if (leaveResult.Success)
+                await ShowSuccessAsync(leaveResult.Message);
+            else
+                await ShowErrorAsync(leaveResult.Message);
+
+            if (leaveResult.Success)
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
                 {
-                    if (Application.Current.MainWindow is MainWindow mainWindow)
+                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
                     {
-                        if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                        {
-                            await mainViewModel.OpenMainPage();
-                        }
+                        await mainViewModel.OpenMainPage();
                     }
                 }
-            });
+            }
         }
 
         private async Task ExecuteKickMemberAsync(MemberDto member)
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show($"Вы уверены, что хотите выгнать участника {member.Username} из команды?",
-                    "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+            var result = await ShowConfirmationAsync($"Вы уверены, что хотите выгнать участника {member.Username} из команды?", "Подтверждение");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (!result) return;
 
             var kickResult = await _teamService.KickMemberAsync(member.Id);
-            await Application.Current.Dispatcher.InvokeAsync(async () =>
-            {
-                MessageBox.Show(kickResult.Message, kickResult.Success ? "Успешно" : "Ошибка",
-                    MessageBoxButton.OK, kickResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
-                if (kickResult.Success) await RefreshTeamDataAsync(CurrentTeam?.Id);
-            });
+
+            if (kickResult.Success)
+                await ShowSuccessAsync(kickResult.Message);
+            else
+                await ShowErrorAsync(kickResult.Message);
+
+            if (kickResult.Success)
+                await RefreshTeamDataAsync(CurrentTeam?.Id);
         }
 
         private async Task ExecuteConfirmTransferAsync()
         {
             if (SelectedNewCaptain == null)
             {
-                MessageBox.Show("Выберите участника для передачи прав.");
+                await ShowErrorAsync("Выберите участника для передачи прав.");
                 return;
             }
 
             var message = $"Вы уверены, что хотите передать права капитана участнику {SelectedNewCaptain.Username}?";
             if (HasGitHubRepo) message += "\n\n⚠️ GitHub репозиторий будет отсоединен!";
 
-            if (MessageBox.Show(message, "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                return;
+            var result = await ShowConfirmationAsync(message, "Подтверждение передачи прав");
 
-            var result = await _teamService.AssignCaptainAsync(CurrentTeam.Id, SelectedNewCaptain.Id);
-            if (result.Success)
+            if (!result) return;
+
+            var transferResult = await _teamService.AssignCaptainAsync(CurrentTeam.Id, SelectedNewCaptain.Id);
+            if (transferResult.Success)
             {
-                MessageBox.Show($"Права капитана переданы {SelectedNewCaptain.Username}");
+                await ShowSuccessAsync($"Права капитана переданы {SelectedNewCaptain.Username}");
                 ShowTransferDialog = false;
                 await RefreshTeamDataAsync(IsOrganizer ? CurrentTeam.Id : null);
             }
             else
             {
-                MessageBox.Show(result.Message);
+                await ShowErrorAsync(transferResult.Message);
             }
         }
 
@@ -635,7 +637,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             var user = await _userService.GetCurrentUserAsync();
             if (string.IsNullOrEmpty(user.Data?.GitHubUsername))
             {
-                MessageBox.Show("Для создания репозитория необходимо сначала привязать GitHub аккаунт в профиле");
+                await ShowErrorAsync("Для создания репозитория необходимо сначала привязать GitHub аккаунт в профиле");
                 _navigationService.NavigateTo(new ProfilePage());
                 return;
             }
@@ -658,8 +660,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             if (result.Success)
             {
-                MessageBox.Show($"{result.Message}\n\nURL: {result.Data.RepoUrl}", "Репозиторий создан",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                await ShowSuccessAsync($"{result.Message}\n\nURL: {result.Data.RepoUrl}");
                 ShowCreateRepoDialog = false;
                 await RefreshTeamDataAsync(null);
             }
@@ -682,7 +683,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             else
             {
-                MessageBox.Show("Только капитан команды может подключать GitHub репозиторий");
+                await ShowErrorAsync("Только капитан команды может подключать GitHub репозиторий");
             }
         }
 

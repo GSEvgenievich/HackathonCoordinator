@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HackathonCoordinator.WPFClient.Helpers;
+using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -39,7 +40,7 @@ namespace HackathonCoordinator.WPFClient.Views
             LoadImage();
         }
 
-        private void LoadImage()
+        private async void LoadImage()
         {
             if (ImageBytes == null || ImageBytes.Length == 0)
             {
@@ -62,8 +63,7 @@ namespace HackathonCoordinator.WPFClient.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки изображения: {ex.Message}", "Ошибка",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                await DialogHelper.ShowErrorAsync($"Ошибка загрузки изображения: {ex.Message}");
                 Close();
             }
         }
@@ -88,28 +88,20 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
             {
-                // Получаем позицию мыши относительно изображения
                 var mousePosition = e.GetPosition(PreviewImage);
-
-                // Получаем текущий масштаб
                 var currentScale = ImageScaleTransform.ScaleX;
-
-                // Вычисляем новый масштаб
                 var delta = e.Delta > 0 ? ZOOM_STEP : -ZOOM_STEP;
                 var newScale = currentScale + delta;
                 newScale = Math.Max(MIN_ZOOM, Math.Min(MAX_ZOOM, newScale));
 
                 if (Math.Abs(newScale - currentScale) > 0.001)
                 {
-                    // Вычисляем смещение для масштабирования к курсору
                     var relativeX = mousePosition.X / PreviewImage.ActualWidth;
                     var relativeY = mousePosition.Y / PreviewImage.ActualHeight;
 
-                    // Применяем новый масштаб
                     ImageScaleTransform.ScaleX = newScale;
                     ImageScaleTransform.ScaleY = newScale;
 
-                    // Корректируем позицию скролла, чтобы масштабирование было к курсору
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
                         var newHorizontalOffset = (relativeX * MainScrollViewer.ScrollableWidth) - (MainScrollViewer.ViewportWidth * relativeX);
@@ -179,14 +171,12 @@ namespace HackathonCoordinator.WPFClient.Views
                 if (saveFileDialog.ShowDialog() == true)
                 {
                     await File.WriteAllBytesAsync(saveFileDialog.FileName, ImageBytes);
-                    MessageBox.Show($"Файл сохранен:\n{saveFileDialog.FileName}", "Успешно",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    await DialogHelper.ShowSuccessAsync($"Файл сохранен:\n{saveFileDialog.FileName}");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка сохранения: {ex.Message}", "Ошибка",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                await DialogHelper.ShowErrorAsync($"Ошибка сохранения: {ex.Message}");
             }
         }
 
@@ -195,7 +185,6 @@ namespace HackathonCoordinator.WPFClient.Views
             Close();
         }
 
-        // Добавьте метод для INotifyPropertyChanged
         public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged(string propertyName)
         {

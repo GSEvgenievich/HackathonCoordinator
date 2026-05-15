@@ -1,9 +1,7 @@
 ﻿using HackathonCoordinator.ServiceLayer.DTOs;
-using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Collections.ObjectModel;
@@ -161,7 +159,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var response = await _notificationService.GetUserNotificationsAsync();
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     Notifications.Clear();
                     UnreadNotifications.Clear();
@@ -181,8 +179,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка загрузки уведомлений: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка загрузки уведомлений: {response.Message}");
                     }
 
                     UpdateProperties();
@@ -216,7 +213,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var response = await _notificationService.MarkAsReadAsync(notification.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (response.Success)
                     {
@@ -227,8 +224,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка: {response.Message}");
                     }
                 });
             }
@@ -244,7 +240,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var response = await _notificationService.MarkAllAsReadAsync();
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (response.Success)
                     {
@@ -258,8 +254,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка: {response.Message}");
                     }
                 });
             }
@@ -271,22 +266,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task DeleteNotificationAsync(NotificationDto notification)
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите удалить это уведомление?",
-                    "Подтверждение удаления",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync(
+                "Вы уверены, что хотите удалить это уведомление?",
+                "Подтверждение удаления");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {
                 var response = await _notificationService.DeleteNotificationAsync(notification.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (response.Success)
                     {
@@ -300,8 +290,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка: {response.Message}");
                     }
                 });
             }

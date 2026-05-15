@@ -124,10 +124,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show($"Ошибка загрузки главной страницы: {ex.Message}",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync($"Ошибка загрузки главной страницы: {ex.Message}");
+
                     _navigationService.NavigateTo(new CompetitionsPage());
                 });
             }
@@ -167,16 +167,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task ExecuteLogoutAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите выйти?",
-                    "Подтверждение выхода",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync(
+                "Вы уверены, что хотите выйти?",
+                "Подтверждение выхода");
 
-            if (result == MessageBoxResult.Yes)
+            if (result == true)
             {
                 await Logout();
             }
@@ -196,10 +191,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
-                    MessageBox.Show($"Ошибка при выходе: {ex.Message}",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await ShowErrorAsync($"Ошибка при выходе: {ex.Message}");
 
                     Application.Current.Shutdown();
                 });
@@ -295,14 +289,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                     if (notification.NotificationTypeId == 23)
                     {
-                        var result = MessageBox.Show(
+                        var result = await ShowConfirmationAsync(
                             $"{notification.Message}\n\n" +
                             "Будет совершен выход из аккаунта!",
-                            notification.Title,
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
+                            notification.Title);
 
-                        if (result == MessageBoxResult.OK)
+                        if (result == true)
                         {
                             await Logout();
                         }
@@ -311,14 +303,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     {
                         if (_currentPageType == typeof(TeamPage) || _currentPageType == typeof(ChatPage))
                         {
-                            var result = MessageBox.Show(
+                            var result = await ShowConfirmationAsync(
                                 $"{notification.Message}\n\n" +
                                 "Вы будете перенаправлены на главную страницу.",
-                                notification.Title,
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Warning);
+                                notification.Title);
 
-                            if (result == MessageBoxResult.OK)
+                            if (result == true)
                             {
                                 await Application.Current.Dispatcher.InvokeAsync(async () =>
                                 {
@@ -331,14 +321,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     {
                         if (_currentPageType == typeof(CompetitionDetailsPage))
                         {
-                            var result = MessageBox.Show(
+                            var result = await ShowConfirmationAsync(
                                 $"{notification.Message}\n\n" +
                                 "Вы будете перенаправлены на главную страницу.",
-                                notification.Title,
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Warning);
+                                notification.Title);
 
-                            if (result == MessageBoxResult.OK)
+                            if (result == true)
                             {
                                 await Application.Current.Dispatcher.InvokeAsync(async () =>
                                 {
@@ -377,7 +365,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         private void ToggleTheme()
         {
             _currentThemeIndex = (_currentThemeIndex + 1) % _themes.Length;
-            App.SwitchTheme(_themes[_currentThemeIndex]);
+            App.SwitchThemeAsync(_themes[_currentThemeIndex]);
             OnPropertyChanged(nameof(CurrentThemeName));
         }
 

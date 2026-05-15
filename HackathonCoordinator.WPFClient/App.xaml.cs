@@ -1,5 +1,5 @@
-﻿using HackathonCoordinator.WPFClient.Services;
-using System;
+﻿using HackathonCoordinator.WPFClient.Helpers;
+using HackathonCoordinator.WPFClient.Services;
 using System.Windows;
 
 namespace HackathonCoordinator.WPFClient
@@ -16,10 +16,10 @@ namespace HackathonCoordinator.WPFClient
             base.OnStartup(e);
 
             NavigationService = new NavigationService();
-            SwitchTheme("Light");
+            _ = SwitchThemeAsync("Light");
         }
 
-        public static void SwitchTheme(string themeName)
+        public static async Task SwitchThemeAsync(string themeName)
         {
             try
             {
@@ -44,7 +44,7 @@ namespace HackathonCoordinator.WPFClient
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки темы {themeName}: {ex.Message}");
+                await DialogHelper.ShowErrorAsync($"Ошибка загрузки темы {themeName}: {ex.Message}");
                 // Пробуем загрузить светлую тему как запасной вариант
                 try
                 {
@@ -53,26 +53,26 @@ namespace HackathonCoordinator.WPFClient
                 }
                 catch
                 {
-                    MessageBox.Show($"Ошибка загрузки темы LightTheme: {ex.Message}");
+                    await DialogHelper.ShowErrorAsync($"Ошибка загрузки темы LightTheme: {ex.Message}");
                 }
             }
         }
 
         // Быстрые методы переключения
-        public static void SwitchToLight() => SwitchTheme("Light");
-        public static void SwitchToDark() => SwitchTheme("Dark");
-        public static void SwitchToSummer() => SwitchTheme("Summer");
-        public static void SwitchToWinter() => SwitchTheme("Winter");
-        public static void SwitchToAutumn() => SwitchTheme("Autumn");
-        public static void SwitchToSpring() => SwitchTheme("Spring");
+        public static async Task SwitchToLight() => await SwitchThemeAsync("Light");
+        public static async Task SwitchToDark() => await SwitchThemeAsync("Dark");
+        public static async Task SwitchToSummer() => await SwitchThemeAsync("Summer");
+        public static async Task SwitchToWinter() => await SwitchThemeAsync("Winter");
+        public static async Task SwitchToAutumn() => await SwitchThemeAsync("Autumn");
+        public static async Task SwitchToSpring() => await SwitchThemeAsync("Spring");
 
         // Циклическое переключение между всеми темами
-        public static void CycleThemes()
+        public static async Task CycleThemes()
         {
             var themes = new[] { "Light", "Dark", "Summer", "Winter", "Autumn", "Spring" };
             var currentIndex = Array.IndexOf(themes, CurrentTheme);
             var nextIndex = (currentIndex + 1) % themes.Length;
-            SwitchTheme(themes[nextIndex]);
+            await SwitchThemeAsync(themes[nextIndex]);
         }
     }
 }

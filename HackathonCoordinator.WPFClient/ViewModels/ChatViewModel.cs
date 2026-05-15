@@ -635,16 +635,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task DeleteMessageAsync(MessageDto message)
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите удалить это сообщение?",
-                    "Подтверждение удаления",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите удалить это сообщение?", "Подтверждение удаления");
 
-            if (result == MessageBoxResult.Yes)
+            if (result == true)
             {
                 try
                 {
@@ -675,10 +668,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task ShowSuccessAsync(string message)
         {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                MessageBox.Show(message, "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
-            });
+            await ShowInfoAsync(message, "Успешно");
         }
 
         protected override void DisposeManagedResources()

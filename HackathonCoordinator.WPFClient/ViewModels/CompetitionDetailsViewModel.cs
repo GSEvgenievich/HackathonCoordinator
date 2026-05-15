@@ -5,7 +5,6 @@ using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
-using System.IO.Pipelines;
 using System.Windows;
 using System.Windows.Input;
 
@@ -299,63 +298,55 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task DeleteCompetitionAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show($"Вы уверены, что хотите удалить соревнование \"{Competition.Name}\"?\n\n" +
-                    "При удалении соревнования будут удалены:\n" +
-                    "• Все команды соревнований\n" +
-                    "• Все задачи и чаты команд\n" +
-                    "• Все этапы расписания\n" +
-                    "• Все результаты и фиксации составов\n\n" +
-                    "Это действие нельзя отменить!",
-                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+            var result = await ShowYesNoCancelAsync($"Вы уверены, что хотите удалить соревнование \"{Competition.Name}\"?\n\n" +
+                "При удалении соревнования будут удалены:\n" +
+                "• Все команды соревнований\n" +
+                "• Все задачи и чаты команд\n" +
+                "• Все этапы расписания\n" +
+                "• Все результаты и фиксации составов\n\n" +
+                "Это действие нельзя отменить!",
+                "Подтверждение удаления");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             var deleteResult = await _competitionService.DeleteCompetitionAsync(Competition.Id);
-            await Application.Current.Dispatcher.InvokeAsync(async () =>
+
+            if (deleteResult.Success)
             {
-                if (deleteResult.Success)
-                {
-                    MessageBox.Show($"Соревнование \"{Competition.Name}\" успешно удалено!", "Успешно",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                    Back();
-                }
-                else
-                {
-                    await ShowErrorAsync(deleteResult.Message);
-                }
-            });
+                await ShowSuccessAsync($"Соревнование \"{Competition.Name}\" успешно удалено!");
+                Back();
+            }
+            else
+            {
+                await ShowErrorAsync(deleteResult.Message);
+            }
         }
 
         private async Task ArchiveCompetitionAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show($"Вы уверены, что хотите архивировать соревнование \"{Competition.Name}\"?\n\n" +
-                    "При архивировании будут удалены:\n" +
-                    "• Все этапы расписания\n" +
-                    "• Все чаты и сообщения команд\n" +
-                    "• Все задачи команд\n" +
-                    "• Все участники будут откреплены от команд\n\n" +
-                    "Результаты и финальные составы команд останутся в архиве.\n\n" +
-                    "Это действие нельзя отменить!",
-                    "Архивирование соревнования", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+            var result = await ShowYesNoCancelAsync($"Вы уверены, что хотите архивировать соревнование \"{Competition.Name}\"?\n\n" +
+                "При архивировании будут удалены:\n" +
+                "• Все этапы расписания\n" +
+                "• Все чаты и сообщения команд\n" +
+                "• Все задачи команд\n" +
+                "• Все участники будут откреплены от команд\n\n" +
+                "Результаты и финальные составы команд останутся в архиве.\n\n" +
+                "Это действие нельзя отменить!",
+                "Архивирование соревнования");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             var archiveResult = await _competitionService.ArchiveCompetitionAsync(Competition.Id);
-            await Application.Current.Dispatcher.InvokeAsync(async () =>
+
+            if (archiveResult.Success)
             {
-                if (archiveResult.Success)
-                {
-                    MessageBox.Show($"Соревнование \"{Competition.Name}\" успешно архивировано!", "Успешно",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                    await RefreshAsync();
-                }
-                else
-                {
-                    await ShowErrorAsync(archiveResult.Message);
-                }
-            });
+                await ShowSuccessAsync($"Соревнование \"{Competition.Name}\" успешно архивировано!");
+                await RefreshAsync();
+            }
+            else
+            {
+                await ShowErrorAsync(archiveResult.Message);
+            }
         }
 
         private async Task LoadStagesAsync()
@@ -384,16 +375,19 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task CreateTeamAsync()
         {
-            var teamName = await ShowInputDialogAsync("Введите название команды:");
+            var teamName = await ShowInputDialogAsync("Создание команды", "Введите название команды:", "Команда");
+
             if (string.IsNullOrWhiteSpace(teamName)) return;
 
             var result = await _competitionService.CreateTeamAsync(Competition.Id, teamName);
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                MessageBox.Show(result.Message, result.Success ? "Успешно" : "Ошибка",
-                    MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
-                if (result.Success) RefreshAsync();
-            });
+
+            if (result.Success)
+                await ShowSuccessAsync(result.Message);
+            else
+                await ShowErrorAsync(result.Message);
+
+            if (result.Success)
+                await RefreshAsync();
         }
 
         private async Task JoinTeamAsync()
@@ -401,8 +395,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             var result = await _teamService.JoinTeamAsync(InviteCode);
             await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
-                MessageBox.Show(result.Message, result.Success ? "Успешно" : "Ошибка",
-                    MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                if (result.Success)
+                    await ShowSuccessAsync(result.Message);
+                else
+                    await ShowErrorAsync(result.Message);
 
                 if (result.Success)
                 {
@@ -419,17 +415,19 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task DeleteTeamAsync(TeamDto team)
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-                MessageBox.Show($"Вы уверены, что хотите удалить команду \"{team.Name}\"? Это действие нельзя отменить.",
-                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning));
+            var result = await ShowYesNoCancelAsync($"Вы уверены, что хотите удалить команду \"{team.Name}\"? Это действие нельзя отменить.", "Подтверждение удаления");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true)
+                return;
 
             var deleteResult = await _teamService.DeleteTeamAsync(team.Id);
             await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
-                MessageBox.Show(deleteResult.Message, deleteResult.Success ? "Успешно" : "Ошибка",
-                    MessageBoxButton.OK, deleteResult.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                if (deleteResult.Success)
+                    await ShowSuccessAsync(deleteResult.Message);
+                else
+                    await ShowErrorAsync(deleteResult.Message);
+
                 if (deleteResult.Success)
                     await RefreshAsync();
             });
@@ -442,12 +440,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             bool editMode = IsOrganizer && Competition.IsCompleted;
             doDispose = false;
             _navigationService.NavigateTo(new CompetitionResultsPage(Competition, editMode, IsOrganizer));
-        }
-
-        private async Task<string> ShowInputDialogAsync(string prompt)
-        {
-            return await Application.Current.Dispatcher.InvokeAsync(() =>
-                Microsoft.VisualBasic.Interaction.InputBox(prompt, "Создание команды", ""));
         }
 
         private async Task ExportCompetitionAsync()
@@ -471,9 +463,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             var success = await _excelExportService.ExportCompetitionToExcelAsync(exportDataResponse.Data, saveFileDialog.FileName);
             if (success)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                    MessageBox.Show($"Данные соревнования успешно экспортированы в Excel файл:\n{saveFileDialog.FileName}",
-                        "Экспорт завершен", MessageBoxButton.OK, MessageBoxImage.Information));
+                await ShowInfoAsync($"Данные соревнования успешно экспортированы в Excel файл:\n{saveFileDialog.FileName}", "Экспорт завершен");
             }
         }
 

@@ -357,18 +357,15 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     result = await _taskService.UpdateTaskAsync(_taskId.Value, dto);
                 }
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                if (result.Success)
                 {
-                    if (result.Success)
-                    {
-                        MessageBox.Show(result.Message, "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
-                        Cancel();
-                    }
-                    else
-                    {
-                        ErrorMessage = result.Message;
-                    }
-                });
+                    await ShowSuccessAsync(result.Message);
+                    Cancel();
+                }
+                else
+                {
+                    ErrorMessage = result.Message;
+                }
             }
             catch (Exception ex)
             {

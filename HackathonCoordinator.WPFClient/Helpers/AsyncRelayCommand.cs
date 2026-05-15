@@ -68,12 +68,11 @@ namespace HackathonCoordinator.WPFClient.Helpers
             }
             catch (OperationCanceledException)
             {
-                // Операция была отменена - это нормально
                 System.Diagnostics.Debug.WriteLine("Операция отменена");
             }
             catch (Exception ex)
             {
-                HandleException(ex);
+                await HandleExceptionAsync(ex);
             }
             finally
             {
@@ -89,7 +88,7 @@ namespace HackathonCoordinator.WPFClient.Helpers
             _cancellationTokenSource?.Cancel();
         }
 
-        private void HandleException(Exception ex)
+        private async Task HandleExceptionAsync(Exception ex)
         {
             if (_onException != null)
             {
@@ -97,15 +96,9 @@ namespace HackathonCoordinator.WPFClient.Helpers
             }
             else
             {
-                // Стандартная обработка исключения
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    MessageBox.Show(
-                        $"Произошла ошибка: {ex.Message}\n\nПроверьте подключение к серверу и повторите попытку.",
-                        "Ошибка",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                });
+                await DialogHelper.ShowErrorAsync(
+                    $"Произошла ошибка: {ex.Message}\n\nПроверьте подключение к серверу и повторите попытку.",
+                    "Ошибка");
             }
         }
 
@@ -184,7 +177,7 @@ namespace HackathonCoordinator.WPFClient.Helpers
             }
             catch (Exception ex)
             {
-                HandleException(ex);
+                await HandleExceptionAsync(ex);
             }
             finally
             {
@@ -200,7 +193,7 @@ namespace HackathonCoordinator.WPFClient.Helpers
             _cancellationTokenSource?.Cancel();
         }
 
-        private void HandleException(Exception ex)
+        private async Task HandleExceptionAsync(Exception ex)
         {
             if (_onException != null)
             {
@@ -208,14 +201,7 @@ namespace HackathonCoordinator.WPFClient.Helpers
             }
             else
             {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    MessageBox.Show(
-                        $"Произошла ошибка: {ex.Message}",
-                        "Ошибка",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                });
+                await DialogHelper.ShowErrorAsync($"Произошла ошибка: {ex.Message}", "Ошибка");
             }
         }
 

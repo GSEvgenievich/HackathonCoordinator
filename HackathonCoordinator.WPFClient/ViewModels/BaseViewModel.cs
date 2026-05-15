@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.WPFClient.Services;
+using HackathonCoordinator.WPFClient.UserControls;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -33,13 +34,64 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             return true;
         }
 
-        protected static async Task ShowErrorAsync(string message)
+        protected static async Task<bool> ShowConfirmationAsync(string message, string title = "Подтверждение")
+        {
+            return await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return DialogWindow.ShowConfirmation(message, title);
+            });
+        }
+
+        protected static async Task<bool?> ShowYesNoCancelAsync(string message, string title = "Подтверждение")
+        {
+            return await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                return DialogWindow.ShowYesNoCancel(message, title);
+            });
+        }
+
+        protected async Task<string?> ShowInputDialogAsync(string title, string prompt, string defaultValue = "")
+        {
+            return await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var dialog = new InputDialogWindow(title, prompt, defaultValue);
+                dialog.Owner = Application.Current.MainWindow;
+                return dialog.ShowDialog() == true ? dialog.InputValue : null;
+            });
+        }
+
+        protected static async Task ShowInfoAsync(string message, string title = "Информация")
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                DialogWindow.Show(message, title, DialogType.Info);
             });
         }
+
+        protected static async Task ShowSuccessAsync(string message, string title = "Успешно")
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                DialogWindow.Show(message, title, DialogType.Success);
+            });
+        }
+
+        protected static async Task ShowWarningAsync(string message, string title = "Предупреждение")
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                DialogWindow.Show(message, title, DialogType.Warning);
+            });
+        }
+
+        protected static async Task ShowErrorAsync(string message, string title = "Ошибка")
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                DialogWindow.Show(message, title, DialogType.Error);
+            });
+        }
+
         protected void Back()
         {
             Application.Current.Dispatcher.Invoke(() =>
