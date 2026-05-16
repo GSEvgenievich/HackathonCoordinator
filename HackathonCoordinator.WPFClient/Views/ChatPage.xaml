@@ -118,24 +118,50 @@
                                             </Grid>
                                             <!-- Имя отправителя -->
                                             <TextBlock Text="{Binding UserName}"
+                                                       FontSize="16"
                                                        Style="{StaticResource CaptionTextStyle}"
                                                        Foreground="{DynamicResource TextSecondaryColor}"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
 
                                         <!-- Сообщение -->
-                                        <Border Style="{Binding IsMyMessage, 
-                                                        Converter={StaticResource BoolToMessageStyleConverter}}"
-                                                ContextMenu="{StaticResource MessageContextMenu}"
+                                        <Border ContextMenu="{StaticResource MessageContextMenu}"
                                                 Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Page}}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="12"/>
+                                                    <Setter Property="Padding" Value="12,8"/>
+                                                    <Setter Property="Margin" Value="0,2,0,2"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource MyMessageBackground}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                            <Setter Property="Background" Value="{DynamicResource OtherMessageBackground}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <StackPanel>
                                                 <!-- Текст сообщения -->
                                                 <TextBlock Text="{Binding Text}" 
-                                                           Foreground="{Binding IsMyMessage, Converter={StaticResource BoolToMessageTextColorConverter}}"
-                                                           TextWrapping="Wrap"
-                                                           FontSize="14"
-                                                           Visibility="{Binding Text, Converter={StaticResource NullToVisibilityConverter}}"/>
-
+                                                           Visibility="{Binding Text, Converter={StaticResource NullToVisibilityConverter}}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="FontSize" Value="15"/>
+                                                            <Setter Property="TextWrapping" Value="Wrap"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource MyMessageTextColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource OtherMessageTextColor}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                  
                                                 <!-- Вложения -->
                                                 <ItemsControl ItemsSource="{Binding Attachments}"
                                                               Margin="0,5,0,0" MaxWidth="500"
@@ -207,16 +233,43 @@
                                                 <StackPanel Orientation="Horizontal" 
                                                             HorizontalAlignment="Right"
                                                             Margin="0,5,0,0">
-                                                    <TextBlock Text="{Binding SentAtFormatted}"
-                                                               FontWeight="Medium"
-                                                               FontSize="11"/>
+                                                    <TextBlock Text="{Binding SentAtFormatted}" FontSize="13">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MyMessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.7"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <TextBlock Text=" ✏️"
                                                                FontWeight="Medium"
+                                                               FontSize="13"
+                                                               Margin="5,0,0,0"
                                                                ToolTip="Сообщение было отредактировано"
-                                                               Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                               Foreground="{Binding IsMyMessage, Converter={StaticResource BoolToMessageTimeColorConverter}}"
-                                                               FontSize="11"
-                                                               Margin="5,0,0,0"/>
+                                                               Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MyMessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.7"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>

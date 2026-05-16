@@ -1,10 +1,11 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.Hubs;
 using HackathonCoordinator.WebAPI.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Minio;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,7 +61,9 @@ builder.Services.AddHttpClient("GitHub", client =>
 
 // Регистрация контекста базы данных
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<HackathonCoordinatorContext>();
+
+builder.Services.AddDbContext<HackathonCoordinatorContext>(options =>
+    options.UseMySQL(connectionString));
 
 // Настройка SignalR
 builder.Services.AddSignalR(options =>
@@ -71,7 +74,7 @@ builder.Services.AddSignalR(options =>
 // Регистрация зависимостей
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<NotificationHelperService>();
-builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddScoped<IStorageService, MinioStorageService>();
 
 // Конфигурация JWT аутентификации
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -130,6 +133,20 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
+builder.Services.AddSingleton<IMinioClient>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var endpoint = configuration["Minio:Endpoint"] ?? "localhost:9000";
+    var accessKey = configuration["Minio:AccessKey"] ?? "minioadmin";
+    var secretKey = configuration["Minio:SecretKey"] ?? "minioadmin";
+    var useSsl = configuration.GetValue<bool>("Minio:UseSsl", false);
+
+    return new MinioClient()
+        .WithEndpoint(endpoint)
+        .WithCredentials(accessKey, secretKey)
+        .WithSSL(useSsl)
+        .Build();
+});
 
 // Настройка CORS
 builder.Services.AddCors(options =>

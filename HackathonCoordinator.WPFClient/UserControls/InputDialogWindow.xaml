@@ -44,14 +44,12 @@
                         Content="Отмена" 
                         Style="{StaticResource ModalSecondaryButton}"
                         Width="80"
-                        Height="35"
                         Margin="0,0,10,0"
                         Click="CancelButton_Click"/>
                 <Button x:Name="OkButton" 
                         Content="Создать" 
                         Style="{StaticResource ModalPrimaryButton}"
                         Width="80"
-                        Height="35"
                         Click="OkButton_Click"/>
             </StackPanel>
         </StackPanel>

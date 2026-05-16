@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11723.231 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.WPFClient", "HackathonCoordinator.WPFClient\HackathonCoordinator.WPFClient.csproj", "{EE9399F6-1AFD-42FA-9865-353FC7A30FE3}"
 EndProject
@@ -15,6 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решен
 		docker-compose.yml = docker-compose.yml
 		init.sql = init.sql
 	EndProjectSection
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HackathonCoordinator.Tests", "HackathonCoordinator.Tests\HackathonCoordinator.Tests.csproj", "{3582ADEB-1C6B-4CF9-A7EA-A630BCF36BAF}"
 EndProject
 Global
@@ -42,5 +43,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8C414B19-7478-4339-A6D9-460C49EFCC70}
 	EndGlobalSection
 EndGlobal

@@ -19,12 +19,15 @@ public class TasksController : BaseApiController
     private readonly HackathonCoordinatorContext _context;
     private readonly IEncryptionService _encryptionService;
     private readonly IGitHubService _gitHubService;
+    private readonly IStorageService _storageService;
     private readonly NotificationHelperService _notificationHelper;
 
-    public TasksController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper, IEncryptionService encryptionService, IGitHubService gitHubService)
+    public TasksController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper,
+        IStorageService storageService, IEncryptionService encryptionService, IGitHubService gitHubService)
     {
         _context = context;
         _encryptionService = encryptionService;
+        _storageService = storageService;
         _gitHubService = gitHubService;
         _notificationHelper = notificationHelper;
     }
@@ -695,22 +698,33 @@ public class TasksController : BaseApiController
 
             try
             {
-                var chatId = task.ChatId;
+                // Находим чат задачи
+                var chat = await _context.Chats
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.MessageAttachments)
+                    .FirstOrDefaultAsync(c => c.Id == task.ChatId);
+
+                if (chat != null)
+                {
+                    // Удаляем все файлы из MinIO
+                    foreach (var message in chat.Messages)
+                    {
+                        if (message.HasAttachments)
+                        {
+                            foreach (var attachment in message.MessageAttachments)
+                            {
+                                await _storageService.DeleteAsync(attachment.FilePath);
+                            }
+                        }
+                    }
+
+                    _context.Chats.Remove(chat);
+                }
 
                 _context.Tasks.Remove(task);
                 await _context.SaveChangesAsync();
-
-                if (chatId != null)
-                {
-                    var chat = await _context.Chats.FindAsync(chatId);
-                    if (chat != null)
-                    {
-                        _context.Chats.Remove(chat);
-                        await _context.SaveChangesAsync();
-                    }
-                }
-
                 await transaction.CommitAsync();
+
                 return HandleSuccess("Задача успешно удалена");
             }
             catch (DbUpdateException ex)

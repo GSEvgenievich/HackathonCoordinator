@@ -403,9 +403,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
             var taskSections = new List<TaskSection>
             {
-                new TaskSection { StatusId = 1, StatusName = "В планах", IsExpanded = true },
-                new TaskSection { StatusId = 2, StatusName = "В процессе", IsExpanded = true },
-                new TaskSection { StatusId = 3, StatusName = "На проверке", IsExpanded = true },
+                new TaskSection { StatusId = 1, StatusName = "В планах", IsExpanded = false },
+                new TaskSection { StatusId = 2, StatusName = "В процессе", IsExpanded = false },
+                new TaskSection { StatusId = 3, StatusName = "На проверке", IsExpanded = false },
                 new TaskSection { StatusId = 4, StatusName = "Завершена", IsExpanded = false },
                 new TaskSection { StatusId = 5, StatusName = "Отменена", IsExpanded = false }
             };

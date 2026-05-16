@@ -7,21 +7,11 @@ namespace HackathonCoordinator.WPFClient.Converters
 {
     public class BoolToMessageStyleConverter : IValueConverter
     {
-        public static BoolToMessageStyleConverter Instance { get; } = new BoolToMessageStyleConverter();
-
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool isMyMessage)
-            {
-                return Application.Current.FindResource(
-                    isMyMessage ? "MyMessageStyle" : "OtherMessageStyle");
-            }
-            return Application.Current.FindResource("OtherMessageStyle");
+            // Возвращаем строку с именем ресурса, а не сам объект
+            return (value is bool isMyMessage && isMyMessage) ? "MyMessageStyle" : "OtherMessageStyle";
         }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => null;
     }
 }

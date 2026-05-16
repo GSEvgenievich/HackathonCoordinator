@@ -19,8 +19,8 @@
     <converters:ChatTypeToIconConverter x:Key="ChatTypeToIconConverter"/>
     <converters:BoolToMessageContainerStyleConverter x:Key="BoolToMessageContainerStyleConverter"/>
     <converters:BoolToMessageStyleConverter x:Key="BoolToMessageStyleConverter"/>
-    <converters:BoolToMessageTextColorConverter x:Key="BoolToMessageTextColorConverter"/>
-    <converters:BoolToMessageTimeColorConverter x:Key="BoolToMessageTimeColorConverter"/>
+    <converters:BoolToMessageTextStyleConverter x:Key="BoolToMessageTextStyleConverter"/>
+    <converters:BoolToMessageTimeStyleConverter x:Key="BoolToMessageTimeStyleConverter"/>
     <converters:Base64ToImageConverter x:Key="Base64ToImageConverter"/>
     
     <!-- Конвертеры для соревнований -->
@@ -440,6 +440,9 @@
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
                             <Setter TargetName="border" Property="Opacity" Value="0.8"/>
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -473,6 +476,12 @@
                             <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                             <Setter Property="Foreground" Value="White"/>
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.85"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -493,12 +502,19 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="16">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource HoverColor}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -823,17 +839,43 @@
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="Margin" Value="0,0,20,0"/>
     </Style>
-
+    
     <Style x:Key="MyMessageStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource MyMessageBackground}"/>
         <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="10 5"/>
+        <Setter Property="Padding" Value="12,8"/>
     </Style>
 
     <Style x:Key="OtherMessageStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource HoverColor}"/>
+        <Setter Property="Background" Value="{DynamicResource OtherMessageBackground}"/>
         <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="10 5"/>
+        <Setter Property="Padding" Value="12,8"/>
+    </Style>
+
+    <Style x:Key="MyMessageTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MyMessageTextColor}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="OtherMessageTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource OtherMessageTextColor}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="MessageTimeStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MessageTimeColor}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="Opacity" Value="0.7"/>
+        <Setter Property="Margin" Value="8,0,0,0"/>
+    </Style>
+
+    <Style x:Key="MyMessageTimeStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MyMessageTimeColor}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="Opacity" Value="0.8"/>
+        <Setter Property="Margin" Value="8,0,0,0"/>
     </Style>
 
     <!-- Страница NotificationsPage -->

@@ -1,22 +1,23 @@
 ﻿using System;
 using System.Globalization;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
 namespace HackathonCoordinator.WPFClient.Converters
 {
-    public class BoolToMessageTimeColorConverter : IValueConverter
+    public class BoolToMessageTextStyleConverter : IValueConverter
     {
-        public static BoolToMessageTimeColorConverter Instance { get; } = new BoolToMessageTimeColorConverter();
+        public static BoolToMessageTextStyleConverter Instance { get; } = new BoolToMessageTextStyleConverter();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is bool isMyMessage)
             {
-                // Для своих сообщений - светло-серый, для чужих - темно-серый
-                return isMyMessage ? new SolidColorBrush(Color.FromRgb(220, 220, 220)) : new SolidColorBrush(Color.FromRgb(120, 120, 120));
+                return Application.Current.FindResource(
+                   isMyMessage ? "SidebarTextColor" : "TextColor");
             }
-            return new SolidColorBrush(Color.FromRgb(120, 120, 120));
+            return Application.Current.FindResource("TextColor");
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

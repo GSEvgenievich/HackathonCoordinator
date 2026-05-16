@@ -17,16 +17,19 @@ namespace HackathonCoordinator.WebAPI.Controllers
         private readonly HackathonCoordinatorContext _context;
         private readonly NotificationHelperService _notificationHelper;
         private readonly IEncryptionService _encryptionService;
+        private readonly IStorageService _storageService;
         private readonly IGitHubService _gitHubService;
 
         public TeamsController(
             HackathonCoordinatorContext context,
             NotificationHelperService notificationHelper,
             IEncryptionService encryptionService,
+            IStorageService storageService,
             IGitHubService gitHubService)
         {
             _context = context;
             _encryptionService = encryptionService;
+            _storageService = storageService;
             _gitHubService = gitHubService;
             _notificationHelper = notificationHelper;
         }
@@ -769,9 +772,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(t => t.Users)
                     .Include(t => t.Chat)
                         .ThenInclude(c => c.Messages)
+                            .ThenInclude(m => m.MessageAttachments)
                     .Include(t => t.Tasks)
                         .ThenInclude(task => task.Chat)
-                            .ThenInclude(chat => chat.Messages)
+                            .ThenInclude(c => c.Messages)
+                                .ThenInclude(m => m.MessageAttachments)
                     .FirstOrDefaultAsync(t => t.Id == teamId && t.CompetitionId == id);
 
                 if (team == null)
@@ -782,23 +787,35 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 deletedBy = user.Username;
                 memberIds = team.Users.Select(u => u.Id).ToList();
 
-                // Удаляем сообщения чата команды
-                if (team.Chat != null)
+                // Удаляем файлы из чата команды
+                if (team.Chat != null && team.Chat.Messages != null)
                 {
-                    if (team.Chat.Messages != null && team.Chat.Messages.Any())
+                    foreach (var message in team.Chat.Messages.Where(m => m.HasAttachments))
                     {
-                        _context.Messages.RemoveRange(team.Chat.Messages);
+                        foreach (var attachment in message.MessageAttachments)
+                        {
+                            await _storageService.DeleteAsync(attachment.FilePath);
+                        }
                     }
+                    _context.Messages.RemoveRange(team.Chat.Messages);
                     _context.Chats.Remove(team.Chat);
                 }
 
-                // Удаляем задачи и их чаты
+                // Удаляем файлы из чатов задач и сами задачи
                 foreach (var task in team.Tasks)
                 {
                     if (task.Chat != null)
                     {
                         if (task.Chat.Messages != null && task.Chat.Messages.Any())
                         {
+                            // Удаляем файлы из сообщений задачи
+                            foreach (var message in task.Chat.Messages.Where(m => m.HasAttachments))
+                            {
+                                foreach (var attachment in message.MessageAttachments)
+                                {
+                                    await _storageService.DeleteAsync(attachment.FilePath);
+                                }
+                            }
                             _context.Messages.RemoveRange(task.Chat.Messages);
                         }
                         _context.Chats.Remove(task.Chat);
@@ -810,7 +827,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 foreach (var member in team.Users)
                 {
                     member.TeamId = null;
-                    // Если участник был капитаном, меняем роль на обычного участника
                     if (member.RoleId == (int)Roles.Captain)
                     {
                         member.RoleId = (int)Roles.Member;

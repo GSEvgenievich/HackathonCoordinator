@@ -16,12 +16,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
         private readonly NotificationHelperService _notificationHelper;
+        private readonly IStorageService _storageService;
 
         public CompetitionsController(
             HackathonCoordinatorContext context,
+            IStorageService storageService,
             NotificationHelperService notificationHelper)
         {
             _context = context;
+            _storageService = storageService;
             _notificationHelper = notificationHelper;
         }
 
@@ -380,7 +383,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Собираем данные для уведомлений
             string competitionName = "";
             string deletedBy = "";
             List<int> allParticipantIds = new List<int>();
@@ -400,12 +402,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(c => c.Teams)
                         .ThenInclude(t => t.Users)
                     .Include(c => c.Teams)
+                        .ThenInclude(t => t.Chat)
+                            .ThenInclude(c => c.Messages)
+                                .ThenInclude(m => m.MessageAttachments)
+                    .Include(c => c.Teams)
                         .ThenInclude(t => t.Tasks)
                             .ThenInclude(task => task.Chat)
-                                .ThenInclude(chat => chat.Messages)
-                    .Include(c => c.Teams)
-                        .ThenInclude(t => t.Chat)
-                            .ThenInclude(chat => chat.Messages)
+                                .ThenInclude(c => c.Messages)
+                                    .ThenInclude(m => m.MessageAttachments)
                     .Include(c => c.Stages)
                     .Include(c => c.Results)
                     .FirstOrDefaultAsync(c => c.Id == id);
@@ -413,7 +417,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (competition == null)
                     return HandleNotFound("Соревнование не найдено");
 
-                // Сохраняем данные для уведомлений
                 competitionName = competition.Name;
                 deletedBy = currentUser.Username;
 
@@ -424,9 +427,39 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     teamNamesDict[team.Id] = team.Name;
                     allParticipantIds.AddRange(memberIds);
                 }
-                allParticipantIds = allParticipantIds.Distinct().ToList();
 
-                // 1. Удаляем все уведомления, связанные с соревнованием и его командами
+                // 1. Удаляем файлы и сообщения из чатов всех команд
+                foreach (var team in competition.Teams)
+                {
+                    // Чат команды
+                    if (team.Chat != null && team.Chat.Messages != null)
+                    {
+                        foreach (var message in team.Chat.Messages.Where(m => m.HasAttachments))
+                        {
+                            foreach (var attachment in message.MessageAttachments)
+                            {
+                                await _storageService.DeleteAsync(attachment.FilePath);
+                            }
+                        }
+                    }
+
+                    // Чаты задач
+                    foreach (var task in team.Tasks)
+                    {
+                        if (task.Chat != null && task.Chat.Messages != null)
+                        {
+                            foreach (var message in task.Chat.Messages.Where(m => m.HasAttachments))
+                            {
+                                foreach (var attachment in message.MessageAttachments)
+                                {
+                                    await _storageService.DeleteAsync(attachment.FilePath);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Удаляем все уведомления
                 var notificationIds = await _context.Notifications
                     .Where(n => n.RelatedEntityType == "competition" && n.RelatedEntityId == id ||
                                n.RelatedEntityType == "team" && competition.Teams.Select(t => t.Id).Contains(n.RelatedEntityId ?? 0))
@@ -441,7 +474,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     _context.Notifications.RemoveRange(notificationsToDelete);
                 }
 
-                // 2. Удаляем финальные составы команд
+                // 3. Удаляем финальные составы команд
                 var finalTeamMembers = await _context.FinalTeamMembers
                     .Where(f => competition.Teams.Select(t => t.Id).Contains(f.TeamId))
                     .ToListAsync();
@@ -450,7 +483,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     _context.FinalTeamMembers.RemoveRange(finalTeamMembers);
                 }
 
-                // 3. Обрабатываем каждую команду
+                // 4. Обрабатываем каждую команду
                 foreach (var team in competition.Teams)
                 {
                     // Очищаем участников команды
@@ -463,19 +496,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         }
                     }
 
-                    // Удаляем задачи и их чаты
-                    foreach (var task in team.Tasks)
+                    // Удаляем задачи
+                    if (team.Tasks.Any())
                     {
-                        if (task.Chat != null)
-                        {
-                            if (task.Chat.Messages != null && task.Chat.Messages.Any())
-                            {
-                                _context.Messages.RemoveRange(task.Chat.Messages);
-                            }
-                            _context.Chats.Remove(task.Chat);
-                        }
+                        _context.Tasks.RemoveRange(team.Tasks);
                     }
-                    _context.Tasks.RemoveRange(team.Tasks);
 
                     // Удаляем чат команды
                     if (team.Chat != null)
@@ -488,33 +513,31 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     }
                 }
 
-                // 4. Удаляем результаты соревнования
+                // 5. Удаляем результаты
                 if (competition.Results != null && competition.Results.Any())
                 {
                     _context.Results.RemoveRange(competition.Results);
                 }
 
-                // 5. Удаляем этапы
+                // 6. Удаляем этапы
                 if (competition.Stages != null && competition.Stages.Any())
                 {
                     _context.Stages.RemoveRange(competition.Stages);
                 }
 
-                // 6. Удаляем команды
+                // 7. Удаляем команды
                 if (competition.Teams != null && competition.Teams.Any())
                 {
                     _context.Teams.RemoveRange(competition.Teams);
                 }
 
-                // 7. Удаляем само соревнование
+                // 8. Удаляем соревнование
                 _context.Competitions.Remove(competition);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // 8. Отправляем уведомления ПОСЛЕ успешного сохранения
-
-                // Уведомляем участников всех команд
+                // 9. Отправляем уведомления
                 foreach (var teamId in teamMembersDict.Keys)
                 {
                     var memberIds = teamMembersDict[teamId];
@@ -528,12 +551,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         }
                         catch (Exception ex)
                         {
-                            notificationErrors.Add($"• Команда \"{teamName}\" (ID: {teamId})");
+                            notificationErrors.Add($"• Команда \"{teamName}\"");
                         }
                     }
                 }
 
-                // Уведомляем организаторов
                 try
                 {
                     await _notificationHelper.NotifyCompetitionDeleted(id, competitionName, deletedBy);
@@ -543,7 +565,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     notificationErrors.Add("• Уведомления для организаторов");
                 }
 
-                // Формируем ответ
                 if (notificationErrors.Any())
                 {
                     var errorMessage = $"Соревнование \"{competitionName}\" успешно удалено.\n\n⚠️ Ошибки при отправке уведомлений:\n" + string.Join("\n", notificationErrors);
@@ -567,7 +588,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Словарь для хранения участников по командам (для уведомлений)
             Dictionary<int, List<int>> teamMembersDict = new Dictionary<int, List<int>>();
             Dictionary<int, string> teamNamesDict = new Dictionary<int, string>();
             List<string> notificationErrors = new List<string>();
@@ -588,12 +608,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .Include(c => c.Teams)
                         .ThenInclude(t => t.Users)
                     .Include(c => c.Teams)
+                        .ThenInclude(t => t.Chat)
+                            .ThenInclude(c => c.Messages)
+                                .ThenInclude(m => m.MessageAttachments)
+                    .Include(c => c.Teams)
                         .ThenInclude(t => t.Tasks)
                             .ThenInclude(task => task.Chat)
-                                .ThenInclude(chat => chat.Messages)
-                    .Include(c => c.Teams)
-                        .ThenInclude(t => t.Chat)
-                            .ThenInclude(chat => chat.Messages)
+                                .ThenInclude(c => c.Messages)
+                                    .ThenInclude(m => m.MessageAttachments)
                     .Include(c => c.Stages)
                     .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -605,17 +627,47 @@ namespace HackathonCoordinator.WebAPI.Controllers
 
                 competitionName = competition.Name;
 
-                // Сохраняем данные для уведомлений
                 foreach (var team in competition.Teams)
                 {
                     teamMembersDict[team.Id] = team.Users.Select(u => u.Id).ToList();
                     teamNamesDict[team.Id] = team.Name;
                 }
 
-                // Очищаем данные в командах
+                // Удаляем файлы из чатов команд и задач (при архивировании файлы УДАЛЯЮТСЯ)
                 foreach (var team in competition.Teams)
                 {
-                    // Очищаем участников команды
+                    // Чат команды
+                    if (team.Chat != null && team.Chat.Messages != null)
+                    {
+                        foreach (var message in team.Chat.Messages.Where(m => m.HasAttachments))
+                        {
+                            foreach (var attachment in message.MessageAttachments)
+                            {
+                                await _storageService.DeleteAsync(attachment.FilePath);
+                            }
+                        }
+                        _context.Messages.RemoveRange(team.Chat.Messages);
+                        _context.Chats.Remove(team.Chat);
+                    }
+
+                    // Чаты задач
+                    foreach (var task in team.Tasks)
+                    {
+                        if (task.Chat != null && task.Chat.Messages != null)
+                        {
+                            foreach (var message in task.Chat.Messages.Where(m => m.HasAttachments))
+                            {
+                                foreach (var attachment in message.MessageAttachments)
+                                {
+                                    await _storageService.DeleteAsync(attachment.FilePath);
+                                }
+                            }
+                            _context.Messages.RemoveRange(task.Chat.Messages);
+                            _context.Chats.Remove(task.Chat);
+                        }
+                    }
+
+                    // Очищаем участников
                     foreach (var user in team.Users)
                     {
                         user.TeamId = null;
@@ -625,28 +677,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         }
                     }
 
-                    // Удаляем задачи и их чаты
-                    foreach (var task in team.Tasks)
+                    // Удаляем задачи
+                    if (team.Tasks.Any())
                     {
-                        if (task.Chat != null)
-                        {
-                            if (task.Chat.Messages != null && task.Chat.Messages.Any())
-                            {
-                                _context.Messages.RemoveRange(task.Chat.Messages);
-                            }
-                            _context.Chats.Remove(task.Chat);
-                        }
-                    }
-                    _context.Tasks.RemoveRange(team.Tasks);
-
-                    // Очищаем чат команды
-                    if (team.Chat != null)
-                    {
-                        if (team.Chat.Messages != null && team.Chat.Messages.Any())
-                        {
-                            _context.Messages.RemoveRange(team.Chat.Messages);
-                        }
-                        _context.Chats.Remove(team.Chat);
+                        _context.Tasks.RemoveRange(team.Tasks);
                     }
 
                     // Очищаем GitHub репозиторий
@@ -665,7 +699,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Отправляем уведомления участникам всех команд
+                // Отправляем уведомления
                 foreach (var teamId in teamMembersDict.Keys)
                 {
                     var memberIds = teamMembersDict[teamId];
@@ -679,12 +713,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                         }
                         catch (Exception ex)
                         {
-                            notificationErrors.Add($"• Команда \"{teamName}\" (ID: {teamId})");
+                            notificationErrors.Add($"• Команда \"{teamName}\"");
                         }
                     }
                 }
 
-                // Отправляем уведомления организаторам
                 try
                 {
                     await _notificationHelper.NotifyCompetitionArchived(id, competitionName, archivedBy);
@@ -694,7 +727,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     notificationErrors.Add("• Уведомления для организаторов");
                 }
 
-                // Формируем ответ
                 if (notificationErrors.Any())
                 {
                     var errorMessage = "Соревнование успешно архивировано.\n\n⚠️ Ошибки при отправке уведомлений:\n" + string.Join("\n", notificationErrors);

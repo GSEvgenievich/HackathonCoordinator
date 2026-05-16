@@ -365,3 +365,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/.env
+/структура_проекта_HackathonCoordinator_20260516_114659.txt
+/структура_проекта_HackathonCoordinator_20260516_133027.txt

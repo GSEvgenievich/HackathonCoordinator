@@ -1,15 +1,14 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Летние цвета - гармония с зелеными фонами -->
-    <Color x:Key="PrimaryColor">#6A8457</Color>
-    <!-- Используем accent цвет -->
-    <Color x:Key="PrimaryDarkColor">#5A7447</Color>
-    <Color x:Key="SuccessColor">#4CAF50</Color>
-    <Color x:Key="WarningColor">#FF9800</Color>
-    <Color x:Key="DangerColor">#E74C3C</Color>
-    <Color x:Key="InfoColor">#2196F3</Color>
-    <Color x:Key="ShadowColor">#20000000</Color>
+    <!-- Neo-Soft Summer - сочный, освежающий -->
+    <Color x:Key="PrimaryColor">#059669</Color>
+    <Color x:Key="PrimaryDarkColor">#047857</Color>
+    <Color x:Key="SuccessColor">#22C55E</Color>
+    <Color x:Key="WarningColor">#F59E0B</Color>
+    <Color x:Key="DangerColor">#EF4444</Color>
+    <Color x:Key="InfoColor">#3B82F6</Color>
+    <Color x:Key="ShadowColor">#1A4A2A</Color>
     <Color x:Key="HoverShadowColor">#40000000</Color>
 
     <SolidColorBrush x:Key="ShadowBrush" Color="{StaticResource ShadowColor}"/>
@@ -29,19 +28,24 @@
     <ImageBrush x:Key="AccentBackgroundBrush" ImageSource="{StaticResource AccentBackgroundImage}" Stretch="UniformToFill"/>
 
     <!-- Цвета интерфейса -->
-    <SolidColorBrush x:Key="BackgroundColor">#F1F8E9</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundColor">#ECFDF5</SolidColorBrush>
     <SolidColorBrush x:Key="CardBackground">#FFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="ControlBackground">#F9FDF7</SolidColorBrush>
-    <SolidColorBrush x:Key="TextColor">#2E4C2E</SolidColorBrush>
-    <SolidColorBrush x:Key="ScrollBarColor">#4CAF50</SolidColorBrush>
-    <!-- Темно-зеленый для контраста -->
-    <SolidColorBrush x:Key="TextSecondaryColor">#556E55</SolidColorBrush>
-    <SolidColorBrush x:Key="BorderColor">#DCEBD4</SolidColorBrush>
-    <SolidColorBrush x:Key="HoverColor">#EDF7E7</SolidColorBrush>
-    <SolidColorBrush x:Key="SidebarBackground">#6A8457</SolidColorBrush>
+    <SolidColorBrush x:Key="ControlBackground">#F0FDF4</SolidColorBrush>
+    <SolidColorBrush x:Key="TextColor">#064E3B</SolidColorBrush>
+    <SolidColorBrush x:Key="TextSecondaryColor">#065F46</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderColor">#D1FAE5</SolidColorBrush>
+    <SolidColorBrush x:Key="HoverColor">#E6F9F0</SolidColorBrush>
+    <SolidColorBrush x:Key="SidebarBackground">#059669</SolidColorBrush>
     <SolidColorBrush x:Key="SidebarTextColor">#FFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="SidebarHoverColor">#5A7447</SolidColorBrush>
-    <SolidColorBrush x:Key="IconButtonBackground">#6A8457</SolidColorBrush>
+    <SolidColorBrush x:Key="SidebarHoverColor">#047857</SolidColorBrush>
+    <SolidColorBrush x:Key="IconButtonBackground">#059669</SolidColorBrush>
     <SolidColorBrush x:Key="IconButtonForeground">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarColor">#059669</SolidColorBrush>
+    <SolidColorBrush x:Key="MyMessageBackground" Color="#059669"/>
+    <SolidColorBrush x:Key="MyMessageTextColor" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="OtherMessageBackground" Color="#D1FAE5"/>
+    <SolidColorBrush x:Key="OtherMessageTextColor" Color="#064E3B"/>
+    <SolidColorBrush x:Key="MessageTimeColor" Color="#065F46"/>
+    <SolidColorBrush x:Key="MyMessageTimeColor" Color="#A7F3D0"/>
 
 </ResourceDictionary>

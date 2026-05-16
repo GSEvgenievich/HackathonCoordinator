@@ -15,7 +15,7 @@
                 <!-- Заголовок страницы -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="← Назад к соревнованиям" 
+                        <Button Content="← Назад" 
                                 Command="{Binding CancelCommand}"
                                 Style="{StaticResource NavigationButton}"
                                 Margin="0,0,20,0"/>

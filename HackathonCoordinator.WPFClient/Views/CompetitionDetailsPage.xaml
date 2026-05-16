@@ -490,11 +490,11 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border CornerRadius="8" 
-                                            Background="{DynamicResource ControlBackground}" 
-                                            Margin="2"
-                                            Padding="12"
-                                            BorderBrush="{DynamicResource BorderColor}"
-                                            BorderThickness="1">
+                                                Style="{DynamicResource InteractiveCardStyle}"
+                                                Background="{DynamicResource ControlBackground}" 
+                                                Margin="2"
+                                                Padding="12"
+                                                BorderBrush="{DynamicResource BorderColor}">
                                             <Border.InputBindings>
                                                 <MouseBinding Gesture="LeftClick"
                                                           Command="{Binding DataContext.ManageTeamCommand, 

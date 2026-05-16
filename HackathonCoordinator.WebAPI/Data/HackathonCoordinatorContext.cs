@@ -17,55 +17,40 @@ public partial class HackathonCoordinatorContext : DbContext
     }
 
     public virtual DbSet<Chat> Chats { get; set; }
-
     public virtual DbSet<ChatType> ChatTypes { get; set; }
-
     public virtual DbSet<Competition> Competitions { get; set; }
-
     public virtual DbSet<FinalTeamMember> FinalTeamMembers { get; set; }
-
     public virtual DbSet<Message> Messages { get; set; }
-
     public virtual DbSet<MessageAttachment> MessageAttachments { get; set; }
-
     public virtual DbSet<Notification> Notifications { get; set; }
-
     public virtual DbSet<NotificationType> NotificationTypes { get; set; }
-
     public virtual DbSet<Position> Positions { get; set; }
-
     public virtual DbSet<ProfileIcon> ProfileIcons { get; set; }
-
     public virtual DbSet<Result> Results { get; set; }
-
     public virtual DbSet<Role> Roles { get; set; }
-
     public virtual DbSet<Stage> Stages { get; set; }
-
     public virtual DbSet<Task> Tasks { get; set; }
-
     public virtual DbSet<TaskStatus> TaskStatuses { get; set; }
-
     public virtual DbSet<TaskType> TaskTypes { get; set; }
-
     public virtual DbSet<Team> Teams { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=localhost;Database=HackathonCoordinatorDb;Trusted_Connection=True;TrustServerCertificate=True;");
+    {
+        // Убираем warning и убираем хардкод строки подключения
+        // Теперь строка берется из appsettings.json через конструктор
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Chat>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Chats__3214EC0723074ED1");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.HasIndex(e => e.TypeId, "IX_Chats_TypeId");
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Name).HasMaxLength(150);
 
@@ -83,17 +68,13 @@ public partial class HackathonCoordinatorContext : DbContext
         modelBuilder.Entity<Competition>(entity =>
         {
             entity.HasIndex(e => e.CreatedById, "IX_Competitions_CreatedById");
-
             entity.HasIndex(e => e.EndDate, "IX_Competitions_EndDate");
-
             entity.HasIndex(e => e.IsArchived, "IX_Competitions_IsArchived");
-
             entity.HasIndex(e => new { e.IsArchived, e.StartDate }, "IX_Competitions_IsArchived_StartDate");
-
             entity.HasIndex(e => e.StartDate, "IX_Competitions_StartDate");
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.EndDate).HasColumnType("datetime");
@@ -119,13 +100,11 @@ public partial class HackathonCoordinatorContext : DbContext
         modelBuilder.Entity<FinalTeamMember>(entity =>
         {
             entity.HasIndex(e => e.TeamId, "IX_FinalTeamMembers_TeamId");
-
             entity.HasIndex(e => e.UserId, "IX_FinalTeamMembers_UserId");
-
-            entity.HasIndex(e => new { e.UserId, e.FixedAt }, "IX_FinalTeamMembers_UserId_FixedAt").IsDescending(false, true);
+            entity.HasIndex(e => new { e.UserId, e.FixedAt }, "IX_FinalTeamMembers_UserId_FixedAt");
 
             entity.Property(e => e.FixedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.PositionName).HasMaxLength(50);
             entity.Property(e => e.Username).HasMaxLength(100);
@@ -147,17 +126,15 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Message>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Messages__3214EC07CA949DD0");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.HasIndex(e => e.ChatId, "IX_Messages_ChatId");
-
-            entity.HasIndex(e => new { e.ChatId, e.SentAt }, "IX_Messages_ChatId_SentAt").IsDescending(false, true);
-
+            entity.HasIndex(e => new { e.ChatId, e.SentAt }, "IX_Messages_ChatId_SentAt");
             entity.HasIndex(e => e.UserId, "IX_Messages_UserId");
 
             entity.Property(e => e.EditedAt).HasColumnType("datetime");
             entity.Property(e => e.SentAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Text).HasMaxLength(1000);
 
@@ -186,20 +163,14 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Notification>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC07CE823C32");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.HasIndex(e => e.NotificationTypeId, "IX_Notifications_NotificationTypeId");
-
             entity.HasIndex(e => e.UserId, "IX_Notifications_UserId");
-
             entity.HasIndex(e => new { e.UserId, e.IsRead }, "IX_Notifications_UserId_IsRead");
 
-            entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "IX_Notifications_UserId_Unread")
-                .IsDescending(false, true)
-                .HasFilter("([IsRead]=(0))");
-
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Message).HasMaxLength(1000);
             entity.Property(e => e.ReadAt).HasColumnType("datetime");
@@ -217,9 +188,8 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<NotificationType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Notifica__3214EC07C4B8AEF3");
-
-            entity.HasIndex(e => e.Name, "UQ__Notifica__737584F66F727CA5").IsUnique();
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.Name, "UQ_NotificationTypes_Name").IsUnique();
 
             entity.Property(e => e.Category).HasMaxLength(15);
             entity.Property(e => e.Icon).HasMaxLength(10);
@@ -233,17 +203,14 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<ProfileIcon>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__ProfileI__3214EC07ADEC564C");
-
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Result>(entity =>
         {
             entity.HasIndex(e => e.CompetitionId, "IX_Results_CompetitionId");
-
             entity.HasIndex(e => new { e.CompetitionId, e.Place }, "IX_Results_CompetitionId_Place");
-
             entity.HasIndex(e => e.TeamId, "IX_Results_TeamId");
 
             entity.Property(e => e.Comment).HasMaxLength(300);
@@ -261,25 +228,20 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Roles__3214EC074348EF0D");
-
-            entity.HasIndex(e => e.Name, "UQ__Roles__737584F652306A2F").IsUnique();
-
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.Name, "UQ_Roles_Name").IsUnique();
             entity.Property(e => e.Name).HasMaxLength(25);
         });
 
         modelBuilder.Entity<Stage>(entity =>
         {
             entity.HasIndex(e => e.CompetitionId, "IX_Stages_CompetitionId");
-
             entity.HasIndex(e => new { e.CompetitionId, e.Order }, "IX_Stages_CompetitionId_Order");
-
             entity.HasIndex(e => new { e.StartTime, e.EndTime }, "IX_Stages_StartTime_EndTime");
-
             entity.HasIndex(e => new { e.CompetitionId, e.Order }, "UQ_Stages_Competition_Order").IsUnique();
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(300);
             entity.Property(e => e.EndTime).HasColumnType("datetime");
@@ -294,26 +256,19 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<Task>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Tasks__3214EC071FB6BCF1");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.HasIndex(e => e.AssignedToId, "IX_Tasks_AssignedToId");
-
             entity.HasIndex(e => new { e.AssignedToId, e.StatusId }, "IX_Tasks_AssignedToId_StatusId");
-
             entity.HasIndex(e => e.ChatId, "IX_Tasks_ChatId");
-
-            entity.HasIndex(e => e.Deadline, "IX_Tasks_Deadline").HasFilter("([Deadline] IS NOT NULL)");
-
+            entity.HasIndex(e => e.Deadline, "IX_Tasks_Deadline");
             entity.HasIndex(e => e.StatusId, "IX_Tasks_StatusId");
-
             entity.HasIndex(e => e.TeamId, "IX_Tasks_TeamId");
-
             entity.HasIndex(e => new { e.TeamId, e.StatusId }, "IX_Tasks_TeamId_StatusId");
-
             entity.HasIndex(e => e.TypeId, "IX_Tasks_TypeId");
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.Deadline).HasColumnType("datetime");
             entity.Property(e => e.Description).HasMaxLength(1000);
@@ -347,34 +302,28 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<TaskStatus>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__TaskStat__3214EC07DC23AB14");
-
-            entity.HasIndex(e => e.Name, "UQ__TaskStat__737584F6DC5F6AFF").IsUnique();
-
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.Name, "UQ_TaskStatuses_Name").IsUnique();
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<TaskType>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__TaskType__3214EC0716EA65CE");
-
-            entity.HasIndex(e => e.Name, "UQ__TaskType__737584F66BFDEB08").IsUnique();
-
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasIndex(e => e.Name, "UQ_TaskTypes_Name").IsUnique();
             entity.Property(e => e.Name).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Team>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Teams__3214EC073AAA9ED0");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.HasIndex(e => e.ChatId, "IX_Teams_ChatId");
-
             entity.HasIndex(e => e.CompetitionId, "IX_Teams_CompetitionId");
-
-            entity.HasIndex(e => e.InviteCode, "UQ__Teams__B8659E398D2885DB").IsUnique();
+            entity.HasIndex(e => e.InviteCode, "UQ_Teams_InviteCode").IsUnique();
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.GitRepoName).HasMaxLength(100);
             entity.Property(e => e.InviteCode).HasMaxLength(36);
@@ -392,23 +341,15 @@ public partial class HackathonCoordinatorContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Users__3214EC073975C412");
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
-            entity.HasIndex(e => e.GitHubUsername, "IX_Users_GitHubUsername").HasFilter("([GitHubUsername] IS NOT NULL)");
-
+            entity.HasIndex(e => e.Email, "UQ_Users_Email").IsUnique();
+            entity.HasIndex(e => e.GitHubUsername, "IX_Users_GitHubUsername");
             entity.HasIndex(e => e.Login, "IX_Users_Login");
-
             entity.HasIndex(e => e.PositionId, "IX_Users_PositionId");
-
             entity.HasIndex(e => e.ProfileIconId, "IX_Users_ProfileIconId");
-
             entity.HasIndex(e => e.RoleId, "IX_Users_RoleId");
-
             entity.HasIndex(e => e.TeamId, "IX_Users_TeamId");
-
-            entity.HasIndex(e => e.TeamId, "IX_Users_TeamId_Filtered").HasFilter("([TeamId] IS NOT NULL)");
-
-            entity.HasIndex(e => e.Email, "UQ__Users__A9D1053498E69DD7").IsUnique();
 
             entity.Property(e => e.Email).HasMaxLength(150);
             entity.Property(e => e.GitHubAccessToken).HasMaxLength(255);
