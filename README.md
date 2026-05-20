@@ -148,29 +148,92 @@ docker compose up -d
 ### Файл `.env` (обязательные параметры):
 
 ```env
-# Database Configuration
+# ============================================
+# НАСТРОЙКИ БАЗЫ ДАННЫХ (MySQL)
+# ============================================
+
+# Пароль для root-пользователя MySQL
 DB_ROOT_PASSWORD=RootPassword123!
+
+# Имя базы данных, которая будет создана
 DB_NAME=HackathonCoordinatorDb
+
+# Имя пользователя для подключения к БД (не root)
 DB_USER=hackathon_user
+
+# Пароль пользователя БД
 DB_PASSWORD=UserPassword123!
 
-# Application Environment
+
+# ============================================
+# НАСТРОЙКИ API
+# ============================================
+
+# Среда выполнения (Development или Production)
 ASPNETCORE_ENVIRONMENT=Production
 
-# JWT Authentication
-JWT_KEY=your_super_secure_jwt_key_here
+
+# ============================================
+# НАСТРОЙКИ JWT АУТЕНТИФИКАЦИИ
+# ============================================
+
+# Секретный ключ для подписи JWT-токенов (должен быть сложным)
+JWT_KEY=hackathon_c00rd_key_super_194_key_inator_13610
+
+# Издатель токена (обычно домен приложения)
 JWT_ISSUER=HackathonCoordinator
+
+# Получатель токена (обычно домен приложения)
 JWT_AUDIENCE=HackathonUsers
+
+# Время жизни токена в минутах (2 часа)
 JWT_EXPIRE_MINUTES=120
 
-# GitHub OAuth (для интеграции)
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-GITHUB_REDIRECT_URI=http://localhost:5046/api/oauth/github-callback
 
-# ⚠️ ВАЖНО: Не изменяйте ключ шифрования!
-# Если в БД уже есть данные, изменение этого ключа сделает их нечитаемыми
+# ============================================
+# НАСТРОЙКИ GitHub OAuth
+# ============================================
+
+# Client ID из зарегистрированного OAuth приложения GitHub
+GITHUB_CLIENT_ID=YOUR_GITHUB_CLIENT_ID
+
+# Client Secret из зарегистрированного OAuth приложения GitHub
+GITHUB_CLIENT_SECRET=YOUR_GITHUB_CLIENT_SECRET
+
+# URL для перенаправления после авторизации в GitHub
+GITHUB_REDIRECT_URI=http://YOUR_DOMEN_NAME/api/oauth/github-callback
+
+
+# ============================================
+# НАСТРОЙКИ ШИФРОВАНИЯ
+# ============================================
+
+# Ключ для AES-256 шифрования GitHub-токенов
+# ⚠️ ВАЖНО: Не менять после создания базы данных!
 ENCRYPTION_KEY=1my1-02ro1-irdnaa-56dj8y5td6-key-32-10fa2
+
+
+# ============================================
+# НАСТРОЙКИ MINIO (Файловое хранилище)
+# ============================================
+
+# Логин администратора MinIO
+MINIO_ROOT_USER=minioadmin
+
+# Пароль администратора MinIO
+MINIO_ROOT_PASSWORD=minioadmin
+
+# Внутренний адрес MinIO в Docker-сети
+MINIO_ENDPOINT=minio:9000
+
+# Публичный адрес MinIO для доступа из WPF-клиента
+MINIO_PUBLIC_ENDPOINT=localhost:9000
+
+# Название бакета (контейнера) для файлов
+MINIO_BUCKET=hackathon-files
+
+# Использовать SSL (для локальной разработки false)
+MINIO_USE_SSL=false
 ```
 
 ---
