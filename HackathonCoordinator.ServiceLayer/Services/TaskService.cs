@@ -64,7 +64,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
-        public async Task<ApiResponse> CreateTaskAsync(int teamId, CreateTaskDto dto)
+        public async Task<ApiResponse<int>> CreateTaskAsync(int teamId, CreateTaskDto dto)
         {
             SetAuthHeader();
 
@@ -72,15 +72,15 @@ namespace HackathonCoordinator.ServiceLayer.Services
             {
                 var content = CreateJsonContent(dto);
                 var response = await _client.PostAsync($"teams/{teamId}/tasks", content);
-                return await HandleResponseAsync(response);
+                return await HandleResponseAsync<int>(response);
             }
             catch (Exception ex)
             {
-                return ApiResponse.Fail($"Ошибка создания задачи: {ex.Message}");
+                return ApiResponse<int>.Fail($"Ошибка создания задачи: {ex.Message}");
             }
         }
 
-        public async Task<ApiResponse> UpdateTaskAsync(int taskId, CreateTaskDto dto)
+        public async Task<ApiResponse<int>> UpdateTaskAsync(int taskId, CreateTaskDto dto)
         {
             SetAuthHeader();
 
@@ -88,11 +88,11 @@ namespace HackathonCoordinator.ServiceLayer.Services
             {
                 var content = CreateJsonContent(dto);
                 var response = await _client.PutAsync($"tasks/{taskId}", content);
-                return await HandleResponseAsync(response);
+                return await HandleResponseAsync<int>(response);
             }
             catch (Exception ex)
             {
-                return ApiResponse.Fail($"Ошибка обновления задачи: {ex.Message}");
+                return ApiResponse<int>.Fail($"Ошибка обновления задачи: {ex.Message}");
             }
         }
 

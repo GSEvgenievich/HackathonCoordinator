@@ -34,7 +34,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
-        public async Task<ApiResponse> CreateCompetitionAsync(CreateCompetitionDto dto)
+        public async Task<ApiResponse<int>> CreateCompetitionAsync(CreateCompetitionDto dto)
         {
             SetAuthHeader();
 
@@ -42,11 +42,11 @@ namespace HackathonCoordinator.ServiceLayer.Services
             {
                 var content = CreateJsonContent(dto);
                 var response = await _client.PostAsync("competitions", content);
-                return await HandleResponseAsync(response);
+                return await HandleResponseAsync<int>(response);
             }
             catch (Exception ex)
             {
-                return ApiResponse.Fail($"Ошибка создания соревнования: {ex.Message}");
+                return ApiResponse<int>.Fail($"Ошибка создания соревнования: {ex.Message}");
             }
         }
 
@@ -199,7 +199,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
         /// <summary>
         /// Создать соревнование с этапами
         /// </summary>
-        public async Task<ApiResponse> CreateCompetitionWithStagesAsync(CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
+        public async Task<ApiResponse<int>> CreateCompetitionWithStagesAsync(CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
         {
             SetAuthHeader();
 
@@ -207,18 +207,18 @@ namespace HackathonCoordinator.ServiceLayer.Services
             {
                 var content = CreateJsonContent(new { Competition = competitionDto, Stages = stages });
                 var response = await _client.PostAsync("competitions/create-with-stages", content);
-                return await HandleResponseAsync(response);
+                return await HandleResponseAsync<int>(response);
             }
             catch (Exception ex)
             {
-                return ApiResponse.Fail($"Ошибка создания соревнования: {ex.Message}");
+                return ApiResponse<int>.Fail($"Ошибка создания соревнования: {ex.Message}");
             }
         }
 
         /// <summary>
         /// Обновить соревнование с этапами
         /// </summary>
-        public async Task<ApiResponse> UpdateCompetitionWithStagesAsync(int competitionId, CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
+        public async Task<ApiResponse<int>> UpdateCompetitionWithStagesAsync(int competitionId, CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
         {
             SetAuthHeader();
 
@@ -226,11 +226,11 @@ namespace HackathonCoordinator.ServiceLayer.Services
             {
                 var content = CreateJsonContent(new { Competition = competitionDto, Stages = stages });
                 var response = await _client.PutAsync($"competitions/{competitionId}/update-with-stages", content);
-                return await HandleResponseAsync(response);
+                return await HandleResponseAsync<int>(response);
             }
             catch (Exception ex)
             {
-                return ApiResponse.Fail($"Ошибка обновления соревнования: {ex.Message}");
+                return ApiResponse<int>.Fail($"Ошибка обновления соревнования: {ex.Message}");
             }
         }
     }

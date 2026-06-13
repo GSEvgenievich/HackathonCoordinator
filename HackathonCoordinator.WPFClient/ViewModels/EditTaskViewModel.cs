@@ -2,6 +2,7 @@
 using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
+using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -346,7 +347,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     GitHubBranchName = GitHubBranchName?.Trim()
                 };
 
-                ApiResponse result;
+                ApiResponse<int> result;
 
                 if (_isCreateMode)
                 {
@@ -360,7 +361,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (result.Success)
                 {
                     await ShowSuccessAsync(result.Message);
-                    Cancel();
+
+                    var task = await _taskService.GetTaskDetailsAsync(result.Data);
+                    _navigationService.NavigateToBack(new TaskDetailsPage(task.Data));
                 }
                 else
                 {

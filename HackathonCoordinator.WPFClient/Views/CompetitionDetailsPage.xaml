@@ -234,7 +234,6 @@
                                     Style="{StaticResource SecondaryButton}"
                                     BorderBrush="{DynamicResource DangerBrush}"
                                     Foreground="{DynamicResource DangerBrush}"
-                                    Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                     Height="45"
                                     Margin="0,0,0,0"
                                     ToolTip="Удалить соревнование и все связанные данные"/>
@@ -431,8 +430,6 @@
                                                                 <TextBlock Style="{StaticResource CaptionSecondaryStyle}"
                                                                            FontSize="13" HorizontalAlignment="Center">
                                                                     <Run Text="{Binding StartTime, StringFormat='{}{0:HH:mm}'}"/>
-                                                                    <Run Text=" - "/>
-                                                                    <Run Text="{Binding EndTime, StringFormat='{}{0:HH:mm}'}"/>
                                                                 </TextBlock>
                                                             </StackPanel>
 

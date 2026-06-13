@@ -301,7 +301,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// Создать задачу в команде
         /// </summary>
         [HttpPost("{teamId}/tasks")]
-        public async Task<ActionResult<ApiResponse>> CreateTask(int teamId, [FromBody] CreateTaskDto dto)
+        public async Task<ActionResult<ApiResponse<int>>> CreateTask(int teamId, [FromBody] CreateTaskDto dto)
         {
             try
             {
@@ -309,7 +309,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var user = await _context.Users.FindAsync(userId);
 
                 if (user == null)
-                    return HandleUnauthorized("Пользователь не найден");
+                    return HandleUnauthorized<int>("Пользователь не найден");
 
                 var team = await _context.Teams
                     .Include(t => t.Competition)
@@ -317,13 +317,13 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     .FirstOrDefaultAsync(p => p.Id == teamId);
 
                 if (team == null)
-                    return HandleNotFound("Команда не найдена");
+                    return HandleNotFound<int>("Команда не найдена");
 
                 if (team.Competition.IsArchived)
-                    return HandleError("Невозможно создать задачу, так как соревнование в архиве");
+                    return HandleError<int>("Невозможно создать задачу, так как соревнование в архиве");
 
                 if (user.RoleId != (int)Roles.Captain && !team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain))
-                    return HandleForbidden("Только капитан команды может создавать задачи");
+                    return HandleForbidden<int>("Только капитан команды может создавать задачи");
 
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -420,10 +420,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     }
                     catch
                     {
-                        return HandleSuccess($"{message}\n!Ошибка отправки уведомления!");
+                        return HandleResult(task.Id, $"{message}\n!Ошибка отправки уведомления!");
                     }
 
-                    return HandleSuccess(message);
+                    return HandleResult(task.Id, message);
                 }
                 catch
                 {
@@ -433,7 +433,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return HandleError($"Ошибка при создании задачи: {ex.Message}");
+                return HandleError<int>($"Ошибка при создании задачи: {ex.Message}");
             }
         }
 

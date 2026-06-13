@@ -1,5 +1,4 @@
-﻿using HackathonCoordinator.ServiceLayer.Services;
-using HackathonCoordinator.WPFClient.Views;
+﻿using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -112,6 +111,26 @@ namespace HackathonCoordinator.WPFClient.Services
                 {
                     // Очищаем стек
                     ClearHistory();
+
+                    _currentFrame.Navigate(page);
+                });
+            }
+        }
+
+        /// <summary>
+        /// Навигация на новую страницу с очисткой стека
+        /// (использовать для переходов по главным разделам из меню)
+        /// </summary>
+        public void NavigateToBack(Page page)
+        {
+            if (_currentFrame != null && _currentPage != page)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var backPage = _backStack.First();
+
+                    if(backPage.GetType() == page.GetType()) 
+                        _backStack.Pop();
 
                     _currentFrame.Navigate(page);
                 });

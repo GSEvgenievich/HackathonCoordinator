@@ -642,8 +642,8 @@ namespace HackathonCoordinator.WebAPI.Services
                     NotificationTypeId = (int)NotificationTypes.CompetitionResultsPublished,
                     Title = $"Этап «{stageName}» начался",
                     Message = $"Начался этап «{stageName}» соревнования «{competitionName}».",
-                    RelatedEntityType = "stage",
-                    RelatedEntityId = stageId
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
                 });
             }
 
@@ -655,8 +655,8 @@ namespace HackathonCoordinator.WebAPI.Services
                     NotificationTypeId = (int)NotificationTypes.StageStarted,
                     Title = $"Этап «{stageName}» начался!",
                     Message = $"Начался этап «{stageName}» соревнования «{competitionName}». Удачи!",
-                    RelatedEntityType = "stage",
-                    RelatedEntityId = stageId
+                    RelatedEntityType = "competition",
+                    RelatedEntityId = competitionId
                 });
             }
         }
@@ -825,7 +825,7 @@ namespace HackathonCoordinator.WebAPI.Services
         private async Task<List<int>> GetOrganizerIdsAsync()
         {
             return await _context.Users
-                .Where(u => u.RoleId == (int)Roles.Organizer)
+                .Where(u => u.RoleId == (int)Roles.Organizer || u.RoleId == (int)Roles.Admin)
                 .Select(u => u.Id)
                 .ToListAsync();
         }

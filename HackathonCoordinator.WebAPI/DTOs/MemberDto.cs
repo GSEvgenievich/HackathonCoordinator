@@ -8,6 +8,6 @@
         public string PositionName { get; set; }
         public string? IconName { get; set; }
         public bool IsCaptain { get; set; }
-        public string IconPath => $"Assets/Images/Profile/{IconName ?? "robot1"}.png";
+        public string IconPath => $"Assets/Images/Profile/{IconName ?? "boy1"}.png";
     }
 }

@@ -323,26 +323,24 @@ INSERT IGNORE INTO TaskTypes (Id, Name) VALUES
 -- ============================================
 
 -- Пароли захешированы BCrypt:
--- q -> 123 (Admin)
--- w -> 234 (Organizer)
--- e -> 345 (Captain)
--- r -> 456 (Member)
--- string -> string (User)
+-- admin -> admin123 (Admin)
+-- organizer -> organizer123 (Organizer)
+-- user -> user123 (User)
 
 -- Admin (RoleId = 1)
 INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, PositionId, ProfileIconId) VALUES
-('Admin', 'admin@hackathon.local', 'q', 
-'$2a$11$4Z1LpSzns9GvCcS1oVZfiuXfpzK94uxmiGrKwEXgp7P6EradwwFjq', 1, 1, 1);
+('Администратор', 'admin@hackathon.local', 'admin', 
+'$2a$11$/.//HGMYVtMsr6G.4HzAcOsvP7dD/mT6JClfBqRajXxBCYoLF9G5i', 1, 1, 1);
 
 -- Organizer (RoleId = 2)
 INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, PositionId, ProfileIconId) VALUES
-('Организатор', 'organizer@hackathon.local', 'w',
-'$2a$11$gL5KSSMRGol9tpjLcKLD..53qHVld4E6/bIZwJct1tZ3V2fpHxuHG', 2, 3, 3);
+('Организатор', 'organizer@hackathon.local', 'organizer',
+'$2a$11$piE6hkyjmkk7H.SzIEJbMejklgCBQVzSzk5Qv8iD8g9NsEOOGBe5K', 2, 3, 3);
 
 -- User (RoleId = 4)
 INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, PositionId, ProfileIconId) VALUES
-('Пользователь', 'user@hackathon.local', 'string',
-'$2a$11$OKN4OwK6mYHPsxLGtgxJ3uMfceo4Bj3C/VZbhbaj40iPdZixzRyeO', 4, 1, 1);
+('Пользователь', 'user@hackathon.local', 'user',
+'$2a$11$0.fSqon0wFGHAdhjUW9o2.98G.7xH66h8v.PnQh8ClNZ54BLnGR8S', 4, 1, 1);
 
 -- ============================================
 -- 4. ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ

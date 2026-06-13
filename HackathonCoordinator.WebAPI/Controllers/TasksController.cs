@@ -176,7 +176,7 @@ public class TasksController : BaseApiController
     /// Обновить задачу
     /// </summary>
     [HttpPut("{taskId}")]
-    public async Task<ActionResult<ApiResponse>> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
+    public async Task<ActionResult<ApiResponse<int>>> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
     {
         try
         {
@@ -184,7 +184,7 @@ public class TasksController : BaseApiController
             var user = await _context.Users.FindAsync(userId);
 
             if (user == null)
-                return HandleUnauthorized("Пользователь не найден");
+                return HandleUnauthorized<int>("Пользователь не найден");
 
             var task = await _context.Tasks
                 .Include(t => t.Team)
@@ -192,10 +192,10 @@ public class TasksController : BaseApiController
                 .FirstOrDefaultAsync(t => t.Id == taskId);
 
             if (task == null)
-                return HandleNotFound("Задача не найдена");
+                return HandleNotFound<int>("Задача не найдена");
 
             if (user.RoleId != (int)Roles.Captain && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain))
-                return HandleForbidden("Только капитан команды может редактировать задачи");
+                return HandleForbidden<int>("Только капитан команды может редактировать задачи");
 
             var oldBranchName = task.GithubBranchName;
             var hasExistingBranch = !string.IsNullOrEmpty(oldBranchName);
@@ -267,19 +267,19 @@ public class TasksController : BaseApiController
                 message += $". Предупреждение: {warning}";
             }
 
-            return HandleSuccess(message);
+            return HandleResult(task.Id, message);
         }
         catch (DbUpdateException ex)
         {
-            return HandleError("Ошибка базы данных при обновлении задачи");
+            return HandleError<int>("Ошибка базы данных при обновлении задачи");
         }
         catch (ArgumentNullException ex)
         {
-            return HandleError("Некорректные данные задачи");
+            return HandleError<int>("Некорректные данные задачи");
         }
         catch (Exception ex)
         {
-            return HandleError("Внутренняя ошибка сервера при обновлении задачи");
+            return HandleError<int>("Внутренняя ошибка сервера при обновлении задачи");
         }
     }
 

@@ -2,6 +2,7 @@
 using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
+using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -627,7 +628,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     })
                     .ToList();
 
-                ApiResponse result;
+                ApiResponse<int> result;
 
                 if (_isEditMode)
                 {
@@ -647,7 +648,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                     if (result.Success)
                     {
-                        Cancel();
+
+                        var competition = await _competitionService.GetCompetitionAsync(result.Data);
+                        _navigationService.NavigateToBack(new CompetitionDetailsPage(competition.Data));
                     }
                 });
             }

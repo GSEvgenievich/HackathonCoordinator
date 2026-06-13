@@ -135,7 +135,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// Создать новое соревнование (только организатор)
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<ApiResponse>> CreateCompetition([FromBody] CreateCompetitionDto dto)
+        public async Task<ActionResult<ApiResponse<int>>> CreateCompetition([FromBody] CreateCompetitionDto dto)
         {
             try
             {
@@ -143,7 +143,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var user = await _context.Users.FindAsync(userId);
 
                 if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
-                    return HandleForbidden("Недостаточно прав для создания соревнования");
+                    return HandleForbidden<int>("Недостаточно прав для создания соревнования");
 
                 var competition = new Competition
                 {
@@ -168,11 +168,11 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 }
                 catch (Exception ex) { }
 
-                return HandleSuccess("Соревнование успешно создано");
+                return HandleResult<int>(competition.Id, "Соревнование успешно создано");
             }
             catch (Exception ex)
             {
-                return HandleError("Ошибка при создании соревнования");
+                return HandleError<int>("Ошибка при создании соревнования");
             }
         }
 
@@ -180,9 +180,10 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// Создать соревнование с этапами
         /// </summary>
         [HttpPost("create-with-stages")]
-        public async Task<ActionResult<ApiResponse>> CreateCompetitionWithStages([FromBody] CreateCompetitionWithStagesDto dto)
+        public async Task<ActionResult<ApiResponse<int>>> CreateCompetitionWithStages([FromBody] CreateCompetitionWithStagesDto dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using var transaction = await _context.Database
+                .BeginTransactionAsync();
 
             try
             {
@@ -190,7 +191,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var user = await _context.Users.FindAsync(userId);
 
                 if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
-                    return HandleForbidden("Недостаточно прав для создания соревнования");
+                    return HandleForbidden<int>("Недостаточно прав для создания соревнования");
 
                 // Создаем соревнование
                 var competition = new Competition
@@ -238,15 +239,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 }
                 catch
                 {
-                    return HandleSuccess("Соревнование успешно создано \n!Ошибка отправки уведомления!");
+                    return HandleResult(competition.Id, "Соревнование успешно создано \n!Ошибка отправки уведомления!");
                 }
 
-                return HandleSuccess("Соревнование успешно создано");
+                return HandleResult(competition.Id, "Соревнование успешно создано");
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return HandleError($"Ошибка создания соревнования: {ex.Message}");
+                return HandleError<int>($"Ошибка создания соревнования: {ex.Message}");
             }
         }
 
@@ -292,7 +293,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
         /// Обновить соревнование с этапами
         /// </summary>
         [HttpPut("{id}/update-with-stages")]
-        public async Task<ActionResult<ApiResponse>> UpdateCompetitionWithStages(int id, [FromBody] UpdateCompetitionWithStagesDto dto)
+        public async Task<ActionResult<ApiResponse<int>>> UpdateCompetitionWithStages(int id, [FromBody] UpdateCompetitionWithStagesDto dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -302,14 +303,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var user = await _context.Users.FindAsync(userId);
 
                 if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
-                    return HandleForbidden("Недостаточно прав для редактирования соревнования");
+                    return HandleForbidden<int>("Недостаточно прав для редактирования соревнования");
 
                 var competition = await _context.Competitions.FindAsync(id);
                 if (competition == null)
-                    return HandleNotFound("Соревнование не найдено");
+                    return HandleNotFound<int>("Соревнование не найдено");
 
                 if (competition.IsArchived)
-                    return HandleError("Невозможно редактировать соревнование, так как оно находится в архиве");
+                    return HandleError<int>("Невозможно редактировать соревнование, так как оно находится в архиве");
 
                 // Обновляем соревнование
                 competition.Name = dto.Competition.Name;
@@ -366,12 +367,12 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return HandleSuccess("Соревнование успешно обновлено");
+                return HandleResult(competition.Id, "Соревнование успешно обновлено");
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return HandleError($"Ошибка обновления соревнования: {ex.Message}");
+                return HandleError<int>($"Ошибка обновления соревнования: {ex.Message}");
             }
         }
 

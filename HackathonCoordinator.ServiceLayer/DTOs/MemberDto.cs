@@ -9,6 +9,6 @@
         public string IconName { get; set; }
         public bool IsCurrentUser { get; set; }
         public bool IsCaptain => RoleName == "Капитан";
-        public string IconPath => $"/Assets/Images/Profile/{IconName ?? "robot1"}.png";
+        public string IconPath => $"/Assets/Images/Profile/{IconName ?? "boy1"}.png";
     }
 }

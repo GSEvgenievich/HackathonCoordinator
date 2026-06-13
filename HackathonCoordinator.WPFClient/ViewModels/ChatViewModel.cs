@@ -240,7 +240,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 if (CurrentUser != null)
                 {
                     IsCaptain = CurrentUser.RoleId == (int)Roles.Captain;
-                    IsOrganizer = CurrentUser.RoleId == (int)Roles.Organizer;
+                    IsOrganizer = CurrentUser.RoleId == (int)Roles.Organizer || CurrentUser.RoleId == (int)Roles.Admin;
                 }
                 else
                 {
