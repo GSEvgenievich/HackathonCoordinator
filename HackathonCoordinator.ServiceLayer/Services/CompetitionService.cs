@@ -34,7 +34,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
-        public async Task<ApiResponse> CreateCompetitionAsync(CreateCompetitionDto dto)
+        public async Task<ApiResponse<int>> CreateCompetitionAsync(CreateCompetitionDto dto)
         {
             SetAuthHeader();
 
@@ -42,11 +42,11 @@ namespace HackathonCoordinator.ServiceLayer.Services
             {
                 var content = CreateJsonContent(dto);
                 var response = await _client.PostAsync("competitions", content);
-                return await HandleResponseAsync(response);
+                return await HandleResponseAsync<int>(response);
             }
             catch (Exception ex)
             {
-                return ApiResponse.Fail($"Ошибка создания соревнования: {ex.Message}");
+                return ApiResponse<int>.Fail($"Ошибка создания соревнования: {ex.Message}");
             }
         }
 
@@ -66,6 +66,42 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
+        /// <summary>
+        /// Удалить соревнование
+        /// </summary>
+        public async Task<ApiResponse> DeleteCompetitionAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.DeleteAsync($"competitions/{competitionId}");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка удаления соревнования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Архивировать соревнование и очистить связанные данные
+        /// </summary>
+        public async Task<ApiResponse> ArchiveCompetitionAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.PostAsync($"competitions/{competitionId}/archive", null);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка архивирования: {ex.Message}");
+            }
+        }
+
         public async Task<ApiResponse> CreateTeamAsync(int competitionId, string teamName)
         {
             SetAuthHeader();
@@ -82,21 +118,6 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
-        public async Task<ApiResponse> DeleteTeamAsync(int teamId)
-        {
-            SetAuthHeader();
-
-            try
-            {
-                var response = await _client.DeleteAsync($"teams/{teamId}");
-                return await HandleResponseAsync(response);
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse.Fail($"Ошибка удаления команды: {ex.Message}");
-            }
-        }
-
         public async Task<ApiResponse<CompetitionExportDataDto>> GetCompetitionExportDataAsync(int competitionId)
         {
             SetAuthHeader();
@@ -109,6 +130,107 @@ namespace HackathonCoordinator.ServiceLayer.Services
             catch (Exception ex)
             {
                 return ApiResponse<CompetitionExportDataDto>.Fail($"Ошибка получения данных для экспорта: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Сохранить все результаты соревнования
+        /// </summary>
+        public async Task<ApiResponse> SaveAllResultsAsync(int competitionId, List<TeamResultDto> results)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var dtoList = results.Select(r => new SaveTeamResultDto
+                {
+                    CompetitionId = competitionId,
+                    TeamId = r.TeamId,
+                    Place = r.Place ?? 0,
+                    Comment = r.Comment
+                }).ToList();
+
+                var content = CreateJsonContent(dtoList);
+                var response = await _client.PostAsync($"competitions/{competitionId}/save-all-results", content);
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка сохранения результатов: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить результаты соревнования
+        /// </summary>
+        public async Task<ApiResponse<List<TeamResultDto>>> GetCompetitionResultsAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"competitions/{competitionId}/results");
+                return await HandleResponseAsync<List<TeamResultDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<TeamResultDto>>.Fail($"Ошибка получения результатов: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить расписание соревнования
+        /// </summary>
+        public async Task<ApiResponse<List<StageDto>>> GetStagesAsync(int competitionId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"competitions/{competitionId}/stages");
+                return await HandleResponseAsync<List<StageDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<StageDto>>.Fail($"Ошибка получения расписания: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Создать соревнование с этапами
+        /// </summary>
+        public async Task<ApiResponse<int>> CreateCompetitionWithStagesAsync(CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var content = CreateJsonContent(new { Competition = competitionDto, Stages = stages });
+                var response = await _client.PostAsync("competitions/create-with-stages", content);
+                return await HandleResponseAsync<int>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<int>.Fail($"Ошибка создания соревнования: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Обновить соревнование с этапами
+        /// </summary>
+        public async Task<ApiResponse<int>> UpdateCompetitionWithStagesAsync(int competitionId, CreateCompetitionDto competitionDto, List<StageSaveDto> stages)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var content = CreateJsonContent(new { Competition = competitionDto, Stages = stages });
+                var response = await _client.PutAsync($"competitions/{competitionId}/update-with-stages", content);
+                return await HandleResponseAsync<int>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<int>.Fail($"Ошибка обновления соревнования: {ex.Message}");
             }
         }
     }

@@ -7,7 +7,7 @@ namespace HackathonCoordinator.WPFClient.Views
 {
     public partial class CompetitionDetailsPage : Page
     {
-        private static CompetitionDto _competition;
+        private readonly CompetitionDto _competition;
 
         public CompetitionDetailsPage(CompetitionDto competition)
         {
@@ -16,11 +16,12 @@ namespace HackathonCoordinator.WPFClient.Views
             Loaded += OnPageLoaded;
         }
 
-        private void OnPageLoaded(object sender, RoutedEventArgs e)
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext is CompetitionDetailsViewModel viewModel && _competition != null)
+            if (DataContext is CompetitionDetailsViewModel viewModel)
             {
-                viewModel.Competition = _competition;
+                viewModel.doDispose = true;
+                await viewModel.InitializeAsync(_competition);
             }
         }
 
@@ -28,7 +29,8 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (DataContext is CompetitionDetailsViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
     }

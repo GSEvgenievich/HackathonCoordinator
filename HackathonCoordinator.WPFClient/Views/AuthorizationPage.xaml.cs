@@ -9,34 +9,40 @@ namespace HackathonCoordinator.WPFClient.Views
         public AuthorizationPage()
         {
             InitializeComponent();
+            Loaded += OnPageLoaded;
 
-            PasswordBox.PasswordChanged += (s, e) =>
+            PasswordBox.PasswordChanged += OnPasswordChanged;
+            PasswordBox.GotFocus += OnPasswordFocusChanged;
+            PasswordBox.LostFocus += OnPasswordFocusChanged;
+        }
+
+        private void OnPageLoaded(object sender, RoutedEventArgs e)
+        {
+            UpdatePasswordPlaceholder();
+        }
+
+        private void OnPasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is AuthorizationViewModel vm)
             {
-                if (DataContext is AuthorizationViewModel vm)
-                {
-                    vm.Password = PasswordBox.Password;
-                    UpdatePasswordPlaceholder();
-                }
-            };
+                vm.Password = PasswordBox.Password;
+                UpdatePasswordPlaceholder();
+            }
+        }
 
-            PasswordBox.GotFocus += (s, e) => UpdatePasswordPlaceholder();
-            PasswordBox.LostFocus += (s, e) => UpdatePasswordPlaceholder();
-            Loaded += (s, e) => UpdatePasswordPlaceholder();
+        private void OnPasswordFocusChanged(object sender, RoutedEventArgs e)
+        {
+            UpdatePasswordPlaceholder();
         }
 
         private void UpdatePasswordPlaceholder()
         {
-            var placeholder = PasswordBox.Template.FindName("placeholderText", PasswordBox) as TextBlock;
+            var placeholder = PasswordBox.Template?.FindName("placeholderText", PasswordBox) as TextBlock;
             if (placeholder != null)
             {
-                if (PasswordBox.IsFocused || !string.IsNullOrEmpty(PasswordBox.Password))
-                {
-                    placeholder.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    placeholder.Visibility = Visibility.Visible;
-                }
+                placeholder.Visibility = (PasswordBox.IsFocused || !string.IsNullOrEmpty(PasswordBox.Password))
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
             }
         }
     }

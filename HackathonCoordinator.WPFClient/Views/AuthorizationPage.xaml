@@ -71,6 +71,7 @@
                             Background="{DynamicResource ControlBackground}">
                         <StackPanel>
                             <Button Content="Войти" 
+                                    IsDefault="True"
                                     Command="{Binding LoginCommand}"
                                     Style="{StaticResource PrimaryButton}"
                                     Height="50"

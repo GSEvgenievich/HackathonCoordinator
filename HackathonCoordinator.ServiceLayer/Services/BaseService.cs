@@ -9,7 +9,7 @@ namespace HackathonCoordinator.ServiceLayer.Services
     public abstract class BaseService : IDisposable
     {
         protected readonly HttpClient _client;
-        protected const string BaseUrl = "https://zip.hhallva.ru/api/";
+        protected const string BaseUrl = "http://localhost:5046/api/";
         private bool _disposed = false;
 
         protected BaseService()

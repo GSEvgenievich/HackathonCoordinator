@@ -15,16 +15,14 @@
                 <!-- Заголовок страницы -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="← Назад к соревнованиям" 
+                        <Button Content="← Назад" 
                                 Command="{Binding CancelCommand}"
                                 Style="{StaticResource NavigationButton}"
                                 Margin="0,0,20,0"/>
 
                         <StackPanel>
                             <TextBlock Text="{Binding PageTitle}" 
-                                   Style="{StaticResource PageHeaderStyle}"/>
-                            <TextBlock Text="{Binding PageSubtitle}"
-                                   Style="{StaticResource PageSubtitleStyle}"/>
+                                       Style="{StaticResource PageHeaderStyle}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -35,35 +33,35 @@
                         <!-- Название -->
                         <StackPanel Margin="0,0,0,12">
                             <TextBlock Text="🏷️ Название соревнования"
-                                   Style="{StaticResource SectionTitleStyle}"
-                                   Margin="0,0,0,8"/>
+                                       Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0,0,0,8"/>
                             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource ModernTextBox}"
-                                 Tag="Введите название соревнования:"/>
+                                     Style="{StaticResource ModernTextBox}"
+                                     Tag="Введите название соревнования:"/>
                             <TextBlock Text="* Обязательное поле"
-                                   Style="{StaticResource CaptionSecondaryStyle}"
-                                   Margin="0,5,0,0"/>
+                                       Style="{StaticResource CaptionSecondaryStyle}"
+                                       Margin="0,5,0,0"/>
                         </StackPanel>
 
                         <!-- Описание -->
                         <StackPanel Margin="0,0,0,12">
                             <TextBlock Text="📝 Описание"
-                                   Style="{StaticResource SectionTitleStyle}"
-                                   Margin="0,0,0,8"/>
+                                       Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0,0,0,8"/>
                             <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource ModernTextBox}"
-                                 Height="70"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="True"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Tag="Опишите соревнование:"/>
+                                     Style="{StaticResource ModernTextBox}"
+                                     Height="70"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Tag="Опишите соревнование:"/>
                         </StackPanel>
 
                         <!-- Даты проведения -->
                         <StackPanel Margin="0,0,0,12">
                             <TextBlock Text="📅 Даты проведения"
-                                   Style="{StaticResource SectionTitleStyle}"
-                                   Margin="0,0,0,8"/>
+                                       Style="{StaticResource SectionTitleStyle}"
+                                       Margin="0,0,0,8"/>
 
                             <Border Style="{StaticResource StatsContainerStyle}">
                                 <Grid>
@@ -76,17 +74,17 @@
                                     <!-- Дата начала -->
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="Дата начала *"
-                                               Style="{StaticResource StatsHeaderStyle}"
-                                               Margin="0,0,0,8"/>
+                                                   Style="{StaticResource StatsHeaderStyle}"
+                                                   Margin="0,0,0,8"/>
                                         <DatePicker SelectedDate="{Binding StartDate}"
-                                                Style="{StaticResource ModernDatePicker}"
-                                                Margin="0,0,0,15"/>
+                                                    Style="{StaticResource ModernDatePicker}"
+                                                    Margin="0,0,0,15"/>
                                         <TextBlock Text="Время начала *"
-                                               Style="{StaticResource StatsHeaderStyle}"
-                                               Margin="0,0,0,8"/>
+                                                   Style="{StaticResource StatsHeaderStyle}"
+                                                   Margin="0,0,0,8"/>
                                         <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource ModernTextBox}"
-                                             Tag="HH:mm (например: 09:00)"/>
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 Tag="HH:mm (например: 09:00)"/>
                                     </StackPanel>
 
                                     <!-- Разделитель -->
@@ -95,19 +93,126 @@
                                     <!-- Дата окончания -->
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Дата окончания *"
-                                               Style="{StaticResource StatsHeaderStyle}"
-                                               Margin="0,0,0,8"/>
+                                                   Style="{StaticResource StatsHeaderStyle}"
+                                                   Margin="0,0,0,8"/>
                                         <DatePicker SelectedDate="{Binding EndDate}"
-                                                Style="{StaticResource ModernDatePicker}"
-                                                Margin="0,0,0,15"/>
+                                                    Style="{StaticResource ModernDatePicker}"
+                                                    Margin="0,0,0,15"/>
                                         <TextBlock Text="Время окончания *"
-                                               Style="{StaticResource StatsHeaderStyle}"
-                                               Margin="0,0,0,8"/>
+                                                   Style="{StaticResource StatsHeaderStyle}"
+                                                   Margin="0,0,0,8"/>
                                         <TextBox Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource ModernTextBox}"
-                                             Tag="HH:mm (например: 18:00)"/>
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 Tag="HH:mm (например: 18:00)"/>
                                     </StackPanel>
                                 </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Расписание (Stages) -->
+                        <StackPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="📋 Расписание соревнования" VerticalAlignment="Center"
+                                           Style="{StaticResource SectionTitleStyle}"/>
+                                <Button Content="➕ Добавить этап"
+                                        Command="{Binding AddStageCommand}"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Margin="15,0,0,0"/>
+                            </StackPanel>
+
+                            <Border Style="{StaticResource StatsContainerStyle}" Padding="15 15 15 7">
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding Stages}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" 
+                                                        Background="{DynamicResource ControlBackground}" 
+                                                        Margin="0,0,0,8"
+                                                        Padding="12"
+                                                        BorderBrush="{DynamicResource BorderColor}"
+                                                        BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Порядковый номер -->
+                                                        <Border Background="{DynamicResource PrimaryBrush}"
+                                                                CornerRadius="18"
+                                                                Width="36"
+                                                                Height="36"
+                                                                Margin="0,0,12,0">
+                                                            <TextBlock Text="{Binding Order}"
+                                                                       Foreground="White"
+                                                                       FontWeight="Bold"
+                                                                       FontSize="18"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"/>
+                                                        </Border>
+
+                                                        <!-- Информация об этапе -->
+                                                        <StackPanel Grid.Column="1">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           Style="{DynamicResource BaseTextBlock}"
+                                                                           FontWeight="SemiBold"
+                                                                           FontSize="16"/>
+                                                                <Border Background="{DynamicResource PrimaryBrush}"
+                                                                        CornerRadius="8"
+                                                                        Padding="6,2"
+                                                                        Margin="10,0,0,0"
+                                                                        Visibility="{Binding IsFinal, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    <TextBlock Text="Финал"
+                                                                               FontSize="12"
+                                                                               VerticalAlignment="Center"
+                                                                               FontWeight="Bold"
+                                                                               Foreground="White"/>
+                                                                </Border>
+                                                            </StackPanel>
+                                                            <TextBlock Text="{Binding TimeRangeText}"
+                                                                       Style="{StaticResource CaptionSecondaryStyle}"
+                                                                       FontSize="14"
+                                                                       Margin="0,4,0,0"/>
+                                                            <TextBlock Text="{Binding Location, StringFormat='📍 {0}', FallbackValue=''}"
+                                                                       Style="{StaticResource CaptionSecondaryStyle}"
+                                                                       FontSize="14"/>
+                                                            <TextBlock Text="{Binding Description}"
+                                                                       Style="{StaticResource CaptionSecondaryStyle}"
+                                                                       FontSize="14"
+                                                                       TextWrapping="Wrap"
+                                                                       Visibility="{Binding Description, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                                        </StackPanel>
+
+                                                        <!-- Кнопки управления -->
+                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Button Content="✏️"
+                                                                    Command="{Binding DataContext.EditStageCommand, 
+                                                                              RelativeSource={RelativeSource AncestorType=Page}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource IconButton}"
+                                                                    Margin="0,0,5,0"
+                                                                    ToolTip="Редактировать этап"/>
+                                                            <Button Content="🗑️"
+                                                                    Command="{Binding DataContext.DeleteStageCommand, 
+                                                                              RelativeSource={RelativeSource AncestorType=Page}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource DangerIconButton}"
+                                                                    ToolTip="Удалить этап"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Text="🎯 Нет добавленных этапов"
+                                               Style="{StaticResource BodyTextStyle}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,10,0,0"
+                                               Visibility="{Binding HasNoStages, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
 
@@ -115,35 +220,136 @@
                         <Border Style="{StaticResource StatsContainerStyle}">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <Button Content="Отмена"
-                                    Command="{Binding CancelCommand}"
-                                    Style="{StaticResource ModalSecondaryButton}"
-                                    Margin="0,0,12,0"/>
+                                        Command="{Binding CancelCommand}"
+                                        Style="{StaticResource ModalSecondaryButton}"
+                                        Margin="0,0,12,0"/>
 
                                 <Button Content="{Binding SaveButtonText}"
-                                    Command="{Binding SaveCommand}"
-                                    Style="{StaticResource ModalPrimaryButton}"/>
+                                        Command="{Binding SaveCommand}"
+                                        Style="{StaticResource ModalPrimaryButton}"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
                 </Border>
+            </StackPanel>
+        </ScrollViewer>
 
-                <!-- Сообщения об ошибках -->
-                <Border Style="{StaticResource StatsContainerStyle}"
-                        Background="{DynamicResource DangerBrush}"
-                        Visibility="{Binding HasErrorMessage, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⚠️"
+        <!-- Диалог добавления/редактирования этапа -->
+        <Border Style="{StaticResource ModalOverlayStyle}"
+                Visibility="{Binding ShowStageDialog, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Style="{StaticResource ModalDialogStyle}" Width="500">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="{Binding StageDialogTitleIcon}"
+                                   FontSize="20"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding StageDialogTitle}"
+                                   Style="{StaticResource ModalTitleStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,12">
+                        <TextBlock Text="Название этапа *"
+                                   Style="{StaticResource StatsHeaderStyle}"
+                                   Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding StageDialogName, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Tag="Введите название этапа"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,12">
+                        <TextBlock Text="Описание"
+                                   Style="{StaticResource StatsHeaderStyle}"
+                                   Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding StageDialogDescription}"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Height="60"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Tag="Опишите этап"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,12">
+                        <TextBlock Text="Место проведения"
+                                   Style="{StaticResource StatsHeaderStyle}"
+                                   Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding StageDialogLocation}"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Tag="Например: Zoom, Коворкинг, Онлайн"/>
+                    </StackPanel>
+
+                    <!-- Дата и время начала (только для не первого этапа) -->
+                    <StackPanel Margin="0,0,0,15"
+                                Visibility="{Binding IsStageStartTimeEditable, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="📅 Дата и время начала этапа"
+                                   Style="{StaticResource StatsHeaderStyle}"
+                                   Margin="0,0,0,5"/>
+                        <DatePicker SelectedDate="{Binding StageDialogStartDate}"
+                                    Style="{StaticResource ModernDatePicker}"
+                                    Margin="0,0,0,8"/>
+                        <TextBox Text="{Binding StageDialogStartTime}"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Tag="HH:mm (например: 14:00)"/>
+                        <TextBlock Text="ℹ️ Этап не может начаться раньше начала предыдущего этапа + 10 минут"
+                                   Style="{StaticResource CaptionSecondaryStyle}"
+                                   FontSize="10"
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+
+                    <TextBlock Text="ℹ️ Первый этап автоматически начинается в момент начала соревнования"
+                               Style="{StaticResource CaptionSecondaryStyle}"
+                               FontSize="11"
+                               Margin="0,0,0,15"
+                               Visibility="{Binding IsStageStartTimeEditable, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Отмена"
+                                Command="{Binding CancelStageDialogCommand}"
+                                Style="{StaticResource ModalSecondaryButton}"
+                                Margin="0,0,10,0"/>
+                        <Button Content="{Binding StageDialogButtonText}"
+                                Command="{Binding SaveStageCommand}"
+                                Style="{StaticResource ModalPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+        <!-- Сообщения об ошибках -->
+        <Border Style="{StaticResource StatsContainerStyle}"
+                Background="{DynamicResource DangerBrush}"
+                Visibility="{Binding HasErrorMessage, Converter={StaticResource BoolToVisibilityConverter}}"
+                Margin="0,10,0,0"
+                VerticalAlignment="Bottom"
+                Panel.ZIndex="1100">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="10,5">
+                    <TextBlock Text="⚠️"
                                Style="{StaticResource BodyLargeStyle}"
                                Foreground="White"
                                Margin="0,0,10,0"/>
-                        <TextBlock Text="{Binding ErrorMessage}"
+                    <TextBlock Text="{Binding ErrorMessage}"
                                Style="{StaticResource BodyTextStyle}"
                                Foreground="White"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="✖"
+                        Command="{Binding ClearErrorCommand}"
+                        Style="{StaticResource RoundIconButton}"
+                        Background="Transparent"
+                        Foreground="White"
+                        Width="30"
+                        Height="30"
+                        Margin="5"
+                        ToolTip="Закрыть"/>
+            </Grid>
+        </Border>
     </Grid>
 </Page>

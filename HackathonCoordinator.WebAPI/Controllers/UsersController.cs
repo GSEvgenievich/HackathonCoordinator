@@ -1,6 +1,6 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
-using HackathonCoordinator.WebAPI.Models;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +15,16 @@ namespace HackathonCoordinator.WebAPI.Controllers
     public class UsersController : BaseApiController
     {
         private readonly HackathonCoordinatorContext _context;
+        private readonly NotificationHelperService _notificationHelper;
         private readonly IEncryptionService _encryptionService;
 
-        public UsersController(HackathonCoordinatorContext context, IEncryptionService encryptionService)
+        public UsersController(HackathonCoordinatorContext context,
+            IEncryptionService encryptionService,
+            NotificationHelperService notificationHelper)
         {
             _context = context;
             _encryptionService = encryptionService;
+            _notificationHelper = notificationHelper;
         }
 
         /// <summary>
@@ -119,6 +123,121 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Получить расширенный профиль пользователя с результатами
+        /// </summary>
+        [HttpGet("{userId}/extended")]
+        public async Task<ActionResult<ApiResponse<UserProfileExtendedDto>>> GetUserProfileExtended(int userId)
+        {
+            try
+            {
+                var currentUserId = GetUserId();
+                var currentUser = await _context.Users.FindAsync(currentUserId);
+
+                if (currentUser == null)
+                    return HandleUnauthorized<UserProfileExtendedDto>("Пользователь не авторизован");
+
+                var user = await _context.Users
+                    .Where(u => u.Id == userId)
+                    .Include(u => u.Role)
+                    .Include(u => u.Team)
+                    .Include(u => u.ProfileIcon)
+                    .Include(u => u.Position)
+                    .Select(u => new UserProfileExtendedDto
+                    {
+                        Id = u.Id,
+                        Username = u.Username,
+                        Email = u.Email,
+                        RoleId = u.RoleId,
+                        RoleName = u.Role.Name,
+                        PositionId = u.PositionId,
+                        PositionName = u.Position != null ? u.Position.Name : null,
+                        TeamId = u.TeamId,
+                        TeamName = u.Team != null ? u.Team.Name : null,
+                        GitHubUsername = u.GitHubUsername,
+                        IconId = u.ProfileIconId,
+                        IconName = u.ProfileIcon != null ? u.ProfileIcon.Name : null,
+                        IsCurrentUser = userId == currentUserId
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (user == null)
+                    return HandleNotFound<UserProfileExtendedDto>("Пользователь не найден");
+
+                // Получаем результаты пользователя
+                var userResults = await _context.Results
+                    .Where(r => r.Team.FinalTeamMembers.Any(m => m.UserId == userId))
+                    .Include(r => r.Competition)
+                    .Include(r => r.Team)
+                        .ThenInclude(t => t.FinalTeamMembers)
+                            .ThenInclude(ftm => ftm.Role)
+                    .OrderByDescending(r => r.Competition.CreatedAt)
+                    .Select(r => new UserResultDto
+                    {
+                        CompetitionId = r.CompetitionId,
+                        CompetitionName = r.Competition.Name,
+                        TeamId = r.TeamId,
+                        TeamName = r.Team.Name,
+                        Place = r.Place,
+                        PlaceDisplay = r.PlaceDisplay,
+                        Comment = r.Comment,
+                        CreatedAt = r.Competition.CreatedAt,
+                        FinalTeamMembers = r.Team.FinalTeamMembers
+                            .Select(ftm => new FinalTeamMemberDto
+                            {
+                                Id = ftm.Id,
+                                UserId = ftm.UserId,
+                                Username = ftm.Username,
+                                PositionName = ftm.PositionName,
+                                RoleId = ftm.RoleId,
+                                RoleName = ftm.Role.Name,
+                                FixedAt = ftm.FixedAt
+                            })
+                            .ToList()
+                    })
+                    .ToListAsync();
+
+                user.Results = userResults;
+
+                return HandleResult(user);
+            }
+            catch (Exception ex)
+            {
+                return HandleError<UserProfileExtendedDto>($"Ошибка при получении профиля: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Обновить должность текущего пользователя
+        /// </summary>
+        [HttpPut("me/position")]
+        public async Task<ActionResult<ApiResponse>> UpdateUserPosition([FromBody] ChangeUserPositioDto dto)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (userId == 0)
+                    return HandleUnauthorized("Пользователь не авторизован");
+
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    return HandleNotFound("Пользователь не найден");
+
+                var position = await _context.Positions.FindAsync(dto.PositionId);
+                if (position == null)
+                    return HandleError("Должность не найдена");
+
+                user.PositionId = dto.PositionId;
+                await _context.SaveChangesAsync();
+
+                return HandleSuccess("Должность обновлена");
+            }
+            catch (Exception ex)
+            {
+                return HandleError($"Ошибка обновления должности: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Привязать GitHub аккаунт
         /// </summary>
         [HttpPost("me/github/link")]
@@ -166,35 +285,44 @@ namespace HackathonCoordinator.WebAPI.Controllers
         [HttpPost("me/github/unlink")]
         public async Task<ActionResult<ApiResponse>> UnlinkGitHubAccount()
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
                 if (userId == 0)
                     return HandleUnauthorized();
 
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _context.Users
+                    .Include(u => u.Team)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
                 if (user == null)
                     return HandleNotFound("Пользователь не найден");
+
+                // Если пользователь - капитан команды, очищаем GitHub репозиторий команды
+                if (user.RoleId == (int)Roles.Captain && user.TeamId.HasValue)
+                {
+                    var team = await _context.Teams.FindAsync(user.TeamId.Value);
+                    if (team != null)
+                    {
+                        team.GitRepoName = null;
+                    }
+                }
 
                 user.GitHubUsername = null;
                 user.GitHubAccessToken = null;
                 user.GitHubAvatarUrl = null;
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 return HandleSuccess("GitHub аккаунт отвязан");
             }
-            catch (DbUpdateException ex)
-            {
-                return HandleError("Ошибка базы данных при отвязке GitHub аккаунта");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return HandleUnauthorized("Пользователь не найден");
-            }
             catch (Exception ex)
             {
-                return HandleError("Внутренняя ошибка сервера при отвязке GitHub аккаунта");
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка при отвязке GitHub аккаунта: {ex.Message}");
             }
         }
 
@@ -249,15 +377,19 @@ namespace HackathonCoordinator.WebAPI.Controllers
             try
             {
                 var userId = GetUserId();
-                var user = await _context.Users.FindAsync(userId);
+                var currentUser = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != 3)
-                    return HandleForbidden<List<UserDto>>("Только организатор может просматривать данные всех участников");
+                if (currentUser == null)
+                    return HandleUnauthorized<List<UserDto>>("Пользователь не найден");
+
+                if (currentUser.RoleId != (int)Roles.Organizer && currentUser.RoleId != (int)Roles.Admin)
+                    return HandleForbidden<List<UserDto>>("Недостаточно прав для просмотра всех пользователей");
 
                 var users = await _context.Users
                     .Include(u => u.Role)
                     .Include(u => u.Team)
                     .Include(u => u.ProfileIcon)
+                    .Include(u => u.Position)
                     .OrderBy(u => u.Username)
                     .ToListAsync();
 
@@ -268,6 +400,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                     Email = u.Email,
                     RoleId = u.RoleId,
                     RoleName = u.Role.Name,
+                    PositionId = u.PositionId,
+                    PositionName = u.Position.Name,
                     TeamId = u.TeamId,
                     TeamName = u.Team?.Name,
                     GitHubUsername = u.GitHubUsername,
@@ -290,16 +424,161 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Назначить пользователя организатором (только для администратора)
+        /// </summary>
+        [HttpPost("{userId}/make-organizer")]
+        public async Task<ActionResult<ApiResponse>> MakeOrganizer(int userId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var currentUserId = GetUserId();
+                var currentUser = await _context.Users.FindAsync(currentUserId);
+
+                if (currentUser?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Только администратор может назначать организаторов");
+
+                var user = await _context.Users
+                    .Include(u => u.Team)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (user == null)
+                    return HandleNotFound("Пользователь не найден");
+
+                if (user.RoleId == (int)Roles.Admin)
+                    return HandleError("Нельзя изменить роль администратора");
+
+                if (user.RoleId == (int)Roles.Organizer)
+                    return HandleError("Пользователь уже является организатором");
+
+                // Сохраняем старую роль для уведомления
+                string oldRole = user.RoleId switch
+                {
+                    (int)Roles.Member => "Участник",
+                    (int)Roles.Captain => "Капитан",
+                    _ => "Пользователь"
+                };
+
+                string oldTeamName = null;
+
+                // Если пользователь был капитаном команды, нужно очистить GitHub репозиторий команды
+                if (user.RoleId == (int)Roles.Captain && user.TeamId.HasValue)
+                {
+                    var team = await _context.Teams.FindAsync(user.TeamId.Value);
+                    if (team != null)
+                    {
+                        oldTeamName = team.Name;
+                        team.GitRepoName = null;
+                    }
+
+                    // Очищаем связь пользователя с командой
+                    user.TeamId = null;
+                }
+
+                user.RoleId = (int)Roles.Organizer;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var error = "";
+
+                // Отправляем уведомление об изменении роли
+                try
+                {
+                    await _notificationHelper.NotifyRoleChanged(
+                        userId,
+                        oldRole,
+                        "Организатор",
+                        currentUser.Username);
+                }
+                catch (Exception ex)
+                {
+                    error = $"\n!Ошибка отправки уведомления!";
+                }
+
+                var message = $"Пользователь {user.Username} назначен организатором";
+                if (!string.IsNullOrEmpty(oldTeamName))
+                {
+                    message += $"\nПользователь был откреплен от команды \"{oldTeamName}\"";
+                }
+
+                return HandleSuccess(message + error);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка при назначении организатора: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Снять права организатора
+        /// </summary>
+        [HttpPost("{userId}/remove-organizer")]
+        public async Task<ActionResult<ApiResponse>> RemoveOrganizer(int userId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var currentUserId = GetUserId();
+                var currentUser = await _context.Users.FindAsync(currentUserId);
+
+                if (currentUser?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden("Только администратор может снимать права организатора");
+
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    return HandleNotFound("Пользователь не найден");
+
+                if (user.RoleId != (int)Roles.Organizer)
+                    return HandleError("Пользователь не является организатором");
+
+                user.RoleId = (int)Roles.Member;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Отправляем уведомление об изменении роли
+                try
+                {
+                    await _notificationHelper.NotifyRoleChanged(
+                        userId,
+                        "Организатор",
+                        "Участник",
+                        currentUser.Username);
+                }
+                catch (Exception ex)
+                {
+                    // Уведомление не отправилось, но основная операция выполнена
+                }
+
+                return HandleSuccess($"Права организатора сняты с пользователя {user.Username}");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка при снятии прав организатора: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Удалить пользователя
+        /// </summary>
         [HttpDelete("{memberId}")]
         public async Task<ActionResult<ApiResponse>> DeleteUser(int memberId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var userId = GetUserId();
-                var user = await _context.Users.FindAsync(userId);
+                var currentUser = await _context.Users
+                    .Include(u => u.Team)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
 
-                if (user?.RoleId != 3)
-                    return HandleForbidden("Только организатор может удалять участников");
+                if (currentUser == null)
+                    return HandleUnauthorized("Пользователь не найден");
 
                 var member = await _context.Users
                     .Include(u => u.Team)
@@ -308,43 +587,94 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 if (member == null)
                     return HandleNotFound("Пользователь не найден");
 
-                if (member.RoleId == 3)
-                    return HandleError("Нельзя удалить организатора");
+                // Проверка прав на удаление
+                bool canDelete = false;
 
-                using var transaction = await _context.Database.BeginTransactionAsync();
-
-                try
+                if (currentUser.RoleId == (int)Roles.Admin)
                 {
-                    // Если пользователь - капитан
-                    if (member.RoleId == (int)Roles.Captain && member.TeamId.HasValue)
+                    if (member.RoleId == (int)Roles.Admin)
+                        return HandleError("Нельзя удалить администратора");
+                    canDelete = true;
+                }
+                else if (currentUser.RoleId == (int)Roles.Organizer)
+                {
+                    canDelete = member.RoleId == (int)Roles.Member;
+                    if (!canDelete)
+                        return HandleError("Организатор может удалять только обычных участников");
+                }
+                else
+                {
+                    return HandleForbidden("Недостаточно прав для удаления пользователя");
+                }
+
+                // Если пользователь - капитан, очищаем GitHub репозиторий команды
+                if (member.RoleId == (int)Roles.Captain && member.TeamId.HasValue)
+                {
+                    var team = await _context.Teams.FindAsync(member.TeamId.Value);
+                    if (team != null)
                     {
-                        member.Team.GitRepoName = null; // Сбрасываем GitHub репозиторий
+                        team.GitRepoName = null;
                     }
+                }
 
-                    _context.Users.Remove(member);
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
+                _context.Users.Remove(member);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                    return HandleSuccess("Пользователь успешно удален");
-                }
-                catch (DbUpdateException ex)
-                {
-                    await transaction.RollbackAsync();
-                    return HandleError("Ошибка базы данных при удалении пользователя");
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    return HandleError("Ошибка при удалении пользователя");
-                }
-            }
-            catch (InvalidOperationException ex)
-            {
-                return HandleUnauthorized("Пользователь не найден");
+                return HandleSuccess("Пользователь успешно удален");
             }
             catch (Exception ex)
             {
-                return HandleError("Внутренняя ошибка сервера при удалении пользователя");
+                await transaction.RollbackAsync();
+                return HandleError($"Ошибка при удалении пользователя: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить пользователя по ID (для просмотра профиля)
+        /// </summary>
+        [HttpGet("{userId}")]
+        public async Task<ActionResult<ApiResponse<UserDto>>> GetUserById(int userId)
+        {
+            try
+            {
+                var currentUserId = GetUserId();
+                var currentUser = await _context.Users.FindAsync(currentUserId);
+
+                if (currentUser == null)
+                    return HandleUnauthorized<UserDto>("Пользователь не авторизован");
+
+                var user = await _context.Users
+                    .Where(u => u.Id == userId)
+                    .Include(u => u.Role)
+                    .Include(u => u.Team)
+                    .Include(u => u.ProfileIcon)
+                    .Include(u => u.Position)
+                    .Select(u => new UserDto
+                    {
+                        Id = u.Id,
+                        Username = u.Username,
+                        Email = u.Email,
+                        RoleId = u.RoleId,
+                        RoleName = u.Role.Name,
+                        PositionId = u.PositionId,
+                        PositionName = u.Position != null ? u.Position.Name : null,
+                        TeamId = u.TeamId,
+                        TeamName = u.Team != null ? u.Team.Name : null,
+                        GitHubUsername = u.GitHubUsername,
+                        IconId = u.ProfileIconId,
+                        IconName = u.ProfileIcon != null ? u.ProfileIcon.Name : null
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (user == null)
+                    return HandleNotFound<UserDto>("Пользователь не найден");
+
+                return HandleResult(user);
+            }
+            catch (Exception ex)
+            {
+                return HandleError<UserDto>($"Ошибка при получении пользователя: {ex.Message}");
             }
         }
     }

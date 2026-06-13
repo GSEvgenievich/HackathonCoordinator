@@ -17,11 +17,15 @@ public partial class Team
 
     public string? GitRepoName { get; set; }
 
-    public int ChatId { get; set; }
+    public int? ChatId { get; set; }
 
-    public virtual Chat Chat { get; set; } = null!;
+    public virtual Chat? Chat { get; set; }
 
     public virtual Competition Competition { get; set; } = null!;
+
+    public virtual ICollection<FinalTeamMember> FinalTeamMembers { get; set; } = new List<FinalTeamMember>();
+
+    public virtual ICollection<Result> Results { get; set; } = new List<Result>();
 
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 

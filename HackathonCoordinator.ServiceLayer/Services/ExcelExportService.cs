@@ -1,6 +1,5 @@
 ﻿using ClosedXML.Excel;
 using HackathonCoordinator.ServiceLayer.DTOs;
-using System.Windows;
 
 namespace HackathonCoordinator.ServiceLayer.Services
 {
@@ -19,216 +18,237 @@ namespace HackathonCoordinator.ServiceLayer.Services
                 {
                     using (var workbook = new XLWorkbook())
                     {
-                        // Лист с общей информацией
                         CreateSummarySheet(workbook, exportData);
-
-                        // Лист с командами
                         CreateTeamsSheet(workbook, exportData);
-
-                        // Лист с задачами
                         CreateTasksSheet(workbook, exportData);
-
-                        // Лист со статистикой
-                        CreateStatisticsSheet(workbook, exportData);
+                        CreateResultsSheet(workbook, exportData);
 
                         workbook.SaveAs(filePath);
                     }
-
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    // Для ServiceLayer используем Console.WriteLine вместо MessageBox
                     Console.WriteLine($"Ошибка при создании Excel файла: {ex.Message}");
                     return false;
                 }
             });
         }
 
+        #region Вспомогательные методы
+
+        private void SetTitle(IXLRange range, string title, XLColor backgroundColor)
+        {
+            range.Merge().Value = title;
+            range.Style.Font.Bold = true;
+            range.Style.Fill.BackgroundColor = backgroundColor;
+            range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        }
+
+        private void SetHeaders(IXLRange range, string[] headers, XLColor backgroundColor)
+        {
+            for (int i = 0; i < headers.Length; i++)
+            {
+                range.Cell(1, i + 1).Value = headers[i];
+                range.Cell(1, i + 1).Style.Font.Bold = true;
+                range.Cell(1, i + 1).Style.Fill.BackgroundColor = backgroundColor;
+                range.Cell(1, i + 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            }
+        }
+
+        private void ApplyTableStyle(IXLRange range)
+        {
+            range.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+            range.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        }
+
+        #endregion
+
         private void CreateSummarySheet(XLWorkbook workbook, CompetitionExportDataDto exportData)
         {
-            var worksheet = workbook.Worksheets.Add("Общая информация");
+            var ws = workbook.Worksheets.Add("Общая информация");
+            var titleRange = ws.Range(1, 1, 1, 2);
+            SetTitle(titleRange, "ДАННЫЕ СОРЕВНОВАНИЯ", XLColor.FromArgb(173, 216, 230));
 
-            // Заголовок
-            worksheet.Cell(1, 1).Value = "ДАННЫЕ СОРЕВНОВАНИЯ";
-            worksheet.Range(1, 1, 1, 2).Merge().Style.Font.Bold = true;
-            worksheet.Range(1, 1, 1, 2).Style.Fill.BackgroundColor = XLColor.FromArgb(173, 216, 230); // LightBlue
-            worksheet.Range(1, 1, 1, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            var info = new (string label, object value)[]
+            {
+                ("Название:", exportData.Competition.Name),
+                ("Описание:", exportData.Competition.Description),
+                ("Дата начала:", exportData.Competition.StartDate.ToString("dd.MM.yyyy HH:mm")),
+                ("Дата окончания:", exportData.Competition.EndDate.ToString("dd.MM.yyyy HH:mm")),
+                ("Организатор:", exportData.Competition.CreatedByUsername),
+                ("Всего команд:", exportData.Teams.Count),
+                ("Всего участников:", exportData.Stats.TotalParticipants),
+                ("Всего задач:", exportData.Stats.TotalTasks),
+                ("Выполнено задач:", exportData.Stats.TotalCompletedTasks),
+                ("Общий прогресс:", $"{exportData.Stats.TotalCompletionPercentage}%")
+            };
 
-            // Основная информация
-            worksheet.Cell(3, 1).Value = "Название:";
-            worksheet.Cell(3, 2).Value = exportData.Competition.Name;
-            worksheet.Cell(4, 1).Value = "Описание:";
-            worksheet.Cell(4, 2).Value = exportData.Competition.Description;
-            worksheet.Cell(5, 1).Value = "Дата начала:";
-            worksheet.Cell(5, 2).Value = exportData.Competition.StartDate.ToString("dd.MM.yyyy HH:mm");
-            worksheet.Cell(6, 1).Value = "Дата окончания:";
-            worksheet.Cell(6, 2).Value = exportData.Competition.EndDate.ToString("dd.MM.yyyy HH:mm");
-            worksheet.Cell(7, 1).Value = "Организатор:";
-            worksheet.Cell(7, 2).Value = exportData.Competition.CreatedByUsername;
+            for (int i = 0; i < info.Length; i++)
+            {
+                ws.Cell(i + 2, 1).Value = info[i].label;
+                ws.Cell(i + 2, 1).Style.Font.Bold = true;
+                ws.Cell(i + 2, 2).Value = info[i].value.ToString();
+            }
 
-            // Статистика
-            worksheet.Cell(9, 1).Value = "ОБЩАЯ СТАТИСТИКА";
-            worksheet.Range(9, 1, 9, 4).Merge().Style.Font.Bold = true;
-
-            worksheet.Cell(10, 1).Value = "Всего команд:";
-            worksheet.Cell(10, 2).Value = exportData.Teams.Count;
-            worksheet.Cell(11, 1).Value = "Всего участников:";
-            worksheet.Cell(11, 2).Value = exportData.Stats.TotalParticipants;
-            worksheet.Cell(12, 1).Value = "Всего задач:";
-            worksheet.Cell(12, 2).Value = exportData.Stats.TotalTasks;
-            worksheet.Cell(13, 1).Value = "Выполнено задач:";
-            worksheet.Cell(13, 2).Value = exportData.Stats.TotalCompletedTasks;
-            worksheet.Cell(14, 1).Value = "Общий прогресс:";
-            worksheet.Cell(14, 2).Value = $"{exportData.Stats.TotalCompletionPercentage}%";
-
-            // Настройка стилей
-            worksheet.Columns().AdjustToContents();
-            worksheet.Range(3, 1, 7, 2).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            worksheet.Range(10, 1, 14, 2).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            var dataRange = ws.Range(1, 1, info.Length + 1, 2);
+            ApplyTableStyle(dataRange);
+            ws.Range(2, 1, info.Length + 1, 1).Style.Fill.BackgroundColor = XLColor.FromArgb(211, 235, 241);
+            ws.Range(2, 1, info.Length + 1, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left; 
+            ws.Columns().AdjustToContents();
         }
 
         private void CreateTeamsSheet(XLWorkbook workbook, CompetitionExportDataDto exportData)
         {
-            var worksheet = workbook.Worksheets.Add("Команды");
+            var ws = workbook.Worksheets.Add("Команды");
+            var titleRange = ws.Range(1, 1, 1, 6);
+            SetTitle(titleRange, "СПИСОК КОМАНД", XLColor.FromArgb(144, 238, 144));
 
-            // Заголовок
-            worksheet.Cell(1, 1).Value = "СПИСОК КОМАНД";
-            worksheet.Range(1, 1, 1, 6).Merge().Style.Font.Bold = true;
-            worksheet.Range(1, 1, 1, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(144, 238, 144); // LightGreen
-            worksheet.Range(1, 1, 1, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            // Заголовки таблицы
             var headers = new[] { "Команда", "Дата создания", "Участников", "Всего задач", "Выполнено", "Прогресс" };
-            for (int i = 0; i < headers.Length; i++)
-            {
-                worksheet.Cell(3, i + 1).Value = headers[i];
-                worksheet.Cell(3, i + 1).Style.Font.Bold = true;
-                worksheet.Cell(3, i + 1).Style.Fill.BackgroundColor = XLColor.FromArgb(211, 211, 211); // LightGray
-            }
+            SetHeaders(ws.Range(2, 1, 2, 6), headers, XLColor.FromArgb(219, 249, 219));
 
-            // Данные команд
-            int row = 4;
+            int row = 3;
             foreach (var team in exportData.Teams.OrderBy(t => t.Name))
             {
-                worksheet.Cell(row, 1).Value = team.Name;
-                worksheet.Cell(row, 2).Value = team.CreatedAt.ToString("dd.MM.yyyy HH:mm");
-                worksheet.Cell(row, 3).Value = team.Members.Count;
-                worksheet.Cell(row, 4).Value = team.TeamStats.TotalTasks;
-                worksheet.Cell(row, 5).Value = team.TeamStats.CompletedTasks;
-                worksheet.Cell(row, 6).Value = $"{team.TeamStats.CompletionPercentage}%";
+                ws.Cell(row, 1).Value = team.Name;
+                ws.Cell(row, 2).Value = team.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+                ws.Cell(row, 3).Value = team.Members.Count;
+                ws.Cell(row, 4).Value = team.TeamStats.TotalTasks;
+                ws.Cell(row, 5).Value = team.TeamStats.CompletedTasks;
+                ws.Cell(row, 6).Value = $"{team.TeamStats.CompletionPercentage}%";
 
-                // Подсветка прогресса
-                if (team.TeamStats.CompletionPercentage >= 80)
-                    worksheet.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(144, 238, 144); // LightGreen
-                else if (team.TeamStats.CompletionPercentage >= 50)
-                    worksheet.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 255, 153); // LightYellow
+                var progress = team.TeamStats.CompletionPercentage;
+                if (progress >= 80)
+                    ws.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(144, 238, 144);
+                else if (progress >= 50)
+                    ws.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 255, 153);
                 else
-                    worksheet.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(240, 128, 128); // LightCoral
+                    ws.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(240, 128, 128);
 
                 row++;
             }
 
-            // Настройка таблицы
-            var tableRange = worksheet.Range(3, 1, row - 1, 6);
-            tableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
-            tableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-            worksheet.Columns().AdjustToContents();
+            var tableRange = ws.Range(1, 1, row - 1, 6);
+            ApplyTableStyle(tableRange);
+            ws.Columns().AdjustToContents();
         }
 
         private void CreateTasksSheet(XLWorkbook workbook, CompetitionExportDataDto exportData)
         {
-            var worksheet = workbook.Worksheets.Add("Задачи");
+            var ws = workbook.Worksheets.Add("Задачи");
+            var titleRange = ws.Range(1, 1, 1, 7);
+            SetTitle(titleRange, "ВСЕ ЗАДАЧИ КОМАНД", XLColor.FromArgb(255, 185, 121));
 
-            // Заголовок
-            worksheet.Cell(1, 1).Value = "ВСЕ ЗАДАЧИ КОМАНД";
-            worksheet.Range(1, 1, 1, 7).Merge().Style.Font.Bold = true;
-            worksheet.Range(1, 1, 1, 7).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 218, 185); // LightOrange (PeachPuff)
-            worksheet.Range(1, 1, 1, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-            // Заголовки таблицы
             var headers = new[] { "Команда", "Задача", "Тип", "Статус", "Исполнитель", "Дедлайн", "Создана" };
-            for (int i = 0; i < headers.Length; i++)
-            {
-                worksheet.Cell(3, i + 1).Value = headers[i];
-                worksheet.Cell(3, i + 1).Style.Font.Bold = true;
-                worksheet.Cell(3, i + 1).Style.Fill.BackgroundColor = XLColor.FromArgb(211, 211, 211); // LightGray
-            }
+            SetHeaders(ws.Range(2, 1, 2, 7), headers, XLColor.FromArgb(255, 220, 189));
 
-            // Данные задач
-            int row = 4;
+            int row = 3;
             foreach (var team in exportData.Teams.OrderBy(t => t.Name))
             {
                 foreach (var task in team.Tasks.OrderBy(t => t.Status).ThenBy(t => t.Title))
                 {
-                    worksheet.Cell(row, 1).Value = team.Name;
-                    worksheet.Cell(row, 2).Value = task.Title;
-                    worksheet.Cell(row, 3).Value = task.Type;
-                    worksheet.Cell(row, 4).Value = task.Status;
-                    worksheet.Cell(row, 5).Value = task.AssignedTo ?? "Не назначена";
-                    worksheet.Cell(row, 6).Value = task.Deadline?.ToString("dd.MM.yyyy") ?? "-";
-                    worksheet.Cell(row, 7).Value = task.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+                    ws.Cell(row, 1).Value = team.Name;
+                    ws.Cell(row, 2).Value = task.Title;
+                    ws.Cell(row, 3).Value = task.Type;
+                    ws.Cell(row, 4).Value = task.Status;
+                    ws.Cell(row, 5).Value = task.AssignedTo ?? "Не назначена";
+                    ws.Cell(row, 6).Value = task.Deadline?.ToString("dd.MM.yyyy") ?? "-";
+                    ws.Cell(row, 7).Value = task.CreatedAt.ToString("dd.MM.yyyy HH:mm");
 
-                    // Подсветка статусов
                     switch (task.Status.ToLower())
                     {
                         case "завершена":
-                            worksheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(144, 238, 144); // LightGreen
+                            ws.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(144, 238, 144);
                             break;
                         case "в процессе":
                         case "на проверке":
-                            worksheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 255, 153); // LightYellow
+                            ws.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 255, 153);
                             break;
                         case "отменена":
-                            worksheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(240, 128, 128); // LightCoral
+                            ws.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(240, 128, 128);
                             break;
                     }
-
                     row++;
                 }
             }
 
-            // Настройка таблицы
-            var tableRange = worksheet.Range(3, 1, row - 1, 7);
-            tableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
-            tableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-            worksheet.Columns().AdjustToContents();
+            var tableRange = ws.Range(1, 1, row - 1, 7);
+            ApplyTableStyle(tableRange);
+            ws.Columns().AdjustToContents();
         }
 
-        private void CreateStatisticsSheet(XLWorkbook workbook, CompetitionExportDataDto exportData)
+        private void CreateResultsSheet(XLWorkbook workbook, CompetitionExportDataDto exportData)
         {
-            var worksheet = workbook.Worksheets.Add("Статистика");
+            var ws = workbook.Worksheets.Add("Результаты");
+            var titleRange = ws.Range(1, 1, 1, 4);
+            SetTitle(titleRange, "РЕЗУЛЬТАТЫ СОРЕВНОВАНИЯ", XLColor.FromArgb(255, 215, 0));
 
-            // Заголовок
-            worksheet.Cell(1, 1).Value = "ДЕТАЛЬНАЯ СТАТИСТИКА";
-            worksheet.Range(1, 1, 1, 6).Merge().Style.Font.Bold = true;
-            worksheet.Range(1, 1, 1, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(216, 191, 216); // LightPurple (Thistle)
-            worksheet.Range(1, 1, 1, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            int row = 2;
+            var infoColor = XLColor.FromArgb(255, 230, 105);
 
-            // Статистика по командам
-            worksheet.Cell(3, 1).Value = "СТАТИСТИКА ПО КОМАНДАМ";
-            worksheet.Range(3, 1, 3, 6).Merge().Style.Font.Bold = true;
-
-            int row = 4;
-            foreach (var team in exportData.Teams.OrderByDescending(t => t.TeamStats.CompletionPercentage))
+            if (exportData.Competition.ResultsCreatedByUsername != null)
             {
-                worksheet.Cell(row, 1).Value = team.Name;
-                worksheet.Cell(row, 2).Value = $"Участников: {team.Members.Count}";
-                worksheet.Cell(row, 3).Value = $"Капитан: {team.Members.FirstOrDefault(m => m.IsCaptain)?.Username ?? "Не назначен"}";
-                worksheet.Cell(row, 4).Value = $"Задач: {team.TeamStats.TotalTasks}";
-                worksheet.Cell(row, 5).Value = $"Выполнено: {team.TeamStats.CompletedTasks}";
-                worksheet.Cell(row, 6).Value = $"Прогресс: {team.TeamStats.CompletionPercentage}%";
-
-                // Прогресс-бар в виде текста
-                var progressBar = new string('█', team.TeamStats.CompletionPercentage / 10) +
-                                new string('░', 10 - team.TeamStats.CompletionPercentage / 10);
-                worksheet.Cell(row + 1, 1).Value = progressBar;
-                worksheet.Range(row + 1, 1, row + 1, 6).Merge();
-
-                row += 2;
+                var range = ws.Range(row, 1, row, 4);
+                range.Merge().Value = $"Результаты подведены: {exportData.Competition.ResultsCreatedByUsername} ({exportData.Competition.ResultsCreatedAt?.ToString("dd.MM.yyyy HH:mm")})";
+                range.Style.Font.Bold = true;
+                range.Style.Fill.BackgroundColor = infoColor;
+                range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                row++;
             }
 
-            worksheet.Columns().AdjustToContents();
+            if (exportData.Competition.ResultsUpdatedByUsername != null)
+            {
+                var range = ws.Range(row, 1, row, 4);
+                range.Merge().Value = $"Результаты обновлены: {exportData.Competition.ResultsUpdatedByUsername} ({exportData.Competition.ResultsUpdatedAt?.ToString("dd.MM.yyyy HH:mm")})";
+                range.Style.Font.Bold = true;
+                range.Style.Fill.BackgroundColor = infoColor;
+                range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+                range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                row++;
+            }
+
+            var startRow = row;
+
+            // Заголовки таблицы
+            var resultHeaders = new[] { "Место", "Команда", "Участников", "Комментарий" };
+            for (int i = 0; i < resultHeaders.Length; i++)
+            {
+                ws.Cell(row, i + 1).Value = resultHeaders[i];
+                ws.Cell(row, i + 1).Style.Font.Bold = true;
+                ws.Cell(row, i + 1).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 242, 179);
+                ws.Cell(row, i + 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            }
+            row++;
+
+            if (exportData.Results != null && exportData.Results.Any())
+            {
+                foreach (var result in exportData.Results.OrderBy(r => r.Place))
+                {
+                    ws.Cell(row, 1).Value = result.Place;
+                    ws.Cell(row, 2).Value = result.TeamName;
+                    ws.Cell(row, 3).Value = result.MembersCount;
+                    ws.Cell(row, 4).Value = result.Comment ?? "—";
+                    row++;
+                }
+            }
+            else
+            {
+                ws.Cell(row, 1).Value = "Результаты еще не подведены";
+                ws.Range(row, 1, row, 4).Merge();
+                ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                row++;
+            }
+
+            var tableRange = ws.Range(startRow, 1, row - 1, 4);
+            tableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            tableRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            tableRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            ws.Range(1, 1, row - 1, 4).Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+            ws.Columns().AdjustToContents();
         }
     }
 }

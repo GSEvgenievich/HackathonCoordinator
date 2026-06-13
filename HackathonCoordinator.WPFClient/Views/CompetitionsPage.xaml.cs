@@ -9,17 +9,24 @@ namespace HackathonCoordinator.WPFClient.Views
         public CompetitionsPage()
         {
             InitializeComponent();
+            Loaded += OnPageLoaded;
+        }
+
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is CompetitionsViewModel viewModel)
+            {
+                viewModel.doDispose = true;
+                await viewModel.InitializeAsync();
+            }
         }
 
         private void Page_Unloaded(object sender, RoutedEventArgs e)
         {
-            // Освобождение ресурсов при уходе со страницы
             if (DataContext is CompetitionsViewModel viewModel)
             {
-                // Очистка коллекций для освобождения памяти
-                viewModel.Competitions?.Clear();
-                viewModel.FilteredCompetitions?.Clear();
-                viewModel.StatusFilters?.Clear();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
     }

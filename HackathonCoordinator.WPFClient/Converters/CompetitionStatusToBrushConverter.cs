@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Media;
 
@@ -17,9 +13,10 @@ namespace HackathonCoordinator.WPFClient.Converters
             {
                 return statusColor switch
                 {
-                    "Green" => new SolidColorBrush(Color.FromRgb(40, 167, 69)),
-                    "Orange" => new SolidColorBrush(Color.FromRgb(255, 193, 7)),
-                    "Gray" => new SolidColorBrush(Color.FromRgb(108, 117, 125)),
+                    "Green" => new SolidColorBrush(Color.FromRgb(40, 167, 69)),   // Зеленый - активно
+                    "Orange" => new SolidColorBrush(Color.FromRgb(255, 193, 7)),  // Оранжевый - ожидается
+                    "Gray" => new SolidColorBrush(Color.FromRgb(108, 117, 125)),  // Серый - завершено
+                    "Archive" => new SolidColorBrush(Color.FromRgb(106, 90, 205)), // Сине-фиолетовый - в архиве
                     _ => new SolidColorBrush(Color.FromRgb(108, 117, 125))
                 };
             }

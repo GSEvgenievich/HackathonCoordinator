@@ -1,33 +1,29 @@
-﻿using HackathonCoordinator.WPFClient.ViewModels;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.WPFClient.ViewModels;
 using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows;
 
 namespace HackathonCoordinator.WPFClient.Views
 {
     public partial class TeamPage : Page
     {
-        private int? TeamId { get; set; } = null;
+        private readonly TeamDto _team;
 
-        public TeamPage(int? teamId)
+        public TeamPage(TeamDto team)
         {
             InitializeComponent();
-            TeamId = teamId;
+            _team = team;
             Loaded += OnPageLoaded;
         }
-
-        public TeamPage()
-        {
-            InitializeComponent();
-            Loaded += OnPageLoaded;
-        }
-
+         
         private async void OnPageLoaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is TeamViewModel viewModel)
             {
-                await viewModel.LoadTeamDataAsync(TeamId);
+                viewModel.doDispose = true;
+                await viewModel.InitializeAsync(_team);
             }
         }
 
@@ -35,7 +31,8 @@ namespace HackathonCoordinator.WPFClient.Views
         {
             if (DataContext is TeamViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
 

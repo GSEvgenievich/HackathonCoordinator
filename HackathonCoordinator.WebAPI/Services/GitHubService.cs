@@ -198,6 +198,70 @@ namespace HackathonCoordinator.WebAPI.Services
         }
 
         /// <summary>
+        /// Добавить collaborator в репозиторий
+        /// </summary>
+        public async Task<GitHubCollaboratorResult> AddCollaboratorAsync(
+            string accessToken,
+            string owner,
+            string repoName,
+            string collaboratorUsername,
+            string permission = "push")
+        {
+            using var httpClient = CreateAuthenticatedClient(accessToken);
+
+            var data = new
+            {
+                permission = permission  // push, pull, admin, maintain, triage
+            };
+
+            var json = JsonSerializer.Serialize(data);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = await httpClient.PutAsync(
+                    $"repos/{owner}/{repoName}/collaborators/{collaboratorUsername}",
+                    content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return new GitHubCollaboratorResult
+                    {
+                        Success = true,
+                        Message = $"Пользователь {collaboratorUsername} добавлен в collaborators"
+                    };
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                // Если пользователь уже collaborator
+                if (response.StatusCode == HttpStatusCode.NoContent)
+                {
+                    return new GitHubCollaboratorResult
+                    {
+                        Success = true,
+                        Message = $"Пользователь {collaboratorUsername} уже имеет доступ"
+                    };
+                }
+
+                return new GitHubCollaboratorResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Ошибка добавления collaborator: {responseContent}"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка добавления collaborator {Username}", collaboratorUsername);
+                return new GitHubCollaboratorResult
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message
+                };
+            }
+        }
+
+        /// <summary>
         /// Проверка существования репозитория
         /// </summary>
         public async Task<bool> RepositoryExistsAsync(string accessToken, string owner, string repoName)
@@ -395,6 +459,24 @@ namespace HackathonCoordinator.WebAPI.Services
         {
             return !string.IsNullOrWhiteSpace(repoName) &&
                    System.Text.RegularExpressions.Regex.IsMatch(repoName, @"^[a-zA-Z0-9._-]+$");
+        }
+
+        /// <summary>
+        /// Проверить, является ли пользователь collaborator
+        /// </summary>
+        public async Task<bool> IsCollaboratorAsync(string accessToken, string owner, string repoName, string username)
+        {
+            using var httpClient = CreateAuthenticatedClient(accessToken);
+
+            try
+            {
+                var response = await httpClient.GetAsync($"repos/{owner}/{repoName}/collaborators/{username}");
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>

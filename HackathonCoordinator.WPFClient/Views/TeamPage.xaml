@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
       xmlns:behaviors="clr-namespace:HackathonCoordinator.WPFClient.Behaviors"
+      xmlns:uc="clr-namespace:HackathonCoordinator.WPFClient.UserControls"
       Title="Команда"
       Unloaded="Page_Unloaded">
 
@@ -18,88 +19,155 @@
                     <StackPanel>
                         <!-- Заголовок и навигация -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <Button Content="← Назад" 
+                            <Button Content="← Назад"
+                                    IsCancel="True" 
                                     Command="{Binding BackCommand}"
+                                    Visibility="{Binding CanGoBack, Converter={StaticResource BoolToVisibilityConverter}}"
                                     Style="{StaticResource NavigationButton}"
                                     Margin="0,0,20,0"/>
 
                             <StackPanel>
                                 <TextBlock Text="{Binding TeamName}" 
-                                       Style="{StaticResource PageHeaderStyle}"/>
-                                <TextBlock Text="Управление проектом и задачами команды"
-                                       Style="{StaticResource PageSubtitleStyle}"/>
+                                           Style="{StaticResource PageHeaderStyle}"/>
+                                <TextBlock Text="{Binding PageSubtitle}"
+                                           Style="{StaticResource PageSubtitleStyle}"/>
                             </StackPanel>
+
+                            <!-- Бейдж статуса -->
+                            <Border Background="{Binding CompetitionStatusColor, Converter={StaticResource CompetitionStatusToBrushConverter}}"
+                                    CornerRadius="12"
+                                    Padding="10,5"
+                                    Margin="20,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding IsArchived, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding CompetitionStatusText}"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="White"/>
+                            </Border>
                         </StackPanel>
 
+                        <!-- Баннер архива -->
+                        <Border Background="{DynamicResource DangerBrush}"
+                                CornerRadius="8"
+                                Padding="12,8"
+                                Margin="0,10,0,0"
+                                Visibility="{Binding IsArchived, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="📦 " FontSize="16" Foreground="White"/>
+                                <TextBlock Text="Соревнование находится в архиве. Редактирование недоступно."
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="White"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Статистика команды -->
-                        <Border Style="{StaticResource StatsContainerStyle}">
+                        <Border Style="{StaticResource StatsContainerStyle}" Margin="0,10,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition MaxWidth="400"/>
+                                    <ColumnDefinition MinWidth="420"/>
                                 </Grid.ColumnDefinitions>
 
                                 <!-- GitHub репозиторий -->
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="🔗 GitHub репозиторий"
                                               Style="{StaticResource StatsLabelStyle}"/>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBox Text="{Binding GitHubRepoUrl, FallbackValue='Не подключен', Mode=OneWay}"
-                                                 Style="{StaticResource ReadingTextBox}"
-                                                 Width="200"
-                                                 VerticalAlignment="Center"
-                                                 IsReadOnly="True"/>
-                                        <Button Content="{Binding GitHubButtonText}"
+                                    <DockPanel VerticalAlignment="Center">
+                                        <Button Content="{Binding GitHubButtonText}" DockPanel.Dock="Right"
                                                 Command="{Binding GitHubCommand}"
                                                 Style="{StaticResource SecondaryButton}"
-                                                Margin="10,0,0,0"
                                                 Padding="8,4"
                                                 Visibility="{Binding IsGitHubButtonVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <TextBox Text="{Binding GitHubRepoUrl, FallbackValue='Не подключен', Mode=OneWay}"
+                                                 Style="{StaticResource ReadingTextBox}"
+                                                 Margin="0 0 10 0"
+                                                 VerticalAlignment="Center"
+                                                 IsReadOnly="True"/>
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <Grid Grid.Column="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Разделитель -->
+                                    <Rectangle Grid.Column="0" Margin="5 0" Style="{StaticResource VerticalDividerStyle}"/>
+
+                                    <!-- Место (если результаты подведены) -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="🏆 МЕСТО"
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsHeaderStyle}"/>
+                                        <TextBlock Text="{Binding PlaceDisplay}"
+                                                   Style="{StaticResource StatsValueStyle}"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="{Binding PlaceBrush}"/>
                                     </StackPanel>
-                                </StackPanel>
 
-                                <!-- Разделитель -->
-                                <Rectangle Grid.Column="1" Style="{StaticResource VerticalDividerStyle}"/>
+                                    <!-- Разделитель -->
+                                    <Rectangle Grid.Column="2" Margin="5 0" Style="{StaticResource VerticalDividerStyle}"/>
+                                
+                                    <!-- Задачи (только если не в архиве) -->
+                                    <StackPanel Grid.Column="3" VerticalAlignment="Center"
+                                                Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        <TextBlock Text="📋 ЗАДАЧИ" 
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsHeaderStyle}"/>
+                                        <TextBlock Text="{Binding TotalTasksCount, StringFormat='Всего: {0}'}"
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsValueStyle}"/>
+                                    </StackPanel>
 
-                                <!-- Задачи -->
-                                <StackPanel Grid.Column="2" Margin="15,0,0,0">
-                                    <TextBlock Text="📋 ЗАДАЧИ"
-                                           Style="{StaticResource StatsHeaderStyle}"/>
-                                    <TextBlock Text="{Binding TotalTasksCount, StringFormat='Всего: {0}'}"
-                                           Style="{StaticResource StatsValueStyle}"/>
-                                </StackPanel>
+                                    <!-- Разделитель -->
+                                    <Rectangle Grid.Column="4" Style="{StaticResource VerticalDividerStyle}" Margin="5 0"
+                                              Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
 
-                                <!-- Разделитель -->
-                                <Rectangle Grid.Column="3" Style="{StaticResource VerticalDividerStyle}"/>
+                                    <!-- Прогресс (только если не в архиве) -->
+                                    <StackPanel Grid.Column="5" VerticalAlignment="Center"
+                                                Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        <TextBlock Text="✅ ВЫПОЛНЕНО"
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsHeaderStyle}"/>
+                                        <TextBlock Text="{Binding CompletedTasksCount}"
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsValueStyle}"/>
+                                    </StackPanel>
 
-                                <!-- Прогресс -->
-                                <StackPanel Grid.Column="4" Margin="15,0,15,0">
-                                    <TextBlock Text="✅ ВЫПОЛНЕНО"
-                                           Style="{StaticResource StatsHeaderStyle}"/>
-                                    <TextBlock Text="{Binding CompletedTasksCount}"
-                                           Style="{StaticResource StatsValueStyle}"/>
-                                </StackPanel>
+                                    <!-- Разделитель -->
+                                    <Rectangle Grid.Column="6" Style="{StaticResource VerticalDividerStyle}" Margin="5 0"/>
 
-                                <!-- Разделитель -->
-                                <Rectangle Grid.Column="5" Style="{StaticResource VerticalDividerStyle}"/>
+                                    <!-- Участники -->
+                                    <StackPanel Grid.Column="7" VerticalAlignment="Center">
+                                        <TextBlock Text="👥 УЧАСТНИКИ"
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsHeaderStyle}"/>
+                                        <TextBlock Text="{Binding MembersCount}"
+                                                   HorizontalAlignment="Center"
+                                                   Style="{StaticResource StatsValueStyle}"/>
+                                    </StackPanel>
 
-                                <!-- Участники -->
-                                <StackPanel Grid.Column="6" Margin="15,0,0,0">
-                                    <TextBlock Text="👥 УЧАСТНИКИ"
-                                           Style="{StaticResource StatsHeaderStyle}"/>
-                                    <TextBlock Text="{Binding MembersCount}"
-                                           Style="{StaticResource StatsValueStyle}"/>
-                                </StackPanel>
+                                    <!-- Разделитель -->
+                                    <Rectangle Grid.Column="8" Margin="5 0" Style="{StaticResource VerticalDividerStyle}"/>
+                                </Grid>
                             </Grid>
                         </Border>
 
-                        <!-- Действия команды -->
-                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                        <!-- Действия команды (только если не в архиве) -->
+                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0"
+                                    Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                             <Button Content="👑 Передать права"
                                     Command="{Binding TransferLeadershipCommand}"
                                     Style="{StaticResource ActionButton}"
@@ -108,8 +176,7 @@
                             <Button Content="💬 Чат команды"
                                     Command="{Binding OpenTeamChatCommand}"
                                     Style="{StaticResource ActionButton}"
-                                    Margin="10,0,0,0"
-                                    Visibility="{Binding IsTeamMember, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    Margin="10,0,0,0"/>
 
                             <Button Content="🚪 Покинуть"
                                     Command="{Binding LeaveTeamCommand}"
@@ -120,7 +187,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Участники и приглашения -->
+                <!-- Участники и приглашения (приглашения только если не в архиве) -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,25">
                     <StackPanel>
                         <!-- Заголовок и приглашение -->
@@ -130,31 +197,40 @@
                                         DockPanel.Dock="Right">
                                 <TextBlock Text="Код: " 
                                            Style="{StaticResource BodyTextStyle}"
-                                           VerticalAlignment="Center"/>
+                                           VerticalAlignment="Center"
+                                           Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                                 <TextBox Text="{Binding InviteCode, Mode=OneWay}"
                                          Style="{StaticResource ReadingTextBox}"
-                                         Width="180"
+                                         Width="200"
                                          VerticalAlignment="Center"
-                                         IsReadOnly="True"/>
+                                         IsReadOnly="True"
+                                         Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                                 <Button Content="📋" 
                                         Command="{Binding CopyInviteCodeCommand}" 
                                         Style="{StaticResource IconButton}"
                                         Margin="10,0,0,0"
-                                        ToolTip="Скопировать код"/>
+                                        ToolTip="Скопировать код"
+                                        Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                             </StackPanel>
 
-                            <TextBlock Text="👥 Участники команды"
-                                   Style="{StaticResource SectionHeaderStyle}"/>
+                            <TextBlock Text="{Binding MembersSectionTitle}"
+                                       Style="{StaticResource SectionHeaderStyle}"/>
                         </DockPanel>
 
-                        <!-- Список участников с ограничением высоты и прокруткой -->
-                        <ScrollViewer MaxHeight="150" 
+                        <!-- Список участников -->
+                        <ScrollViewer MaxHeight="250" 
                                       VerticalScrollBarVisibility="Auto"
                                       Padding="2">
                             <ItemsControl ItemsSource="{Binding Members}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource MemberCardStyle}">
+                                            <Border.InputBindings>
+                                                <MouseBinding Gesture="LeftClick"
+                                                              Command="{Binding DataContext.ViewMemberProfileCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=Page}}"
+                                                              CommandParameter="{Binding}"/>
+                                            </Border.InputBindings>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -163,9 +239,10 @@
 
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <!-- Аватар -->
-                                                    <Border Style="{StaticResource AvatarStyle}">
-                                                        <Image Source="{Binding IconPath}" Stretch="UniformToFill"/>
-                                                    </Border>
+                                                    <uc:RoundAvatar Size="50" Margin="0 0 10 0"
+                                                                    Source="{Binding IconPath}"
+                                                                    BorderBrush="{DynamicResource BorderColor}"
+                                                                    BorderThickness="3"/>
 
                                                     <!-- Информация -->
                                                     <StackPanel>
@@ -179,12 +256,13 @@
                                                                        Style="{StaticResource CaptainIconStyle}"
                                                                        Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                         </StackPanel>
-                                                        <TextBlock Text="{Binding RoleName}"
-                                                                   Style="{StaticResource MemberRoleStyle}"/>
+                                                        <TextBlock Text="{Binding PositionName, FallbackValue='Должность не указана'}"
+                                                                   Style="{StaticResource MemberRoleStyle}"
+                                                                   FontSize="12"/>
                                                     </StackPanel>
                                                 </StackPanel>
 
-                                                <!-- Кнопка выгнать (только для организатора и не для себя) -->
+                                                <!-- Кнопка выгнать (только для организатора, не для себя и не в архиве) -->
                                                 <Button Grid.Column="1"
                                                         Content="🚪"
                                                         Command="{Binding DataContext.KickMemberCommand, RelativeSource={RelativeSource AncestorType=Page}}"
@@ -204,8 +282,9 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Задачи команды -->
-                <Border Style="{StaticResource CardStyle}">
+                <!-- Задачи команды (только если не в архиве) -->
+                <Border Style="{StaticResource CardStyle}"
+                        Visibility="{Binding IsArchived, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <StackPanel>
                         <!-- Заголовок и создание -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
@@ -355,6 +434,33 @@
                         </ScrollViewer>
                     </StackPanel>
                 </Border>
+
+                <!-- Результат команды (если есть) -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,15,0,0"
+                        Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="🏆 Результат соревнования"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   Margin="0,0,0,10"/>
+
+                        <Border Background="{Binding PlaceBrush}" CornerRadius="12" Padding="20,15">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding PlaceDisplay}" 
+                                           FontSize="28" 
+                                           FontWeight="Bold" 
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding ResultComment, StringFormat='📝 {0}'}" 
+                                           FontSize="16" 
+                                           Foreground="White"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,10,0,0"
+                                           Visibility="{Binding ResultComment, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 
@@ -363,7 +469,6 @@
                 Visibility="{Binding ShowTransferDialog, Converter={StaticResource BoolToVisibilityConverter}}">
             <Border Style="{StaticResource ModalDialogStyle}">
                 <StackPanel>
-                    <!-- Заголовок с иконкой -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="👑"
                                    FontSize="20"
@@ -382,7 +487,6 @@
                               Style="{StaticResource ModernComboBox}"
                               Margin="0,0,0,20"/>
 
-                    <!-- Кнопки действий -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Отмена"
                                 Command="{Binding CancelTransferCommand}"
@@ -399,10 +503,9 @@
 
         <!-- Модальное окно создания GitHub репозитория -->
         <Border Style="{StaticResource ModalOverlayStyle}"
-        Visibility="{Binding ShowCreateRepoDialog, Converter={StaticResource BoolToVisibilityConverter}}">
+                Visibility="{Binding ShowCreateRepoDialog, Converter={StaticResource BoolToVisibilityConverter}}">
             <Border Style="{StaticResource ModalDialogStyle}" Width="450">
                 <StackPanel>
-                    <!-- Заголовок с иконкой -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="🔗"
                                    FontSize="20"
@@ -412,10 +515,9 @@
                     </StackPanel>
 
                     <TextBlock Text="Создайте новый репозиторий для вашей команды"
-                       Style="{StaticResource ModalDescriptionStyle}"
-                       Margin="0,0,0,15"/>
+                               Style="{StaticResource ModalDescriptionStyle}"
+                               Margin="0,0,0,15"/>
 
-                    <!-- Название репозитория -->
                     <StackPanel Margin="0,0,0,15">
                         <TextBlock Text="Название репозитория *"
                                    Style="{StaticResource StatsHeaderStyle}"
@@ -426,15 +528,12 @@
                                  Tag="my-team-project"
                                  behaviors:TextBoxGitInputBehavior.AllowOnlyGitHubRepoChars="True"/>
 
-                        <!-- Подсказка по формату -->
                         <TextBlock Text="Доступные символы: буквы (A-Z a-z), цифры (0-9), точка (.), дефис (-), нижнее подчеркивание (_)"
                                    Style="{StaticResource CaptionSecondaryStyle}"
                                    Margin="0,5,0,0"
                                    TextWrapping="Wrap"/>
                     </StackPanel>
 
-
-                    <!-- Описание -->
                     <StackPanel Margin="0,0,0,15">
                         <TextBlock Text="Описание"
                                    Style="{StaticResource StatsHeaderStyle}"
@@ -448,7 +547,6 @@
                                  Tag="Описание проекта команды..."/>
                     </StackPanel>
 
-                    <!-- Настройки приватности -->
                     <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,20">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <CheckBox IsChecked="{Binding NewRepoIsPrivate}"
@@ -462,9 +560,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Информация о создании -->
-                    <Border Style="{StaticResource StatsContainerStyle}"
-                            Margin="0,0,0,20">
+                    <Border Style="{StaticResource StatsContainerStyle}" Margin="0,0,0,20">
                         <StackPanel>
                             <TextBlock Text="ℹ️ Информация:"
                                        Style="{StaticResource BodyTextStyle}"
@@ -478,7 +574,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Кнопки действий -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Отмена"
                                 Command="{Binding CancelCreateRepoCommand}"

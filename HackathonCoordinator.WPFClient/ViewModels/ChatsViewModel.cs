@@ -11,25 +11,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class ChatsViewModel : BaseViewModel
     {
+        public bool doDispose = true;
+        private bool _isInitialized = false;
+
         private readonly ChatService _chatService;
         private readonly TeamService _teamService;
         private readonly TaskService _taskService;
         private readonly UserService _userService;
-        private readonly NavigationService _navigationService;
-
-        private bool _isLoading;
-        public bool IsLoading
-        {
-            get => _isLoading;
-            set => SetProperty(ref _isLoading, value);
-        }
 
         public ObservableCollection<ChatListItemDto> Chats { get; } = new();
 
-        // AsyncRelayCommand для асинхронных операций
-        public ICommand LoadChatsCommand { get; }
         public ICommand OpenChatCommand { get; }
-        public ICommand BackCommand { get; }
         public ICommand RefreshCommand { get; }
 
         public bool HasNoChats => !Chats.Any();
@@ -40,26 +32,27 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             _teamService = new TeamService();
             _taskService = new TaskService();
             _userService = new UserService();
-            _navigationService = App.NavigationService;
 
-            // AsyncRelayCommand для загрузки чатов
-            LoadChatsCommand = new AsyncRelayCommand(
-                execute: async () => await LoadChatsAsync(),
-                canExecute: () => true);
-
-            // AsyncRelayCommand для открытия чата
             OpenChatCommand = new AsyncRelayCommand<ChatListItemDto>(
                 execute: async (chat) => await OpenChatAsync(chat),
                 canExecute: (chat) => chat != null);
 
-            BackCommand = new RelayCommand(GoBack);
-
-            // AsyncRelayCommand для обновления
             RefreshCommand = new AsyncRelayCommand(
-                execute: async () => await LoadChatsAsync(),
+                execute: async () => await RefreshAsync(),
                 canExecute: () => true);
+        }
 
-            LoadChatsCommand.Execute(null);
+        public async Task InitializeAsync()
+        {
+            if (_isInitialized) return;
+
+            await LoadChatsAsync();
+            _isInitialized = true;
+        }
+
+        public async Task RefreshAsync()
+        {
+            await LoadChatsAsync();
         }
 
         private async Task LoadChatsAsync()
@@ -76,21 +69,17 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 var user = await _userService.GetCurrentUserAsync();
                 if (!user.Success)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show("Ошибка загрузки пользователя", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
+                    await ShowErrorAsync("Ошибка загрузки пользователя");
                     return;
                 }
 
+                // Загружаем чат команды
                 if (user.Data.TeamId.HasValue)
                 {
                     var teamChat = await _chatService.GetTeamChatAsync(user.Data.TeamId.Value);
                     if (teamChat.Success && teamChat.Data != null)
                     {
                         var chatItem = MapToChatListItem(teamChat.Data, "👥 Чат команды");
-
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
                             Chats.Add(chatItem);
@@ -98,6 +87,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                 }
 
+                // Загружаем чаты задач
                 var userTasksIds = await _taskService.GetUserTasksIdsAsync();
                 if (userTasksIds.Success)
                 {
@@ -107,7 +97,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                         if (taskChat.Success && taskChat.Data != null)
                         {
                             var chatItem = MapToChatListItem(taskChat.Data, $"🎯 {taskChat.Data.Name}");
-
                             await Application.Current.Dispatcher.InvokeAsync(() =>
                             {
                                 Chats.Add(chatItem);
@@ -116,7 +105,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                 }
 
-                // Сортировка
+                // Сортировка чатов
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     var sortedChats = Chats
@@ -135,11 +124,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка загрузки чатов: {ex.Message}\n\nПроверьте подключение к серверу.",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка загрузки чатов: {ex.Message}");
             }
             finally
             {
@@ -169,29 +154,20 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             try
             {
+                doDispose = false;
 
                 if (chatItem.TeamId.HasValue)
                 {
                     var chat = await _chatService.GetTeamChatAsync(chatItem.TeamId.Value);
-
                     if (chat.Success)
                     {
-                        var chatPage = new ChatPage();
-                        var viewModel = chatPage.DataContext as ChatViewModel;
-
-                        if (viewModel != null)
-                        {
-                            await viewModel.LoadTeamChatAsync(chat.Data);
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                _navigationService.NavigateTo(chatPage);
-                            });
-                        }
+                        var chatPage = new ChatPage(chat.Data, true);
+                        _navigationService.NavigateTo(chatPage);
                     }
                     else
                     {
-                        MessageBox.Show($"Не удалось открыть чат команды:\n{chat.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Не удалось открыть чат команды:\n{chat.Message}");
+                        doDispose = true;
                     }
                 }
                 else if (chatItem.TaskId.HasValue)
@@ -199,61 +175,33 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     var chat = await _chatService.GetTaskChatAsync(chatItem.TaskId.Value);
                     if (chat.Success)
                     {
-                        var chatPage = new ChatPage();
-                        var viewModel = chatPage.DataContext as ChatViewModel;
-
-                        if (viewModel != null)
-                        {
-                            await viewModel.LoadTaskChatAsync(chat.Data);
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                _navigationService.NavigateTo(chatPage);
-                            });
-                        }
+                        var chatPage = new ChatPage(chat.Data, false);
+                        _navigationService.NavigateTo(chatPage);
                     }
                     else
                     {
-                        MessageBox.Show($"Не удалось открыть чат задачи:\n{chat.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Не удалось открыть чат задачи:\n{chat.Message}");
+                        doDispose = true;
                     }
                 }
                 else
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show("Не удалось определить тип чата", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
-                    return;
+                    await ShowErrorAsync("Не удалось определить тип чата");
+                    doDispose = true;
                 }
-
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка открытия чата: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка открытия чата: {ex.Message}");
+                doDispose = true;
             }
-        }
-
-        private void GoBack()
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (Application.Current.MainWindow is MainWindow mainWindow)
-                {
-                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                    {
-                        mainViewModel.OpenMainPage();
-                    }
-                }
-            });
         }
 
         protected override void DisposeManagedResources()
         {
+            if (!doDispose)
+                return;
+
             base.DisposeManagedResources();
 
             Application.Current.Dispatcher.Invoke(() =>
@@ -353,40 +301,44 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         }
 
         public string ParticipantsText => $"{ParticipantsCount} участников";
-        public string LastMessagePreview => GetMessagePreview();
-        public string TimeAgo => GetTimeAgo();
 
-        private string GetMessagePreview()
+        public string LastMessagePreview
         {
-            if (string.IsNullOrEmpty(LastMessage) || LastMessage == "Нет сообщений")
-                return "Нет сообщений";
-
-            var preview = LastMessage.Length > 50
-                ? LastMessage.Substring(0, 50) + "..."
-                : LastMessage;
-
-            if (!string.IsNullOrEmpty(LastMessageSender))
+            get
             {
-                return $"{LastMessageSender}: {preview}";
-            }
+                if (string.IsNullOrEmpty(LastMessage) || LastMessage == "Нет сообщений")
+                    return "Нет сообщений";
 
-            return preview;
+                var preview = LastMessage.Length > 50
+                    ? LastMessage.Substring(0, 50) + "..."
+                    : LastMessage;
+
+                if (!string.IsNullOrEmpty(LastMessageSender))
+                {
+                    return $"{LastMessageSender}: {preview}";
+                }
+
+                return preview;
+            }
         }
 
-        private string GetTimeAgo()
+        public string TimeAgo
         {
-            var timeSpan = DateTime.Now - LastMessageTime;
+            get
+            {
+                var timeSpan = DateTime.Now - LastMessageTime;
 
-            if (timeSpan.TotalMinutes < 1)
-                return "только что";
-            if (timeSpan.TotalHours < 1)
-                return $"{(int)timeSpan.TotalMinutes} мин назад";
-            if (timeSpan.TotalDays < 1)
-                return $"{(int)timeSpan.TotalHours} ч назад";
-            if (timeSpan.TotalDays < 7)
-                return $"{(int)timeSpan.TotalDays} дн назад";
+                if (timeSpan.TotalMinutes < 1)
+                    return "только что";
+                if (timeSpan.TotalHours < 1)
+                    return $"{(int)timeSpan.TotalMinutes} мин назад";
+                if (timeSpan.TotalDays < 1)
+                    return $"{(int)timeSpan.TotalHours} ч назад";
+                if (timeSpan.TotalDays < 7)
+                    return $"{(int)timeSpan.TotalDays} дн назад";
 
-            return LastMessageTime.ToString("dd.MM.yy");
+                return LastMessageTime.ToString("dd.MM.yy");
+            }
         }
     }
 }

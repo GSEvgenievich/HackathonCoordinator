@@ -2,7 +2,6 @@
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Collections.ObjectModel;
@@ -13,21 +12,18 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class NotificationsViewModel : BaseViewModel
     {
+        public bool doDispose = true;
+        private bool _isInitialized = false;
+
         private readonly NotificationService _notificationService;
-        private readonly NavigationService _navigationService;
         private readonly UserService _userService;
+        private readonly TeamService _teamService;
+        private readonly TaskService _taskService;
         private readonly ChatService _chatService;
         private readonly CompetitionService _competitionService;
 
         private HubConnection _hubConnection;
         private bool _isConnected;
-
-        private bool _isLoading;
-        public bool IsLoading
-        {
-            get => _isLoading;
-            set => SetProperty(ref _isLoading, value);
-        }
 
         private int _unreadCount;
         public int UnreadCount
@@ -45,63 +41,71 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool HasReadNotifications => ReadNotifications.Any();
         public bool HasNoNotifications => !HasNotifications;
 
-        // AsyncRelayCommand для всех операций
-        public ICommand LoadNotificationsCommand { get; }
+        // Команды
         public ICommand MarkAsReadCommand { get; }
         public ICommand MarkAllAsReadCommand { get; }
         public ICommand DeleteNotificationCommand { get; }
         public ICommand OpenRelatedEntityCommand { get; }
-        public ICommand BackCommand { get; }
         public ICommand RefreshCommand { get; }
 
         public NotificationsViewModel()
         {
             _notificationService = new NotificationService();
-            _navigationService = App.NavigationService;
             _userService = new UserService();
+            _teamService = new TeamService();
+            _taskService = new TaskService();
             _chatService = new ChatService();
             _competitionService = new CompetitionService();
 
-            // AsyncRelayCommand для загрузки уведомлений
-            LoadNotificationsCommand = new AsyncRelayCommand(
-                execute: async () => await LoadNotificationsAsync(),
-                canExecute: () => true);
-
-            // AsyncRelayCommand для отметки прочитанным
             MarkAsReadCommand = new AsyncRelayCommand<NotificationDto>(
                 execute: async (notification) => await MarkAsReadAsync(notification),
                 canExecute: (notification) => notification != null && !notification.IsRead);
 
-            // AsyncRelayCommand для отметки всех прочитанными
             MarkAllAsReadCommand = new AsyncRelayCommand(
                 execute: async () => await MarkAllAsReadAsync(),
                 canExecute: () => UnreadNotifications.Any());
 
-            // AsyncRelayCommand для удаления
             DeleteNotificationCommand = new AsyncRelayCommand<NotificationDto>(
                 execute: async (notification) => await DeleteNotificationAsync(notification),
                 canExecute: (notification) => notification != null);
 
-            // AsyncRelayCommand для открытия связанной сущности
             OpenRelatedEntityCommand = new AsyncRelayCommand<NotificationDto>(
                 execute: async (notification) => await OpenRelatedEntityAsync(notification),
                 canExecute: (notification) => notification != null);
 
-            BackCommand = new RelayCommand(GoBack);
-
-            // AsyncRelayCommand для обновления
             RefreshCommand = new AsyncRelayCommand(
-                execute: async () => await LoadNotificationsAsync(),
+                execute: async () => await RefreshAsync(),
                 canExecute: () => true);
-
-            InitializeSignalR();
-            LoadNotificationsCommand.Execute(null);
-            LoadUnreadCountAsync();
         }
 
-        private async void InitializeSignalR()
+        public async Task InitializeAsync()
         {
-            var baseUrl = "https://zip.hhallva.ru";
+            if (_isInitialized) return;
+
+            IsLoading = true;
+
+            try
+            {
+                await InitializeSignalR();
+                await LoadNotificationsAsync();
+                await LoadUnreadCountAsync();
+                _isInitialized = true;
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        public async Task RefreshAsync()
+        {
+            await LoadNotificationsAsync();
+            await LoadUnreadCountAsync();
+        }
+
+        private async Task InitializeSignalR()
+        {
+            var baseUrl = "http://localhost:5046";
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/notificationhub", options =>
@@ -121,11 +125,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка подключения к уведомлениям: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка подключения к уведомлениям: {ex.Message}");
             }
         }
 
@@ -153,15 +153,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        public async Task LoadNotificationsAsync()
+        private async Task LoadNotificationsAsync()
         {
-            IsLoading = true;
-
             try
             {
                 var response = await _notificationService.GetUserNotificationsAsync();
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     Notifications.Clear();
                     UnreadNotifications.Clear();
@@ -181,8 +179,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка загрузки уведомлений: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка загрузки уведомлений: {response.Message}");
                     }
 
                     UpdateProperties();
@@ -190,19 +187,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка загрузки уведомлений: {ex.Message}\n\nПроверьте подключение к серверу.",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
-            finally
-            {
-                IsLoading = false;
+                await ShowErrorAsync($"Ошибка загрузки уведомлений: {ex.Message}");
             }
         }
 
-        private async void LoadUnreadCountAsync()
+        private async Task LoadUnreadCountAsync()
         {
             try
             {
@@ -224,7 +213,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var response = await _notificationService.MarkAsReadAsync(notification.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (response.Success)
                     {
@@ -235,18 +224,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка: {response.Message}");
                     }
                 });
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка отметки уведомления: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка отметки уведомления: {ex.Message}");
             }
         }
 
@@ -256,7 +240,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             {
                 var response = await _notificationService.MarkAllAsReadAsync();
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (response.Success)
                     {
@@ -270,39 +254,29 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка: {response.Message}");
                     }
                 });
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка отметки всех уведомлений: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка отметки всех уведомлений: {ex.Message}");
             }
         }
 
         private async Task DeleteNotificationAsync(NotificationDto notification)
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите удалить это уведомление?",
-                    "Подтверждение удаления",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync(
+                "Вы уверены, что хотите удалить это уведомление?",
+                "Подтверждение удаления");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {
                 var response = await _notificationService.DeleteNotificationAsync(notification.Id);
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     if (response.Success)
                     {
@@ -316,18 +290,13 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     }
                     else
                     {
-                        MessageBox.Show($"Ошибка: {response.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Ошибка: {response.Message}");
                     }
                 });
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка удаления уведомления: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка удаления уведомления: {ex.Message}");
             }
         }
 
@@ -342,107 +311,100 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
                 if (notification.RelatedEntityType == "task" && notification.RelatedEntityId.HasValue)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    var task = await _taskService.GetTaskDetailsAsync(notification.RelatedEntityId.Value);
+
+                    if (task.Success && task.Data != null)
                     {
-                        _navigationService.NavigateTo(new TaskDetailsPage(notification.RelatedEntityId.Value));
-                    });
+                        doDispose = false;
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _navigationService.NavigateTo(new TaskDetailsPage(task.Data));
+                        });
+                    }
+                    else
+                    {
+                        await ShowErrorAsync($"Задача не найдена или была удалена.\n{task.Message}");
+                    }
                 }
                 else if (notification.RelatedEntityType == "team" && notification.RelatedEntityId.HasValue)
                 {
-                    var user = await _userService.GetCurrentUserAsync();
+                    var team = await _teamService.GetTeamByIdAsync(notification.RelatedEntityId.Value);
 
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    if (team.Success && team.Data != null)
                     {
-                        if (user.Data.RoleId == 3)
-                            _navigationService.NavigateTo(new TeamPage(notification.RelatedEntityId.Value));
-                        else
-                            _navigationService.NavigateTo(new TeamPage());
-                    });
+                        doDispose = false;
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _navigationService.NavigateTo(new TeamPage(team.Data));
+                        });
+                    }
+                    else
+                    {
+                        await ShowErrorAsync($"Команда не найдена или была удалена.\n{team.Message}");
+                    }
                 }
                 else if (notification.RelatedEntityType == "competition" && notification.RelatedEntityId.HasValue)
                 {
                     var competition = await _competitionService.GetCompetitionAsync(notification.RelatedEntityId.Value);
 
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    if (competition.Success && competition.Data != null)
                     {
-                        _navigationService.NavigateTo(new CompetitionDetailsPage(competition.Data));
-                    });
+                        doDispose = false;
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            _navigationService.NavigateTo(new CompetitionDetailsPage(competition.Data));
+                        });
+                    }
+                    else
+                    {
+                        await ShowErrorAsync($"Соревнование не найдено или было удалено.\n{competition.Message}");
+                    }
                 }
                 else if (notification.RelatedEntityType == "team chat" && notification.RelatedEntityId.HasValue)
                 {
                     var chat = await _chatService.GetTeamChatAsync(notification.RelatedEntityId.Value);
 
-                    if (chat.Success)
+                    if (chat.Success && chat.Data != null)
                     {
-                        var chatPage = new ChatPage();
-                        var viewModel = chatPage.DataContext as ChatViewModel;
-
-                        if (viewModel != null)
+                        doDispose = false;
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
-                            await viewModel.LoadTeamChatAsync(chat.Data);
-
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                _navigationService.NavigateTo(chatPage);
-                            });
-                        }
+                            var chatPage = new ChatPage(chat.Data, true);
+                            _navigationService.NavigateTo(chatPage);
+                        });
                     }
                     else
                     {
-                        MessageBox.Show($"Не удалось открыть чат команды:\n{chat.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Чат команды не найден или был удален.\n{chat.Message}");
                     }
-
                 }
                 else if (notification.RelatedEntityType == "task chat" && notification.RelatedEntityId.HasValue)
                 {
                     var chat = await _chatService.GetTaskChatAsync(notification.RelatedEntityId.Value);
 
-                    if (chat.Success)
+                    if (chat.Success && chat.Data != null)
                     {
-                        var chatPage = new ChatPage();
-                        var viewModel = chatPage.DataContext as ChatViewModel;
-
-                        if (viewModel != null)
+                        doDispose = false;
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
-                            await viewModel.LoadTaskChatAsync(chat.Data);
-
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                _navigationService.NavigateTo(chatPage);
-                            });
-                        }
+                            var chatPage = new ChatPage(chat.Data, false);
+                            _navigationService.NavigateTo(chatPage);
+                        });
                     }
                     else
                     {
-                        MessageBox.Show($"Не удалось открыть чат задачи:\n{chat.Message}", "Ошибка",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await ShowErrorAsync($"Чат задачи не найден или был удален.\n{chat.Message}");
                     }
-
+                }
+                else
+                {
+                    await ShowErrorAsync("Не удалось определить тип связанной сущности");
                 }
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка открытия связанной сущности: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка открытия связанной сущности: {ex.Message}");
             }
-        }
-
-        private void GoBack()
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (Application.Current.MainWindow is MainWindow mainWindow)
-                {
-                    if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                    {
-                        mainViewModel.OpenMainPage();
-                    }
-                }
-            });
         }
 
         private void UpdateProperties()
@@ -455,6 +417,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         protected override void DisposeManagedResources()
         {
+            if (!doDispose)
+                return;
+
             base.DisposeManagedResources();
 
             Application.Current.Dispatcher.Invoke(() =>

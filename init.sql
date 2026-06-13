@@ -16,16 +16,22 @@ GRANT ALL PRIVILEGES ON HackathonCoordinatorDb.* TO 'hackathon_user'@'%';
 FLUSH PRIVILEGES;
 
 -- ============================================
--- СОЗДАНИЕ ВСЕХ ТАБЛИЦ (включая основные!)
+-- 1. СОЗДАНИЕ ВСЕХ ТАБЛИЦ
 -- ============================================
 
--- 1. ChatTypes (Типы чатов)
+-- 1. Positions (Должности) - НОВАЯ ТАБЛИЦА
+CREATE TABLE IF NOT EXISTS Positions (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50) NOT NULL
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 2. ChatTypes (Типы чатов)
 CREATE TABLE IF NOT EXISTS ChatTypes (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50) NOT NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 2. NotificationTypes (Типы уведомлений)
+-- 3. NotificationTypes (Типы уведомлений)
 CREATE TABLE IF NOT EXISTS NotificationTypes (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(100) NOT NULL UNIQUE,
@@ -33,31 +39,31 @@ CREATE TABLE IF NOT EXISTS NotificationTypes (
     Icon VARCHAR(10) NOT NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 3. ProfileIcons (Иконки профилей)
+-- 4. ProfileIcons (Иконки профилей)
 CREATE TABLE IF NOT EXISTS ProfileIcons (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50) NOT NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 4. Roles (Роли пользователей)
+-- 5. Roles (Роли пользователей)
 CREATE TABLE IF NOT EXISTS Roles (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(25) NOT NULL UNIQUE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 5. TaskStatuses (Статусы задач)
+-- 6. TaskStatuses (Статусы задач)
 CREATE TABLE IF NOT EXISTS TaskStatuses (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50) NOT NULL UNIQUE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 6. TaskTypes (Типы задач)
+-- 7. TaskTypes (Типы задач)
 CREATE TABLE IF NOT EXISTS TaskTypes (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(50) NOT NULL UNIQUE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 7. Chats (Чаты) - ОСНОВНАЯ ТАБЛИЦА
+-- 8. Chats (Чаты)
 CREATE TABLE IF NOT EXISTS Chats (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(150) NULL,
@@ -66,24 +72,26 @@ CREATE TABLE IF NOT EXISTS Chats (
     FOREIGN KEY (TypeId) REFERENCES ChatTypes(Id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 8. Users (Пользователи) - ОСНОВНАЯ ТАБЛИЦА (нужна для Competitions)
+-- 9. Users (Пользователи) - с добавленным полем PositionId
 CREATE TABLE IF NOT EXISTS Users (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Username VARCHAR(100) NOT NULL,
     Login VARCHAR(50) NOT NULL,
     Email VARCHAR(150) NOT NULL UNIQUE,
     PasswordHash VARCHAR(255) NOT NULL,
-    RoleId INT NOT NULL DEFAULT 2,
+    RoleId INT NOT NULL DEFAULT 4,
+    PositionId INT NOT NULL DEFAULT 1,
     TeamId INT NULL,
     ProfileIconId INT NULL,
     GitHubUsername VARCHAR(100) NULL,
     GitHubAccessToken VARCHAR(255) NULL,
     GitHubAvatarUrl VARCHAR(255) NULL,
     FOREIGN KEY (RoleId) REFERENCES Roles(Id),
+    FOREIGN KEY (PositionId) REFERENCES Positions(Id),
     FOREIGN KEY (ProfileIconId) REFERENCES ProfileIcons(Id) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 9. Competitions (Соревнования) - ОСНОВНАЯ ТАБЛИЦА
+-- 10. Competitions (Соревнования) - добавлены новые поля
 CREATE TABLE IF NOT EXISTS Competitions (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(200) NOT NULL,
@@ -92,10 +100,20 @@ CREATE TABLE IF NOT EXISTS Competitions (
     EndDate DATETIME NOT NULL,
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CreatedById INT NOT NULL,
-    FOREIGN KEY (CreatedById) REFERENCES Users(Id)
+    IsArchived BOOLEAN NOT NULL DEFAULT FALSE,
+    HasResults BOOLEAN NOT NULL DEFAULT FALSE,
+    IsStartNotified BOOLEAN NOT NULL DEFAULT FALSE,
+    IsEndNotified BOOLEAN NOT NULL DEFAULT FALSE,
+    ResultsCreatedAt DATETIME NULL,
+    ResultsCreatedById INT NULL,
+    ResultsUpdatedAt DATETIME NULL,
+    ResultsUpdatedById INT NULL,
+    FOREIGN KEY (CreatedById) REFERENCES Users(Id),
+    FOREIGN KEY (ResultsCreatedById) REFERENCES Users(Id),
+    FOREIGN KEY (ResultsUpdatedById) REFERENCES Users(Id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 10. Teams (Команды) - ОСНОВНАЯ ТАБЛИЦА
+-- 11. Teams (Команды)
 CREATE TABLE IF NOT EXISTS Teams (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     CompetitionId INT NOT NULL,
@@ -103,16 +121,16 @@ CREATE TABLE IF NOT EXISTS Teams (
     InviteCode VARCHAR(36) NOT NULL UNIQUE,
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     GitRepoName VARCHAR(100) NULL,
-    ChatId INT NOT NULL,
+    ChatId INT NULL,
     FOREIGN KEY (CompetitionId) REFERENCES Competitions(Id),
-    FOREIGN KEY (ChatId) REFERENCES Chats(Id)
+    FOREIGN KEY (ChatId) REFERENCES Chats(Id) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 11. Обновляем Users для добавления связи с Teams (после создания Teams)
+-- 12. Обновляем Users для добавления связи с Teams
 ALTER TABLE Users 
-ADD FOREIGN KEY (TeamId) REFERENCES Teams(Id) ON DELETE SET NULL;
+ADD CONSTRAINT FK_Users_Teams FOREIGN KEY (TeamId) REFERENCES Teams(Id) ON DELETE SET NULL;
 
--- 12. Messages (Сообщения) - ОСНОВНАЯ ТАБЛИЦА
+-- 13. Messages (Сообщения)
 CREATE TABLE IF NOT EXISTS Messages (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     ChatId INT NOT NULL,
@@ -121,11 +139,25 @@ CREATE TABLE IF NOT EXISTS Messages (
     SentAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     IsEdited BOOLEAN NOT NULL DEFAULT FALSE,
     EditedAt DATETIME NULL,
+    HasAttachments BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (ChatId) REFERENCES Chats(Id) ON DELETE CASCADE,
     FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 13. Notifications (Уведомления) - ОСНОВНАЯ ТАБЛИЦА
+-- 14. MessageAttachments (Вложения сообщений) - НОВАЯ ТАБЛИЦА
+CREATE TABLE IF NOT EXISTS MessageAttachments (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    MessageId INT NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FileSize BIGINT NOT NULL,
+    ContentType VARCHAR(100) NOT NULL,
+    FilePath VARCHAR(500) NOT NULL,
+    Thumbnail LONGBLOB NULL,
+    UploadedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (MessageId) REFERENCES Messages(Id) ON DELETE CASCADE
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 15. Notifications (Уведомления)
 CREATE TABLE IF NOT EXISTS Notifications (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     UserId INT NOT NULL,
@@ -141,7 +173,24 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (NotificationTypeId) REFERENCES NotificationTypes(Id) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 14. Tasks (Задачи) - ОСНОВНАЯ ТАБЛИЦА
+-- 16. Stages (Этапы соревнований) - НОВАЯ ТАБЛИЦА
+CREATE TABLE IF NOT EXISTS Stages (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    CompetitionId INT NOT NULL,
+    Name VARCHAR(50) NOT NULL,
+    Description VARCHAR(300) NULL,
+    StartTime DATETIME NOT NULL,
+    EndTime DATETIME NOT NULL,
+    Location VARCHAR(150) NULL,
+    `Order` INT NOT NULL,
+    IsFinal BOOLEAN NOT NULL DEFAULT FALSE,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    IsStartNotified BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (CompetitionId) REFERENCES Competitions(Id) ON DELETE CASCADE,
+    UNIQUE KEY UQ_Stages_Competition_Order (CompetitionId, `Order`)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 17. Tasks (Задачи)
 CREATE TABLE IF NOT EXISTS Tasks (
     Id INT AUTO_INCREMENT PRIMARY KEY,
     TeamId INT NOT NULL,
@@ -163,16 +212,49 @@ CREATE TABLE IF NOT EXISTS Tasks (
     FOREIGN KEY (ChatId) REFERENCES Chats(Id) ON DELETE CASCADE
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- 18. Results (Результаты соревнований) - НОВАЯ ТАБЛИЦА
+CREATE TABLE IF NOT EXISTS Results (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    CompetitionId INT NOT NULL,
+    TeamId INT NOT NULL,
+    Place INT NOT NULL,
+    PlaceDisplay VARCHAR(10) NOT NULL,
+    Comment VARCHAR(300) NULL,
+    FOREIGN KEY (CompetitionId) REFERENCES Competitions(Id),
+    FOREIGN KEY (TeamId) REFERENCES Teams(Id),
+    UNIQUE KEY UQ_Results_Competition_Team (CompetitionId, TeamId)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 19. FinalTeamMembers (Финальный состав команды) - НОВАЯ ТАБЛИЦА
+CREATE TABLE IF NOT EXISTS FinalTeamMembers (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    TeamId INT NOT NULL,
+    UserId INT NULL,
+    Username VARCHAR(100) NOT NULL,
+    PositionName VARCHAR(50) NOT NULL,
+    RoleId INT NOT NULL,
+    FixedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TeamId) REFERENCES Teams(Id) ON DELETE CASCADE,
+    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE SET NULL,
+    FOREIGN KEY (RoleId) REFERENCES Roles(Id)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- ============================================
--- ЗАПОЛНЕНИЕ ДАННЫМИ
+-- 2. ЗАПОЛНЕНИЕ ДАННЫМИ
 -- ============================================
+
+-- Positions (должности)
+INSERT IGNORE INTO Positions (Id, Name) VALUES
+(1, 'Разработчик'),
+(2, 'Дизайнер'),
+(3, 'Менеджер');
 
 -- ChatTypes
 INSERT IGNORE INTO ChatTypes (Id, Name) VALUES
 (1, 'Чат команды'),
 (2, 'Чат по задаче');
 
--- NotificationTypes
+-- NotificationTypes (расширенный список)
 INSERT IGNORE INTO NotificationTypes (Id, Name, Category, Icon) VALUES
 (1, 'Новая задача', 'task', '🎯'),
 (2, 'Задача назначена', 'task', '👤'),
@@ -189,13 +271,19 @@ INSERT IGNORE INTO NotificationTypes (Id, Name, Category, Icon) VALUES
 (13, 'Создан GitHub репозиторий', 'team', '🔗'),
 (14, 'Важное сообщение от капитана в чате команды', 'team', '💬'),
 (15, 'Создана новая команда', 'system', '👥'),
-(16, 'Создано новое соревнование', 'system', '🏆'),
-(17, 'Соревнование началось', 'system', '🏆'),
-(18, 'Соревнование завершено', 'system', '🎉'),
+(16, 'Создано новое соревнование', 'competition', '🏆'),
+(17, 'Соревнование началось', 'competition', '🏆'),
+(18, 'Соревнование завершено', 'competition', '🎉'),
 (19, 'Системное уведомление', 'system', 'ℹ️'),
 (20, 'Команда удалена', 'system', '🗑️'),
 (21, 'Завершение задачи отменено', 'task', '⚠'),
-(22, 'Срок задачи истек', 'task', '⏰');
+(22, 'Срок задачи истек', 'task', '⏰'),
+(23, 'Изменение прав доступа', 'system', '👑'),
+(24, 'Подведены итоги соревнования', 'competition', '🏆'),
+(25, 'Обновлены итоги соревнования', 'competition', '🏆'),
+(26, 'Начался новый этап соревнования', 'competition', '⏰'),
+(27, 'Соревнование удалено', 'competition', '🗑️'),
+(28, 'Соревнование архивировано', 'competition', '📦');
 
 -- ProfileIcons
 INSERT IGNORE INTO ProfileIcons (Id, Name) VALUES
@@ -204,13 +292,17 @@ INSERT IGNORE INTO ProfileIcons (Id, Name) VALUES
 (3, 'girl1'),
 (4, 'girl2'),
 (5, 'robot1'),
-(6, 'robot2');
+(6, 'robot2'),
+(7, 'robot3'),
+(8, 'cat1'),
+(9, 'cat2');
 
--- Roles
+-- Roles (исправлено: 1-Admin, 2-Organizer, 3-Captain, 4-Member)
 INSERT IGNORE INTO Roles (Id, Name) VALUES
-(1, 'Капитан'),
-(2, 'Участник'),
-(3, 'Организатор');
+(1, 'Администратор'),
+(2, 'Организатор'),
+(3, 'Капитан'),
+(4, 'Участник');
 
 -- TaskStatuses
 INSERT IGNORE INTO TaskStatuses (Id, Name) VALUES
@@ -227,19 +319,34 @@ INSERT IGNORE INTO TaskTypes (Id, Name) VALUES
 (3, 'Документация');
 
 -- ============================================
--- ТЕСТОВЫЕ ПОЛЬЗОВАТЕЛЕЙ (ваши данные)
+-- 3. ТЕСТОВЫЕ ПОЛЬЗОВАТЕЛИ
 -- ============================================
 
-INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, ProfileIconId) VALUES
-('Head', 'admin@hackathon.local', 'q', 
-'$2a$11$xfQVw15oDNNUISyzqzItI.uf1STGdTmUgw1S.rNuSd1LpLsZb01UO', 3, 5);
+-- Пароли захешированы BCrypt:
+-- admin -> admin123 (Admin)
+-- organizer -> organizer123 (Organizer)
+-- user -> user123 (User)
 
-INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, ProfileIconId) VALUES
-('user', 'user@hackathon.local', 'user',
-'$2a$11$U3sqMY280YhMVfbh2Fwe4.2W.IG5Mcbnid81FWyoE4Feea.FEP4um', 2, 3);
+-- Admin (RoleId = 1)
+INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, PositionId, ProfileIconId) VALUES
+('Администратор', 'admin@hackathon.local', 'admin', 
+'$2a$11$/.//HGMYVtMsr6G.4HzAcOsvP7dD/mT6JClfBqRajXxBCYoLF9G5i', 1, 1, 1);
+
+-- Organizer (RoleId = 2)
+INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, PositionId, ProfileIconId) VALUES
+('Организатор', 'organizer@hackathon.local', 'organizer',
+'$2a$11$piE6hkyjmkk7H.SzIEJbMejklgCBQVzSzk5Qv8iD8g9NsEOOGBe5K', 2, 3, 3);
+
+-- User (RoleId = 4)
+INSERT IGNORE INTO Users (Username, Email, Login, PasswordHash, RoleId, PositionId, ProfileIconId) VALUES
+('Пользователь', 'user@hackathon.local', 'user',
+'$2a$11$0.fSqon0wFGHAdhjUW9o2.98G.7xH66h8v.PnQh8ClNZ54BLnGR8S', 4, 1, 1);
 
 -- ============================================
--- ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ
+-- 4. ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ
 -- ============================================
 
 SELECT '✅ База данных успешно инициализирована!' as Message;
+SELECT COUNT(*) as UsersCount FROM Users;
+SELECT COUNT(*) as RolesCount FROM Roles;
+SELECT COUNT(*) as CompetitionsCount FROM Competitions;

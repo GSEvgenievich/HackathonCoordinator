@@ -1,8 +1,10 @@
 ﻿using HackathonCoordinator.ServiceLayer.Services;
+using HackathonCoordinator.WPFClient.Helpers;
 using HackathonCoordinator.WPFClient.ViewModels;
 using HackathonCoordinator.WPFClient.Views;
 using System.Windows;
 using System.Windows.Media.Animation;
+using System.Windows.Navigation;
 
 namespace HackathonCoordinator.WPFClient
 {
@@ -10,17 +12,18 @@ namespace HackathonCoordinator.WPFClient
     {
         private bool _isExpanded = false;
         private readonly AuthService _authService;
+        private readonly TeamService _teamService;
         private readonly UserService _userService;
-
-        public bool IsSidebarExpanded => _isExpanded;
 
         public MainWindow()
         {
             InitializeComponent();
 
             _authService = new AuthService();
+            _teamService = new TeamService();
             _userService = new UserService();
             Loaded += OnMainWindowLoadedAsync;
+            MainFrame.Navigated += MainFrame_Navigated;
         }
 
         private async void OnMainWindowLoadedAsync(object sender, RoutedEventArgs e)
@@ -29,7 +32,6 @@ namespace HackathonCoordinator.WPFClient
 
             try
             {
-                // Валидация токена при запуске
                 var validation = await _authService.ValidateTokenAsync();
 
                 if (!validation.Success)
@@ -38,7 +40,6 @@ namespace HackathonCoordinator.WPFClient
                     return;
                 }
 
-                // Получение информации о текущем пользователе
                 var user = await _userService.GetCurrentUserAsync();
 
                 if (!user.Success)
@@ -47,28 +48,28 @@ namespace HackathonCoordinator.WPFClient
                     return;
                 }
 
-                // Инициализация ViewModel
                 if (DataContext is MainWindowViewModel viewModel)
                 {
                     viewModel.InitializeNotificationsSignalR();
                     viewModel.CheckUserRole();
                     viewModel.GetUsername();
-                }
 
-                // Навигация в зависимости от наличия команды
-                if (!string.IsNullOrEmpty(user.Data.TeamName))
-                {
-                    App.NavigationService.NavigateTo(new TeamPage());
-                }
-                else
-                {
-                    App.NavigationService.NavigateTo(new CompetitionsPage());
+                    await viewModel.OpenMainPage();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки: {ex.Message}");
+                await DialogHelper.ShowErrorAsync($"Ошибка загрузки: {ex.Message}");
                 App.NavigationService.NavigateTo(new AuthorizationPage());
+            }
+        }
+
+        private void MainFrame_Navigated(object sender, NavigationEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                var pageType = e.Content?.GetType();
+                viewModel.SetCurrentPageType(pageType);
             }
         }
 

@@ -12,7 +12,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class GitHubAuthViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
         private readonly GitHubOAuthService _gitHubService;
         private readonly UserService _userService;
 
@@ -72,7 +71,6 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public GitHubAuthViewModel()
         {
-            _navigationService = App.NavigationService;
             _gitHubService = new GitHubOAuthService();
             _userService = new UserService();
 
@@ -173,16 +171,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task ChangeGitHubAccountAsync()
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите отвязать текущий GitHub аккаунт и привязать новый?",
-                    "Смена GitHub аккаунта",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result =await ShowYesNoCancelAsync(
+                "Вы уверены, что хотите отвязать текущий GitHub аккаунт и привязать новый?",
+                "Смена GitHub аккаунта");
 
-            if (result != MessageBoxResult.Yes) return;
+            if (result != true) return;
 
             try
             {

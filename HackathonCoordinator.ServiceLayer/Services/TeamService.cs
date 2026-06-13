@@ -20,6 +20,21 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
+        public async Task<ApiResponse> DeleteTeamAsync(int teamId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.DeleteAsync($"teams/{teamId}");
+                return await HandleResponseAsync(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse.Fail($"Ошибка удаления команды: {ex.Message}");
+            }
+        }
+
         public async Task<ApiResponse> JoinTeamAsync(string inviteCode)
         {
             SetAuthHeader();
@@ -94,6 +109,42 @@ namespace HackathonCoordinator.ServiceLayer.Services
             catch (Exception ex)
             {
                 return ApiResponse.Fail($"Ошибка выхода из команды: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить финальный состав команды
+        /// </summary>
+        public async Task<ApiResponse<List<FinalTeamMemberDto>>> GetFinalTeamMembersAsync(int teamId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"teams/{teamId}/final-members");
+                return await HandleResponseAsync<List<FinalTeamMemberDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<List<FinalTeamMemberDto>>.Fail($"Ошибка получения финального состава: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получить результат команды
+        /// </summary>
+        public async Task<ApiResponse<TeamResultDto>> GetTeamResultAsync(int competitionId, int teamId)
+        {
+            SetAuthHeader();
+
+            try
+            {
+                var response = await _client.GetAsync($"teams/{teamId}/result");
+                return await HandleResponseAsync<TeamResultDto>(response);
+            }
+            catch (Exception ex)
+            {
+                return ApiResponse<TeamResultDto>.Fail($"Ошибка получения результата: {ex.Message}");
             }
         }
 

@@ -26,6 +26,7 @@
         <!-- Основной контент -->
         <Frame x:Name="MainFrame"
                NavigationUIVisibility="Hidden"
+               JournalOwnership="OwnsJournal"
                Margin="60 0 0 0"
                Background="Transparent" />
 
@@ -192,8 +193,7 @@
                 <Border Background="{DynamicResource CardBackground}"
                         CornerRadius="5"
                         Margin="5,2,5,2"
-                        Padding="2"
-                        Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Padding="2">
                     <TextBlock Text="{Binding CurrentThemeName}"
                                FontSize="10"
                                FontWeight="SemiBold"

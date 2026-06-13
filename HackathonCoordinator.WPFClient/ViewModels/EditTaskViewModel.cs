@@ -1,10 +1,9 @@
-﻿using HackathonCoordinator.ServiceLayer.DTOs;
+﻿using HackathonCoordinator.ServiceLayer;
+using HackathonCoordinator.ServiceLayer.DTOs;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 
@@ -12,99 +11,116 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class EditTaskViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
-        private readonly TeamService _teamService;
-        private readonly TaskService _taskService;
+        public bool doDispose = true;
+        private bool _isInitialized = false;
 
+        private readonly TaskService _taskService;
+        private readonly TeamService _teamService;
+
+        private int _teamId;
+        private int? _taskId;
+        private bool _isCreateMode;
+
+        // Поля задачи
         private string _title = "";
+        private string _description = "";
+        private int _selectedTypeId = 1;
+        private int? _selectedAssigneeId;
+        private DateTime? _deadline;
+        private string _gitHubBranchName = "";
+        private string _errorMessage = "";
+
+        // Коллекции
+        private ObservableCollection<TaskTypeDto> _taskTypes = new();
+        private ObservableCollection<MemberDto> _teamMembers = new();
+
+        // Выбранные элементы
+        private TaskTypeDto _selectedType;
+        private MemberDto _selectedAssignee;
+
+        // Свойства для UI (DatePicker и Time)
+        private DateTime? _deadlineDate;
+        private string _deadlineTime = "";
+
+        public DateTime? DeadlineDate
+        {
+            get => _deadlineDate;
+            set
+            {
+                if (SetProperty(ref _deadlineDate, value))
+                {
+                    UpdateDeadline();
+                }
+            }
+        }
+
+        public string DeadlineTime
+        {
+            get => _deadlineTime;
+            set
+            {
+                if (SetProperty(ref _deadlineTime, value))
+                {
+                    UpdateDeadline();
+                }
+            }
+        }
+
+        private void UpdateDeadline()
+        {
+            if (_deadlineDate.HasValue)
+            {
+                if (TimeSpan.TryParse(_deadlineTime, out var time))
+                {
+                    Deadline = _deadlineDate.Value.Date + time;
+                }
+                else
+                {
+                    Deadline = _deadlineDate.Value.Date;
+                }
+            }
+            else
+            {
+                Deadline = null;
+            }
+        }
+
         public string Title
         {
             get => _title;
-
-            set
-            {
-                SetProperty(ref _title, value);
-                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
-            }
-
+            set => SetProperty(ref _title, value);
         }
 
-        private string _description = "";
         public string Description
         {
             get => _description;
             set => SetProperty(ref _description, value);
         }
 
-        private TaskTypeDto _selectedType;
-        public TaskTypeDto SelectedType
+        public int SelectedTypeId
         {
-            get => _selectedType;
-            set
-            {
-                SetProperty(ref _selectedType, value);
-                UpdateGitHubBranchHint();
-                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
-            }
+            get => _selectedTypeId;
+            set => SetProperty(ref _selectedTypeId, value);
         }
 
-        private MemberDto _selectedAssignee;
-        public MemberDto SelectedAssignee
+        public int? SelectedAssigneeId
         {
-            get => _selectedAssignee;
-            set => SetProperty(ref _selectedAssignee, value);
+            get => _selectedAssigneeId;
+            set => SetProperty(ref _selectedAssigneeId, value);
         }
 
-        private DateTime? _deadlineDate;
-        public DateTime? DeadlineDate
-        {
-            get => _deadlineDate;
-            set
-            {
-                SetProperty(ref _deadlineDate, value);
-                UpdateFullDeadline();
-                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
-            }
-        }
-
-        private string _deadlineTime = "23:59";
-        public string DeadlineTime
-        {
-            get => _deadlineTime;
-            set
-            {
-                SetProperty(ref _deadlineTime, value);
-                UpdateFullDeadline();
-                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
-            }
-        }
-
-        private DateTime? _deadline;
         public DateTime? Deadline
         {
             get => _deadline;
             set => SetProperty(ref _deadline, value);
         }
 
-        private string _githubBranchName = "";
         public string GitHubBranchName
         {
-            get => _githubBranchName;
-            set
-            {
-                SetProperty(ref _githubBranchName, value);
-                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
-            }
+            get => _gitHubBranchName;
+            set => SetProperty(ref _gitHubBranchName, value);
         }
 
-        private string _githubBranchHint = "feature/";
-        public string GithubBranchHint
-        {
-            get => _githubBranchHint;
-            set => SetProperty(ref _githubBranchHint, value);
-        }
-
-        private string _errorMessage = "";
         public string ErrorMessage
         {
             get => _errorMessage;
@@ -118,372 +134,206 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         public bool HasErrorMessage => !string.IsNullOrEmpty(ErrorMessage);
 
-        private bool _isEditMode = false;
-        public bool IsEditMode
+        public ObservableCollection<TaskTypeDto> TaskTypes
         {
-            get => _isEditMode;
+            get => _taskTypes;
+            set => SetProperty(ref _taskTypes, value);
+        }
+
+        public ObservableCollection<MemberDto> TeamMembers
+        {
+            get => _teamMembers;
+            set => SetProperty(ref _teamMembers, value);
+        }
+
+        public TaskTypeDto SelectedType
+        {
+            get => _selectedType;
             set
             {
-                SetProperty(ref _isEditMode, value);
-                OnPropertyChanged(nameof(PageTitle));
-                OnPropertyChanged(nameof(SaveButtonText));
+                if (SetProperty(ref _selectedType, value))
+                {
+                    SelectedTypeId = value?.Id ?? 0;
+                }
             }
         }
 
-        private bool _hasGitHubRepo = false;
-        public bool HasGitHubRepo
+        public MemberDto SelectedAssignee
         {
-            get => _hasGitHubRepo;
+            get => _selectedAssignee;
             set
             {
-                SetProperty(ref _hasGitHubRepo, value);
-                OnPropertyChanged(nameof(ShowGitHubSection));
-                ((AsyncRelayCommand)SaveCommand)?.RaiseCanExecuteChanged();
+                if (SetProperty(ref _selectedAssignee, value))
+                {
+                    SelectedAssigneeId = value?.Id;
+                }
             }
         }
 
-        private bool _isBranchReadOnly = false;
-        public bool IsBranchReadOnly
-        {
-            get => _isBranchReadOnly;
-            set => SetProperty(ref _isBranchReadOnly, value);
-        }
+        public string PageTitle => _isCreateMode ? "Создание задачи" : "Редактирование задачи";
+        public string PageSubtitle => _isCreateMode ? "Новая задача для команды" : "Изменение существующей задачи";
+        public string SaveButtonText => _isCreateMode ? "Создать задачу" : "Сохранить изменения";
 
-        private string _branchToolTip = "";
-        public string BranchToolTip
-        {
-            get => _branchToolTip;
-            set => SetProperty(ref _branchToolTip, value);
-        }
-
-        private bool _hasExistingBranch = false;
-        public bool HasExistingBranch
-        {
-            get => _hasExistingBranch;
-            set
-            {
-                SetProperty(ref _hasExistingBranch, value);
-                OnPropertyChanged(nameof(ShowBranchWarning));
-                OnPropertyChanged(nameof(ShowBranchInfo));
-                UpdateBranchReadOnlyState();
-            }
-        }
-
-        public bool ShowGitHubSection => HasGitHubRepo;
-        public bool ShowBranchWarning => HasExistingBranch && IsEditMode;
-        public bool ShowBranchInfo => !HasExistingBranch && !string.IsNullOrEmpty(GitHubBranchName) && HasGitHubRepo;
-
-        public int TaskId { get; private set; }
-        public int ProjectId { get; private set; }
-
-        public ObservableCollection<TaskTypeDto> TaskTypes { get; set; } = new();
-        public ObservableCollection<MemberDto> TeamMembers { get; set; } = new();
-
-        public string PageTitle => IsEditMode ? "Редактирование задачи" : "Создание задачи";
-        public string PageSubtitle => IsEditMode ? "Редактирование существующей задачи" : "Создание новой задачи для команды";
-        public string SaveButtonText => IsEditMode ? "Сохранить изменения" : "Создать задачу";
-
-        // AsyncRelayCommand для сохранения задачи
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
         public EditTaskViewModel()
         {
-            _navigationService = App.NavigationService;
-            _teamService = new TeamService();
             _taskService = new TaskService();
+            _teamService = new TeamService();
 
-            SaveCommand = new AsyncRelayCommand(
-                execute: async () => await SaveTaskAsync(),
-                canExecute: () => !string.IsNullOrWhiteSpace(Title) &&
-                                 SelectedType != null);
-
-            CancelCommand = new RelayCommand(() => Cancel());
+            SaveCommand = new AsyncRelayCommand(SaveTaskAsync, CanSave);
+            CancelCommand = new RelayCommand(Cancel);
         }
 
-        /// <summary>
-        /// Инициализация ViewModel для создания новой задачи
-        /// </summary>
-        /// <param name="projectId">ID проекта (команды)</param>
-        public async void InitializeForCreate(int projectId)
+        public async Task InitializeForCreateAsync(int teamId)
         {
-            try
+            _isCreateMode = true;
+            _teamId = teamId;
+            IsLoading = true;
+
+            await LoadTaskTypesAsync();
+            await LoadTeamMembersAsync();
+
+            // Устанавливаем дефолтные значения
+            if (TaskTypes.Any())
             {
-                ProjectId = projectId;
-                IsEditMode = false;
-
-                await LoadTeamDataAsync();
-                await LoadTaskTypesAsync();
-                await LoadTeamMembersAsync();
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    // Устанавливаем дефолтные значения
-                    DeadlineDate = DateTime.Today.AddDays(7);
-                    DeadlineTime = "23:59";
-
-                    if (TaskTypes.Any())
-                        SelectedType = TaskTypes.First();
-
-                    IsBranchReadOnly = false;
-                    BranchToolTip = "Введите название для новой ветки GitHub";
-
-                    ((AsyncRelayCommand)SaveCommand).RaiseCanExecuteChanged();
-                });
+                SelectedType = TaskTypes[0];
             }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ErrorMessage = $"Ошибка инициализации: {ex.Message}";
-                });
-            }
+
+            // Устанавливаем дефолтное время
+            DeadlineTime = "23:59";
+
+            IsLoading = false;
+            _isInitialized = true;
         }
 
-        /// <summary>
-        /// Инициализация ViewModel для редактирования существующей задачи
-        /// </summary>
-        /// <param name="taskId">ID задачи для редактирования</param>
-        public async void InitializeForEdit(int taskId)
+        public async Task InitializeForEditAsync(TaskDetailsDto task)
         {
-            try
+            if (task == null)
             {
-                TaskId = taskId;
-                IsEditMode = true;
-
-                await LoadTeamDataAsync();
-                await LoadTaskTypesAsync();
-                await LoadTeamMembersAsync();
-                await LoadTaskDataAsync(taskId);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ((AsyncRelayCommand)SaveCommand).RaiseCanExecuteChanged();
-                });
+                await ShowErrorAsync("Задача не найдена");
+                Cancel();
+                return;
             }
-            catch (Exception ex)
+
+            _isCreateMode = false;
+            _taskId = task.Id;
+            _teamId = task.TeamId;
+            IsLoading = true;
+
+            Title = task.Title;
+            Description = task.Description ?? "";
+            SelectedTypeId = task.TypeId;
+            SelectedAssigneeId = task.AssignedToId;
+            Deadline = task.Deadline;
+            GitHubBranchName = task.GitHubBranchName ?? "";
+
+            // Устанавливаем значения для DatePicker и Time
+            if (Deadline.HasValue)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                var date = Deadline.Value.Date;
+                var time = Deadline.Value.ToString("HH:mm");
+
+                _deadlineDate = date;
+                _deadlineTime = time;
+
+                OnPropertyChanged(nameof(DeadlineDate));
+                OnPropertyChanged(nameof(DeadlineTime));
+
+                // Явно обновляем составной дедлайн
+                if (TimeSpan.TryParse(time, out var timeSpan))
                 {
-                    ErrorMessage = $"Ошибка инициализации: {ex.Message}";
-                });
+                    Deadline = date + timeSpan;
+                }
             }
+            else
+            {
+                _deadlineDate = null;
+                _deadlineTime = "23:59";
+
+                OnPropertyChanged(nameof(DeadlineDate));
+                OnPropertyChanged(nameof(DeadlineTime));
+                Deadline = null;
+            }
+
+            await LoadTaskTypesAsync();
+            await LoadTeamMembersAsync();
+
+            // Устанавливаем SelectedType после загрузки TaskTypes
+            SelectedType = TaskTypes.FirstOrDefault(t => t.Id == SelectedTypeId);
+
+            // Устанавливаем SelectedAssignee после загрузки TeamMembers
+            SelectedAssignee = TeamMembers.FirstOrDefault(m => m.Id == SelectedAssigneeId);
+
+            IsLoading = false;
+            _isInitialized = true;
         }
 
-        /// <summary>
-        /// Загрузка данных команды для определения наличия GitHub репозитория
-        /// </summary>
-        private async Task LoadTeamDataAsync()
-        {
-            try
-            {
-                var team = await _teamService.GetCurrentTeamAsync();
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (team.Success)
-                    {
-                        HasGitHubRepo = !string.IsNullOrEmpty(team.Data.GitHubUrl) && team.Data.GitHubUrl != "Не указан";
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ErrorMessage = $"Ошибка загрузки данных команды: {ex.Message}";
-                });
-            }
-        }
-
-        /// <summary>
-        /// Загрузка доступных типов задач из сервиса
-        /// </summary>
         private async Task LoadTaskTypesAsync()
         {
             try
             {
                 var types = await _taskService.GetTaskTypesAsync();
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                if (types.Success && types.Data != null)
                 {
-                    TaskTypes.Clear();
-                    foreach (var type in types.Data)
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        TaskTypes.Add(type);
-                    }
-                });
+                        TaskTypes.Clear();
+                        foreach (var type in types.Data)
+                        {
+                            TaskTypes.Add(type);
+                        }
+                    });
+                }
+                else
+                {
+                    await ShowErrorAsync($"Ошибка загрузки типов задач: {types.Message}");
+                }
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ErrorMessage = $"Ошибка загрузки типов задач: {ex.Message}";
-                });
+                await ShowErrorAsync($"Ошибка загрузки типов задач: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Загрузка участников команды для назначения задачи
-        /// </summary>
         private async Task LoadTeamMembersAsync()
         {
             try
             {
-                var team = await _teamService.GetCurrentTeamAsync();
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                var team = await _teamService.GetTeamByIdAsync(_teamId);
+                if (team.Success && team.Data?.Members != null)
                 {
-                    if (team.Success)
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
                         TeamMembers.Clear();
-
                         foreach (var member in team.Data.Members)
                         {
                             TeamMembers.Add(member);
                         }
-
-                        if (!TeamMembers.Any())
-                        {
-                            ErrorMessage = "В команде нет участников, которым можно назначить задачу";
-                        }
-                    }
-                });
+                    });
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Не удалось загрузить участников команды: {team.Message}");
+                }
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ErrorMessage = $"Ошибка загрузки участников команды: {ex.Message}";
-                });
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки участников команды: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Загрузка данных существующей задачи для редактирования
-        /// </summary>
-        /// <param name="taskId">ID задачи</param>
-        private async Task LoadTaskDataAsync(int taskId)
+        private bool CanSave()
         {
-            try
-            {
-                var task = await _taskService.GetTaskDetailsAsync(taskId);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (task.Success)
-                    {
-                        Title = task.Data.Title;
-                        Description = task.Data.Description ?? "";
-                        SelectedType = TaskTypes.FirstOrDefault(t => t.Id == task.Data.TypeId);
-                        SelectedAssignee = TeamMembers.FirstOrDefault(m => m.Id == task.Data.AssignedToId);
-
-                        if (task.Data.Deadline.HasValue)
-                        {
-                            DeadlineDate = task.Data.Deadline.Value.Date;
-                            DeadlineTime = task.Data.Deadline.Value.ToString("HH:mm");
-                        }
-                        else
-                        {
-                            DeadlineDate = DateTime.Today.AddDays(7);
-                            DeadlineTime = "23:59";
-                        }
-
-                        GitHubBranchName = task.Data.GitHubBranchName ?? "";
-
-                        HasExistingBranch = !string.IsNullOrEmpty(task.Data.GitHubBranchName);
-
-                        UpdateGitHubBranchHint();
-                        UpdateBranchReadOnlyState();
-                    }
-                    else
-                    {
-                        ErrorMessage = $"Ошибка загрузки задачи: {task.Message}";
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ErrorMessage = $"Ошибка загрузки задачи: {ex.Message}";
-                });
-            }
+            return !string.IsNullOrWhiteSpace(Title) && SelectedTypeId > 0;
         }
 
-        /// <summary>
-        /// Обновление полного дедлайна на основе даты и времени
-        /// </summary>
-        private void UpdateFullDeadline()
-        {
-            if (!DeadlineDate.HasValue)
-            {
-                Deadline = null;
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(DeadlineTime) || !TimeSpan.TryParse(DeadlineTime, out var time))
-            {
-                time = new TimeSpan(23, 59, 0);
-            }
-
-            Deadline = DeadlineDate.Value.Date.Add(time);
-        }
-
-        /// <summary>
-        /// Обновление подсказки для названия ветки в зависимости от типа задачи
-        /// </summary>
-        private void UpdateGitHubBranchHint()
-        {
-            if (SelectedType == null) return;
-
-            switch (SelectedType.Name.ToLower())
-            {
-                case "баг":
-                case "bug":
-                    GithubBranchHint = "bugfix/";
-                    break;
-                case "документация":
-                case "documentation":
-                    GithubBranchHint = "docs/";
-                    break;
-                case "фича":
-                case "feature":
-                default:
-                    GithubBranchHint = "feature/";
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// Обновление состояния поля ввода ветки (только для чтения или редактируемое)
-        /// </summary>
-        private void UpdateBranchReadOnlyState()
-        {
-            if (IsEditMode && HasExistingBranch)
-            {
-                IsBranchReadOnly = true;
-                BranchToolTip = "Ветка уже создана в GitHub. Изменить название нельзя.";
-            }
-            else if (HasGitHubRepo)
-            {
-                IsBranchReadOnly = false;
-                BranchToolTip = "Введите название для новой ветки GitHub";
-            }
-            else
-            {
-                IsBranchReadOnly = true;
-                BranchToolTip = "Для создания ветки необходимо подключить GitHub репозиторий к команде";
-            }
-        }
-
-        /// <summary>
-        /// Сохранение задачи (создание новой или обновление существующей)
-        /// </summary>
         private async Task SaveTaskAsync()
         {
-            if (!ValidateForm())
-                return;
+            if (!CanSave()) return;
+
+            IsLoading = true;
 
             try
             {
@@ -491,215 +341,48 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                 {
                     Title = Title.Trim(),
                     Description = Description?.Trim(),
-                    TypeId = SelectedType?.Id ?? 1,
-                    AssignedToId = SelectedAssignee?.Id,
+                    TypeId = SelectedTypeId,
+                    AssignedToId = SelectedAssigneeId,
                     Deadline = Deadline,
-                    GitHubBranchName = HasGitHubRepo && !string.IsNullOrWhiteSpace(GitHubBranchName)
-                        ? GitHubBranchName.Trim()
-                        : null
+                    GitHubBranchName = GitHubBranchName?.Trim()
                 };
 
-                if (IsEditMode)
+                ApiResponse<int> result;
+
+                if (_isCreateMode)
                 {
-                    await SaveExistingTaskAsync(dto);
+                    result = await _taskService.CreateTaskAsync(_teamId, dto);
                 }
                 else
                 {
-                    await CreateNewTaskAsync(dto);
+                    result = await _taskService.UpdateTaskAsync(_taskId.Value, dto);
+                }
+
+                if (result.Success)
+                {
+                    await ShowSuccessAsync(result.Message);
+
+                    var task = await _taskService.GetTaskDetailsAsync(result.Data);
+                    _navigationService.NavigateToBack(new TaskDetailsPage(task.Data));
+                }
+                else
+                {
+                    ErrorMessage = result.Message;
                 }
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ErrorMessage = $"Ошибка при сохранении: {ex.Message}";
-                });
+                await ShowErrorAsync($"Ошибка сохранения: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
-        /// <summary>
-        /// Сохранение изменений существующей задачи
-        /// </summary>
-        /// <param name="dto">DTO с данными задачи</param>
-        private async Task SaveExistingTaskAsync(CreateTaskDto dto)
-        {
-            try
-            {
-                var result = await _taskService.UpdateTaskAsync(TaskId, dto);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (result.Success)
-                    {
-                        var message = result.Message;
-
-                        if (!string.IsNullOrWhiteSpace(dto.GitHubBranchName) && !HasExistingBranch)
-                        {
-                            if (!message.Contains("ветк"))
-                            {
-                                message += $"\n\n✅ Ветка '{GitHubBranchName}' создана в GitHub репозитории";
-                            }
-                        }
-
-                        MessageBox.Show(message, "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
-                        _navigationService.NavigateTo(new TeamPage());
-                    }
-                    else
-                    {
-                        MessageBox.Show(result.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка сохранения задачи: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
-        }
-
-        /// <summary>
-        /// Создание новой задачи
-        /// </summary>
-        /// <param name="dto">DTO с данными задачи</param>
-        private async Task CreateNewTaskAsync(CreateTaskDto dto)
-        {
-            try
-            {
-                var result = await _taskService.CreateTaskAsync(ProjectId, dto);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (result.Success)
-                    {
-                        var message = result.Message;
-
-                        if (!string.IsNullOrWhiteSpace(dto.GitHubBranchName))
-                        {
-                            if (!message.Contains("ветк"))
-                            {
-                                message += $"\n\nВетка '{GitHubBranchName}' создана в GitHub репозитории команды";
-                            }
-                        }
-
-                        MessageBox.Show(message, "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
-                        _navigationService.NavigateTo(new TeamPage());
-                    }
-                    else
-                    {
-                        MessageBox.Show(result.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка создания задачи: {ex.Message}", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                });
-            }
-        }
-
-        /// <summary>
-        /// Отмена редактирования и возврат на предыдущую страницу
-        /// </summary>
         private void Cancel()
         {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                _navigationService.NavigateTo(new TeamPage());
-            });
-        }
-
-        /// <summary>
-        /// Валидация формы перед сохранением
-        /// </summary>
-        /// <returns>True если форма валидна, иначе False</returns>
-        private bool ValidateForm()
-        {
-            string errorMessage = "";
-
-            if (string.IsNullOrWhiteSpace(Title))
-            {
-                errorMessage = "Название задачи обязательно для заполнения";
-            }
-            else if (SelectedType == null)
-            {
-                errorMessage = "Выберите тип задачи";
-            }
-            else if (Title.Length > 200)
-            {
-                errorMessage = "Название задачи не должно превышать 200 символов";
-            }
-            else if (Description?.Length > 1000)
-            {
-                errorMessage = "Описание задачи не должно превышать 1000 символов";
-            }
-            else if (DeadlineDate.HasValue)
-            {
-                if (!IsValidTimeFormat(DeadlineTime))
-                {
-                    errorMessage = "Время должно быть в формате HH:mm (например: 14:30)";
-                }
-                // Проверка что дедлайн не в прошлом
-                else if (Deadline.HasValue && Deadline.Value < DateTime.Now)
-                {
-                    errorMessage = "Дедлайн не может быть в прошлом";
-                }
-            }
-            else if (HasGitHubRepo && !string.IsNullOrWhiteSpace(GitHubBranchName))
-            {
-                if (!IsValidBranchName(GitHubBranchName))
-                {
-                    errorMessage = "Название ветки может содержать только буквы, цифры, дефисы, подчеркивания и слеши";
-                }
-                else if (GitHubBranchName.StartsWith("/") || GitHubBranchName.EndsWith("/"))
-                {
-                    errorMessage = "Название ветки не может начинаться или заканчиваться слешем";
-                }
-            }
-
-            // Обновляем свойство ErrorMessage через Dispatcher, если нужно
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    ErrorMessage = errorMessage;
-                });
-            }
-            else
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    ErrorMessage = "";
-                });
-            }
-
-            return string.IsNullOrEmpty(errorMessage);
-        }
-
-        /// <summary>
-        /// Проверка валидности формата времени
-        /// </summary>
-        private bool IsValidTimeFormat(string time)
-        {
-            if (string.IsNullOrWhiteSpace(time))
-                return false;
-
-            return Regex.IsMatch(time, @"^([01]?[0-9]|2[0-3]):[0-5][0-9]$");
-        }
-
-        /// <summary>
-        /// Проверка валидности имени ветки GitHub
-        /// </summary>
-        /// <param name="branchName">Имя ветки для проверки</param>
-        /// <returns>True если имя валидно, иначе False</returns>
-        private bool IsValidBranchName(string branchName)
-        {
-            return Regex.IsMatch(branchName, @"^[a-zA-Z0-9._\/-]+$");
+            _navigationService.GoBack();
         }
 
         private void ScrollToBottom()
@@ -711,29 +394,14 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         protected override void DisposeManagedResources()
         {
+            if (!doDispose) return;
             base.DisposeManagedResources();
 
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                TaskTypes?.Clear();
-                TeamMembers?.Clear();
+            TaskTypes?.Clear();
+            TeamMembers?.Clear();
 
-                Title = null;
-                Description = null;
-                GitHubBranchName = null;
-                GithubBranchHint = null;
-                ErrorMessage = null;
-                BranchToolTip = null;
-
-                SelectedType = null;
-                SelectedAssignee = null;
-            });
-
-            if (_teamService is IDisposable teamDisposable)
-                teamDisposable.Dispose();
-
-            if (_taskService is IDisposable taskDisposable)
-                taskDisposable.Dispose();
+            if (_taskService is IDisposable taskDisposable) taskDisposable.Dispose();
+            if (_teamService is IDisposable teamDisposable) teamDisposable.Dispose();
         }
     }
 }

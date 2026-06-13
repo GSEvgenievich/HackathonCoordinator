@@ -1,11 +1,13 @@
-﻿using HackathonCoordinator.ServiceLayer.DTOs;
+﻿using HackathonCoordinator.ServiceLayer;
+using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.ServiceLayer.Helpers;
 using HackathonCoordinator.ServiceLayer.Services;
 using HackathonCoordinator.ServiceLayer.Storages;
 using HackathonCoordinator.WPFClient.Helpers;
-using HackathonCoordinator.WPFClient.Services;
 using HackathonCoordinator.WPFClient.Views;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 
@@ -13,9 +15,10 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class ChatViewModel : BaseViewModel
     {
+        public bool doDispose = true;
+
         private readonly ChatService _chatService;
         private readonly UserService _userService;
-        private readonly NavigationService _navigationService;
 
         private HubConnection _hubConnection;
         private ChatDto _currentChat;
@@ -23,9 +26,11 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private bool _isConnected;
         private bool _isCaptain;
+        private bool _isOrganizer;
         private bool _isLoading;
         private string _chatTitle = "";
         private string _newMessageText = "";
+        private bool _isInitialized = false;
 
         public ChatDto CurrentChat
         {
@@ -60,7 +65,21 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         public bool IsCaptain
         {
             get => _isCaptain;
-            set => SetProperty(ref _isCaptain, value);
+            set
+            {
+                SetProperty(ref _isCaptain, value);
+                OnPropertyChanged(nameof(CanNotify));
+            }
+        }
+
+        public bool IsOrganizer
+        {
+            get => _isOrganizer;
+            set
+            {
+                SetProperty(ref _isOrganizer, value);
+                OnPropertyChanged(nameof(CanNotify));
+            }
         }
 
         public bool IsLoading
@@ -75,53 +94,158 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set => SetProperty(ref _chatTitle, value);
         }
 
+        private ObservableCollection<FileUploadData> _selectedFiles = new();
+        public ObservableCollection<FileUploadData> SelectedFiles
+        {
+            get => _selectedFiles;
+            set
+            {
+                SetProperty(ref _selectedFiles, value);
+                OnPropertyChanged(nameof(HasFiles));
+                OnPropertyChanged(nameof(FilesPreview));
+            }
+        }
+
+        public bool HasFiles => SelectedFiles?.Any() == true;
+        public string FilesPreview => HasFiles ? $"📎 {SelectedFiles.Count} файл(ов)" : "";
         public bool CanSendMessage => !string.IsNullOrWhiteSpace(NewMessageText) && !IsLoading && _isConnected;
         public bool HasNoMessages => !Messages.Any();
+        public bool CanNotify => IsCaptain || IsOrganizer;
 
         public ObservableCollection<MessageDto> Messages { get; } = new();
         public ObservableCollection<ChatParticipantDto> Participants { get; } = new();
 
-        // AsyncRelayCommand для всех операций
         public ICommand SendMessageCommand { get; }
         public ICommand BackCommand { get; }
         public ICommand EditMessageCommand { get; }
         public ICommand DeleteMessageCommand { get; }
+        public ICommand AddFilesCommand { get; }
+        public ICommand RemoveFileCommand { get; }
+        public ICommand HandleAttachmentClickCommand { get; }
+        public ICommand ViewImageCommand { get; }
+        public ICommand DownloadAttachmentCommand { get; }
+        public ICommand ViewParticipantProfileCommand { get; }
+        public ICommand InsertNotifyCommand { get; }
+
+        public event EventHandler ScrollToBottomRequested;
+        public event Action RequestFocus;
 
         public ChatViewModel()
         {
             _chatService = new ChatService();
             _userService = new UserService();
-            _navigationService = App.NavigationService;
 
-            // AsyncRelayCommand для отправки сообщений
             SendMessageCommand = new AsyncRelayCommand(
                 execute: async () => await SendMessageAsync(),
-                canExecute: () => CanSendMessage);
+                canExecute: () => CanSendMessage && _isConnected);
 
             BackCommand = new RelayCommand(GoBack);
-
-            // AsyncRelayCommand для редактирования сообщений
             EditMessageCommand = new AsyncRelayCommand<MessageDto>(
                 execute: async (msg) => await EditMessageAsync(msg),
                 canExecute: (msg) => msg != null && msg.IsMyMessage);
 
-            // AsyncRelayCommand для удаления сообщений
             DeleteMessageCommand = new AsyncRelayCommand<MessageDto>(
                 execute: async (msg) => await DeleteMessageAsync(msg),
                 canExecute: (msg) => msg != null && msg.IsMyMessage);
 
-            InitializeSignalRAsync();
-            LoadCurrentUser();
+            HandleAttachmentClickCommand = new AsyncRelayCommand<MessageAttachmentDto>(
+                execute: async (attachment) => await HandleAttachmentClickAsync(attachment),
+                canExecute: (attachment) => attachment != null);
+
+            ViewParticipantProfileCommand = new AsyncRelayCommand<ChatParticipantDto>(
+                execute: async (participant) => await ExecuteViewParticipantProfileAsync(participant),
+                canExecute: (participant) => participant != null);
+
+            ViewImageCommand = new AsyncRelayCommand<MessageAttachmentDto>(
+                execute: async (attachment) => await ViewImageAsync(attachment),
+                canExecute: (attachment) => attachment != null && attachment.IsImage);
+
+            DownloadAttachmentCommand = new AsyncRelayCommand<MessageAttachmentDto>(
+                execute: async (attachment) => await DownloadAttachmentAsync(attachment),
+                canExecute: (attachment) => attachment != null);
+
+            AddFilesCommand = new RelayCommand(AddFiles);
+            RemoveFileCommand = new RelayCommand<FileUploadData>(RemoveFile);
+            InsertNotifyCommand = new RelayCommand(InsertNotify);
+
         }
 
-        private async void LoadCurrentUser()
+        public async Task InitializeAsync(ChatDto chat, bool isTeamChat)
+        {
+            if (_isInitialized) return;
+
+            IsLoading = true;
+
+            try
+            {
+                CurrentChat = chat;
+
+                if (isTeamChat)
+                {
+                    ChatTitle = "💬 Чат команды";
+                }
+                else
+                {
+                    ChatTitle = "💬 Чат задачи";
+                }
+
+                await LoadCurrentUser();
+                await UpdateMessagesAndParticipantsAsync();
+
+                await InitializeSignalRAsync();
+
+                _isInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorAsync($"Ошибка загрузки чата: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private async Task ExecuteViewParticipantProfileAsync(ChatParticipantDto participant)
+        {
+            if (participant == null) return;
+
+            try
+            {
+                doDispose = false;
+                var profilePage = new ProfilePage(participant.UserId);
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    _navigationService.NavigateTo(profilePage);
+                });
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorAsync($"Ошибка открытия профиля: {ex.Message}");
+                doDispose = true;
+            }
+        }
+
+        private async Task LoadCurrentUser()
         {
             try
             {
                 var user = await _userService.GetCurrentUserAsync();
+
                 if (user.Success)
                 {
                     CurrentUser = user.Data;
+                }
+
+                if (CurrentUser != null)
+                {
+                    IsCaptain = CurrentUser.RoleId == (int)Roles.Captain;
+                    IsOrganizer = CurrentUser.RoleId == (int)Roles.Organizer || CurrentUser.RoleId == (int)Roles.Admin;
+                }
+                else
+                {
+                    IsCaptain = false;
+                    IsOrganizer = false;
                 }
             }
             catch (Exception ex)
@@ -132,7 +256,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task InitializeSignalRAsync()
         {
-            var baseUrl = "https://zip.hhallva.ru";
+            var baseUrl = "http://localhost:5046";
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl($"{baseUrl}/chathub", options =>
                 {
@@ -144,7 +268,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             SetupConnectionEvents();
             SetupSignalREvents();
 
-            _ = ConnectToHubAsync();
+            await ConnectToHubAsync();
         }
 
         private TimeSpan[] GetReconnectDelays() => new[]
@@ -244,66 +368,16 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        public async Task LoadTeamChatAsync(ChatDto chat)
+        private void InsertNotify()
         {
-            IsLoading = true;
+            var currentText = NewMessageText;
 
-            try
+            if (!currentText.Contains("@notify"))
             {
-                CurrentChat = chat;
-                ChatTitle = $"💬 Чат команды";
-                await UpdateMessagesAndParticipantsAsync();
+                NewMessageText = "@notify " + currentText;
+            }
 
-                CheckIfCurrentUserIsCaptain();
-
-                if (_isConnected)
-                    await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка загрузки чата: {ex.Message}");
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        public async Task LoadTaskChatAsync(ChatDto chat)
-        {
-            IsLoading = true;
-
-            try
-            {
-                CurrentChat = chat;
-                ChatTitle = $"💬 Чат задачи";
-                await UpdateMessagesAndParticipantsAsync();
-
-                CheckIfCurrentUserIsCaptain();
-
-                if (_isConnected)
-                    await _hubConnection.InvokeAsync("JoinChat", CurrentChat.Id);
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка загрузки чата: {ex.Message}");
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        private void CheckIfCurrentUserIsCaptain()
-        {
-            if (CurrentUser != null)
-            {
-                IsCaptain = CurrentUser.RoleId == 1;
-            }
-            else
-            {
-                IsCaptain = false;
-            }
+            RequestFocus?.Invoke();
         }
 
         private async Task JoinCurrentChatAsync()
@@ -357,26 +431,168 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             });
         }
 
-        private async Task SendMessageAsync()
+        private async Task HandleAttachmentClickAsync(MessageAttachmentDto attachment)
+        {
+            if (attachment.IsImage)
+            {
+                await ViewImageAsync(attachment);
+            }
+            else
+            {
+                await DownloadAttachmentAsync(attachment);
+            }
+        }
+
+        private async Task ViewImageAsync(MessageAttachmentDto attachment)
         {
             try
             {
-                await _hubConnection.InvokeAsync("TestConnection", "Тестовое сообщение");
-                System.Diagnostics.Debug.WriteLine("✅ TestConnection вызван");
+                // Показываем индикатор загрузки
+                IsLoading = true;
+
+                var result = await _chatService.GetFullImageAsync(attachment.Id);
+
+                if (result.Success && result.Data != null && result.Data.Length > 0)
+                {
+                    var previewWindow = new ImagePreviewWindow(result.Data, attachment.FileName);
+                    previewWindow.Owner = Application.Current.MainWindow;
+                    previewWindow.ShowDialog();
+                }
+                else
+                {
+                    await ShowErrorAsync("Не удалось загрузить изображение");
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ TestConnection ошибка: {ex.Message}");
+                await ShowErrorAsync($"Ошибка просмотра: {ex.Message}");
             }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
 
-            if (!CanSendMessage) return;
+        private async Task DownloadAttachmentAsync(MessageAttachmentDto attachment)
+        {
+            try
+            {
+                IsLoading = true;
+
+                var result = await _chatService.DownloadAttachmentAsync(attachment.Id);
+
+                if (!result.Success)
+                {
+                    await ShowErrorAsync(result.Message);
+                    return;
+                }
+
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    FileName = attachment.FileName,
+                    Title = "Сохранить файл как...",
+                    Filter = "Все файлы|*.*"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    await File.WriteAllBytesAsync(saveFileDialog.FileName, result.Data);
+                    await ShowSuccessAsync("Файл успешно сохранен");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorAsync($"Ошибка скачивания: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private async void AddFiles()
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Выберите файлы",
+                Multiselect = true,
+                Filter = "Все файлы|*.*|Изображения|*.jpg;*.jpeg;*.png;*.gif;*.bmp|Документы|*.pdf;*.doc;*.docx;*.txt"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                foreach (var fileName in dialog.FileNames)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(fileName);
+                        var fileData = await File.ReadAllBytesAsync(fileName);
+
+                        SelectedFiles.Add(new FileUploadData
+                        {
+                            FileName = Path.GetFileName(fileName),
+                            ContentType = GetContentType(fileName),
+                            Data = fileData,
+                            Length = fileInfo.Length
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        await ShowErrorAsync($"Ошибка загрузки файла {Path.GetFileName(fileName)}: {ex.Message}");
+                    }
+                }
+                OnPropertyChanged(nameof(HasFiles));
+                OnPropertyChanged(nameof(FilesPreview));
+            }
+        }
+
+        private void RemoveFile(FileUploadData file)
+        {
+            SelectedFiles.Remove(file);
+            OnPropertyChanged(nameof(HasFiles));
+            OnPropertyChanged(nameof(FilesPreview));
+        }
+
+        private string GetContentType(string fileName)
+        {
+            var ext = Path.GetExtension(fileName).ToLower();
+            return ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".pdf" => "application/pdf",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".txt" => "text/plain",
+                _ => "application/octet-stream"
+            };
+        }
+
+        private async Task SendMessageAsync()
+        {
+            if (!CanSendMessage && !HasFiles) return;
 
             var messageText = NewMessageText.Trim();
             NewMessageText = "";
 
             try
             {
-                var result = await _chatService.SendMessageAsync(CurrentChat.Id, messageText);
+                ApiResponse<MessageDto> result;
+
+                if (HasFiles)
+                {
+                    result = await _chatService.SendMessageWithAttachmentsAsync(CurrentChat.Id, messageText, SelectedFiles.ToList());
+                    SelectedFiles.Clear();
+                    OnPropertyChanged(nameof(HasFiles));
+                    OnPropertyChanged(nameof(FilesPreview));
+                }
+                else
+                {
+                    result = await _chatService.SendMessageAsync(CurrentChat.Id, messageText);
+                }
+
                 if (!result.Success)
                 {
                     await ShowErrorAsync(result.Message);
@@ -419,16 +635,9 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 
         private async Task DeleteMessageAsync(MessageDto message)
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                return MessageBox.Show(
-                    "Вы уверены, что хотите удалить это сообщение?",
-                    "Подтверждение удаления",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-            });
+            var result = await ShowYesNoCancelAsync("Вы уверены, что хотите удалить это сообщение?", "Подтверждение удаления");
 
-            if (result == MessageBoxResult.Yes)
+            if (result == true)
             {
                 try
                 {
@@ -449,24 +658,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             _ = LeaveCurrentChatAsync();
 
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (CurrentChat?.TeamId != null)
-                {
-                    var targetPage = CurrentUser?.RoleId == 3
-                        ? new TeamPage(CurrentChat.TeamId.Value)
-                        : new TeamPage();
-                    _navigationService.NavigateTo(targetPage);
-                }
-                else if (CurrentChat?.TaskId != null)
-                {
-                    _navigationService.NavigateTo(new TaskDetailsPage(CurrentChat.TaskId.Value));
-                }
-                else
-                {
-                    _navigationService.NavigateTo(new CompetitionsPage());
-                }
-            });
+            _navigationService.GoBack();
         }
 
         private void ScrollToBottom()
@@ -474,18 +666,16 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             ScrollToBottomRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        private async Task ShowErrorAsync(string message)
+        private async Task ShowSuccessAsync(string message)
         {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            });
+            await ShowInfoAsync(message, "Успешно");
         }
-
-        public event EventHandler ScrollToBottomRequested;
 
         protected override void DisposeManagedResources()
         {
+            if (!doDispose)
+                return;
+
             base.DisposeManagedResources();
 
             Application.Current.Dispatcher.Invoke(() =>

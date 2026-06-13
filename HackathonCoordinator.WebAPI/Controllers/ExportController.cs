@@ -1,5 +1,6 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,8 +15,7 @@ namespace HackathonCoordinator.WebAPI.Controllers
     {
         private readonly HackathonCoordinatorContext _context;
 
-        public ExportController(
-            HackathonCoordinatorContext context)
+        public ExportController(HackathonCoordinatorContext context)
         {
             _context = context;
         }
@@ -31,8 +31,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 var userId = GetUserId();
                 var user = await _context.Users.FindAsync(userId);
 
-                if (user?.RoleId != (int)Roles.Organizer)
-                    return HandleForbidden<CompetitionExportDataDto>("Только организатор может экспортировать данные");
+                if (user?.RoleId != (int)Roles.Organizer && user?.RoleId != (int)Roles.Admin)
+                    return HandleForbidden<CompetitionExportDataDto>("Недостаточно прав для экспорта данных");
 
                 var competition = await GetCompetitionWithDetailsAsync(competitionId);
                 if (competition == null)
@@ -48,8 +48,6 @@ namespace HackathonCoordinator.WebAPI.Controllers
             }
         }
 
-        // --- Вспомогательные методы ---
-
         /// <summary>
         /// Получение соревнования с деталями для экспорта
         /// </summary>
@@ -57,6 +55,8 @@ namespace HackathonCoordinator.WebAPI.Controllers
         {
             return await _context.Competitions
                 .Include(c => c.CreatedBy)
+                .Include(c => c.ResultsCreatedBy)
+                .Include(c => c.ResultsUpdatedBy)
                 .Include(c => c.Teams)
                     .ThenInclude(t => t.Users)
                     .ThenInclude(t => t.Role)
@@ -80,13 +80,15 @@ namespace HackathonCoordinator.WebAPI.Controllers
             var competitionDto = CreateCompetitionDto(competition);
             var teamExportDtos = await CreateTeamExportDtosAsync(competition);
             var competitionStats = CalculateCompetitionStats(teamExportDtos);
+            var results = await GetCompetitionResultsAsync(competition.Id);
 
             return new CompetitionExportDataDto
             {
                 Competition = competitionDto,
                 Teams = teamExportDtos,
                 Stats = competitionStats,
-                SuggestedFileName = GenerateFileName(competition.Name)
+                Results = results,
+                SuggestedFileName = GenerateSafeFileName(competition.Name, "competition_export")
             };
         }
 
@@ -103,7 +105,14 @@ namespace HackathonCoordinator.WebAPI.Controllers
                 StartDate = competition.StartDate,
                 EndDate = competition.EndDate,
                 CreatedByUsername = competition.CreatedBy.Username,
-                CreatedAt = competition.CreatedAt
+                CreatedAt = competition.CreatedAt,
+                HasResults = competition.HasResults,
+                ResultsCreatedAt = competition.ResultsCreatedAt,
+                ResultsCreatedById = competition.ResultsCreatedById,
+                ResultsCreatedByUsername = competition.ResultsCreatedBy?.Username,
+                ResultsUpdatedAt = competition.ResultsUpdatedAt,
+                ResultsUpdatedById = competition.ResultsUpdatedById,
+                ResultsUpdatedByUsername = competition.ResultsUpdatedBy?.Username
             };
         }
 
@@ -213,34 +222,82 @@ namespace HackathonCoordinator.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Получение результатов соревнования
+        /// </summary>
+        private async Task<List<TeamResultDto>> GetCompetitionResultsAsync(int competitionId)
+        {
+            var results = await _context.Results
+                .Where(r => r.CompetitionId == competitionId)
+                .Include(r => r.Team)
+                .Select(r => new TeamResultDto
+                {
+                    TeamId = r.TeamId,
+                    TeamName = r.Team.Name,
+                    Place = r.Place,
+                    PlaceDisplay = r.PlaceDisplay,
+                    Comment = r.Comment,
+                    IsSaved = true,
+                    MembersCount = r.Team.Users.Count.ToString()
+                })
+                .ToListAsync();
+
+            return results;
+        }
+
+        /// <summary>
         /// Генерация безопасного имени файла
         /// </summary>
-        private string GenerateFileName(string competitionName)
+        /// <param name="sourceName">Исходное название (например, имя соревнования)</param>
+        /// <param name="prefix">Префикс для файла</param>
+        /// <returns>Безопасное имя файла</returns>
+        private string GenerateSafeFileName(string sourceName, string prefix)
         {
-            if (string.IsNullOrWhiteSpace(competitionName))
-                return $"competition_export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            if (string.IsNullOrWhiteSpace(sourceName))
+                return $"{prefix}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
+            // Список недопустимых символов для Windows
             var invalidChars = Path.GetInvalidFileNameChars();
-            var safeName = new string(competitionName
+
+            // Замена недопустимых символов на '_'
+            var safeName = new string(sourceName
                 .Select(ch => invalidChars.Contains(ch) ? '_' : ch)
                 .ToArray());
 
+            // Удаляем специальные символы
+            safeName = System.Text.RegularExpressions.Regex.Replace(safeName, @"[\""\'\`\~\@\$\%\^\&\*\(\)\=\+\{\}\[\]\|\\\/\?\<\>\:\;]", "_");
+
+            // Удаляем двойные кавычки и другие проблемные символы
+            safeName = safeName.Replace("\"", "_")
+                               .Replace("'", "_")
+                               .Replace("`", "_")
+                               .Replace("«", "_")
+                               .Replace("»", "_")
+                               .Replace("„", "_")
+                               .Replace("“", "_")
+                               .Replace("”", "_");
+
+            // Обрезаем пробелы в начале и конце
             safeName = safeName.Trim();
 
-            // Удаление двойных пробелов
+            // Заменяем множественные пробелы на один
             while (safeName.Contains("  "))
                 safeName = safeName.Replace("  ", " ");
 
-            // Ограничение длины имени
-            if (safeName.Length > 50)
-                safeName = safeName.Substring(0, 50).Trim();
+            // Заменяем пробелы на знак подчеркивания (опционально, для читаемости)
+            // safeName = safeName.Replace(' ', '_');
 
-            // Проверка на пустое имя после обработки
+            // Ограничиваем длину имени (максимум 50 символов + префикс)
+            const int maxNameLength = 50;
+            if (safeName.Length > maxNameLength)
+                safeName = safeName.Substring(0, maxNameLength).Trim();
+
+            // Если после очистки имя пустое, используем дефолтное
             if (string.IsNullOrWhiteSpace(safeName))
-                safeName = "competition";
+                safeName = "export";
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            return $"{safeName}_export_{timestamp}.xlsx";
+            return $"{prefix}_{safeName}_{timestamp}.xlsx";
         }
+       
     }
 }

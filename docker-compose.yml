@@ -4,10 +4,10 @@ services:
     container_name: hackathon-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-RootPassword123!}
+      MYSQL_DATABASE: ${DB_NAME:-HackathonCoordinatorDb}
+      MYSQL_USER: ${DB_USER:-hackathon_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-UserPassword123!}
     ports:
       - "3306:3306"
     volumes:
@@ -18,6 +18,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - hackathon-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: hackathon-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"   # API порт
+      - "9001:9001"   # Console порт
+    volumes:
+      - minio_data:/data
+    networks:
+      - hackathon-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   api:
     build:
@@ -25,23 +47,32 @@ services:
       dockerfile: HackathonCoordinator.WebAPI/Dockerfile
     container_name: hackathon-api
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      ConnectionStrings__DefaultConnection: Server=db;Port=3306;Database=${DB_NAME};User=${DB_USER};Password=${DB_PASSWORD}
-      JWT__Key: ${JWT_KEY}
-      JWT__Issuer: ${JWT_ISSUER}
-      JWT__Audience: ${JWT_AUDIENCE}
-      JWT__ExpireMinutes: ${JWT_EXPIRE_MINUTES}
-      GitHubOAuth__ClientId: ${GITHUB_CLIENT_ID}
-      GitHubOAuth__ClientSecret: ${GITHUB_CLIENT_SECRET}
-      GitHubOAuth__RedirectUri: ${GITHUB_REDIRECT_URI}
-      Encryption__Key: ${ENCRYPTION_KEY}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: Server=db;Port=3306;Database=${DB_NAME:-HackathonCoordinatorDb};User=${DB_USER:-hackathon_user};Password=${DB_PASSWORD:-UserPassword123!}
+      JWT__Key: ${JWT_KEY:-hackathon_c00rd_key_super_194_key_inator_13610}
+      JWT__Issuer: ${JWT_ISSUER:-HackathonCoordinator}
+      JWT__Audience: ${JWT_AUDIENCE:-HackathonUsers}
+      JWT__ExpireMinutes: ${JWT_EXPIRE_MINUTES:-120}
+      GitHubOAuth__ClientId: ${GITHUB_CLIENT_ID:-Ov23liqU7rQWZ4H7XlwY}
+      GitHubOAuth__ClientSecret: ${GITHUB_CLIENT_SECRET:-933fd4811789ca8914f2d8b74ed36db9e0d8d404}
+      GitHubOAuth__RedirectUri: ${GITHUB_REDIRECT_URI:-http://localhost:5046/api/oauth/github-callback}
+      Encryption__Key: ${ENCRYPTION_KEY:-1my1-02ro1-irdnaa-56dj8y5td6-key-32-10fa2}
+      Minio__Endpoint: ${MINIO_ENDPOINT:-minio:9000}
+      Minio__PublicEndpoint: ${MINIO_PUBLIC_ENDPOINT:-localhost:9000}
+      Minio__AccessKey: ${MINIO_ROOT_USER:-minioadmin}
+      Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      Minio__BucketName: ${MINIO_BUCKET:-hackathon-files}
+      Minio__UseSsl: ${MINIO_USE_SSL:-false}
     ports:
       - "5046:8080"
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - hackathon-network
 
-  
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
     container_name: hackathon-phpmyadmin
@@ -55,6 +86,13 @@ services:
       - "8081:80"
     depends_on:
       - db
-        
+    networks:
+      - hackathon-network
+
 volumes:
   mysql_data:
+  minio_data:
+
+networks:
+  hackathon-network:
+    driver: bridge

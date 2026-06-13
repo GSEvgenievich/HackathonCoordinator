@@ -1,4 +1,5 @@
 ﻿using HackathonCoordinator.WebAPI.Data;
+using HackathonCoordinator.WebAPI.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace HackathonCoordinator.WebAPI.Services
@@ -65,7 +66,7 @@ namespace HackathonCoordinator.WebAPI.Services
             var expiredTasks = await context.Tasks
                 .Include(t => t.AssignedTo)
                 .Include(t => t.Team)
-                .ThenInclude(t => t.Users.Where(u => u.RoleId == 1)) // Только капитаны
+                .ThenInclude(t => t.Users.Where(u => u.RoleId == (int)Roles.Captain)) // Только капитаны
                 .Where(t => t.Deadline.HasValue &&
                            t.Deadline.Value < now &&
                            t.StatusId != 4 && t.StatusId != 5 && // Не завершены и не отменены
@@ -87,7 +88,7 @@ namespace HackathonCoordinator.WebAPI.Services
                     }
 
                     // Уведомление капитана команды
-                    var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+                    var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == (int)Roles.Captain);
                     if (captain != null)
                     {
                         await notificationHelper.NotifyExpiredDeadlineToCaptain(

@@ -2,22 +2,32 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:vm="clr-namespace:HackathonCoordinator.WPFClient.ViewModels"
+      xmlns:uc="clr-namespace:HackathonCoordinator.WPFClient.UserControls"
       Title="Чат"
-      Loaded="Page_Loaded"
       Unloaded="Page_Unloaded">
 
     <Page.Resources>
-        <!-- ContextMenu для сообщений -->
+        <!-- Контекстное меню для сообщений -->
         <ContextMenu x:Key="MessageContextMenu">
             <MenuItem Header="✏️ Редактировать"
-                  Command="{Binding PlacementTarget.Tag.EditMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                  CommandParameter="{Binding}"/>
+                      Command="{Binding PlacementTarget.Tag.EditMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                      CommandParameter="{Binding}"/>
             <MenuItem Header="🗑️ Удалить"
-                  Command="{Binding PlacementTarget.Tag.DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                  CommandParameter="{Binding}"/>
+                      Command="{Binding PlacementTarget.Tag.DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                      CommandParameter="{Binding}"/>
             <Separator/>
             <MenuItem Header="📋 Копировать текст"
-                  Click="CopyMessageText_Click"/>
+                      Click="CopyMessageText_Click"/>
+        </ContextMenu>
+
+        <!-- Контекстное меню для вложений -->
+        <ContextMenu x:Key="AttachmentContextMenu">
+            <MenuItem Header="⬇ Скачать"
+                      Command="{Binding PlacementTarget.Tag.DownloadAttachmentCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                      CommandParameter="{Binding}"/>
+            <Separator/>
+            <MenuItem Header="📋 Копировать название"
+                      Click="CopyAttachmentName_Click"/>
         </ContextMenu>
     </Page.Resources>
 
@@ -33,13 +43,14 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок чата -->
-        <Border Style="{StaticResource CardStyle}" Grid.Row="0">
+        <Border Style="{StaticResource CardStyle}" Grid.Row="0" MaxHeight="125">
             <DockPanel VerticalAlignment="Center">
                 <Button Content="← Назад" 
+                        IsCancel="True"
                         Command="{Binding BackCommand}"
                         Style="{StaticResource NavigationButton}"
                         Margin="0,10,20,10"/>
-                
+
                 <!-- Участники -->
                 <StackPanel Orientation="Horizontal" Margin="20,0,0,0" DockPanel.Dock="Right">
                     <TextBlock Text="👥 Участники:"
@@ -49,9 +60,6 @@
                                   VerticalScrollBarVisibility="Disabled"
                                   MaxWidth="175" 
                                   Margin="10,0,0,0">
-                        <ScrollViewer.Resources>
-                            <Style TargetType="ScrollBar" BasedOn="{StaticResource HorizontalScrollBarStyle}"/>
-                        </ScrollViewer.Resources>
                         <ItemsControl ItemsSource="{Binding Participants}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -61,35 +69,18 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Width="54" Height="54" Margin="2" ToolTip="{Binding UserName}">
-                                        <Ellipse Width="50" Height="50">
-                                            <Ellipse.Fill>
-                                                <ImageBrush ImageSource="{Binding UserIcon}" 
-                                                            Stretch="UniformToFill"/>
-                                            </Ellipse.Fill>
-                                            <Ellipse.Effect>
-                                                <DropShadowEffect ShadowDepth="2"
-                                                                  Opacity="0.5" 
-                                                                  BlurRadius="6"/>
-                                            </Ellipse.Effect>
-                                        </Ellipse>
-                                        <Ellipse Width="51" Height="51"
-                                                 Stroke="{DynamicResource HoverColor}"
-                                                 StrokeThickness="2"
-                                                 Fill="Transparent"/>
+                                        <uc:RoundAvatar Size="54" 
+                                                        Source="{Binding UserIcon}"
+                                                        BorderBrush="{DynamicResource BorderColor}"
+                                                        BorderThickness="3"/>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
                 </StackPanel>
-                <StackPanel>
-                    <TextBlock Text="{Binding ChatTitle}"
+                <TextBlock Text="{Binding CurrentChat.Name}"
                                Style="{StaticResource PageHeaderStyle}"/>
-                    <TextBlock Text="! Для открытия контекстного меню, кликните ПКМ по сообщению !"
-                               Width="260"
-                               HorizontalAlignment="Left"
-                               Style="{StaticResource BodyTextStyle}"/>
-                </StackPanel>
             </DockPanel>
         </Border>
 
@@ -112,7 +103,7 @@
                                 <StackPanel Margin="0,2,0,2">
                                     <!-- Контейнер сообщения -->
                                     <StackPanel Style="{Binding IsMyMessage, 
-                                                        Converter={StaticResource BoolToMessageContainerStyleConverter}}" MaxWidth="380">
+                                                        Converter={StaticResource BoolToMessageContainerStyleConverter}}" MaxWidth="480">
 
                                         <!-- Информация об отправителе (только для чужих сообщений) -->
                                         <StackPanel Orientation="Horizontal" 
@@ -120,55 +111,165 @@
                                                     Visibility="{Binding IsMyMessage, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                             <!-- Аватар отправителя -->
                                             <Grid Width="35" Height="35" Margin="0 0 6 0">
-                                                <Ellipse Width="32" Height="32">
-                                                    <Ellipse.Fill>
-                                                        <ImageBrush ImageSource="{Binding UserIcon}" 
-                                                                    Stretch="UniformToFill"/>
-                                                    </Ellipse.Fill>
-                                                    <Ellipse.Effect>
-                                                        <DropShadowEffect ShadowDepth="2"
-                                                                          Opacity="0.5" 
-                                                                          BlurRadius="6"/>
-                                                    </Ellipse.Effect>
-                                                </Ellipse>
-                                                <Ellipse Width="32" Height="32"
-                                                         Stroke="{DynamicResource HoverColor}"
-                                                         StrokeThickness="1"
-                                                         Fill="Transparent"/>
+                                                <uc:RoundAvatar Size="35" 
+                                                                Source="{Binding UserIcon}"
+                                                                BorderBrush="{DynamicResource BorderColor}"
+                                                                BorderThickness="1"/>
                                             </Grid>
                                             <!-- Имя отправителя -->
                                             <TextBlock Text="{Binding UserName}"
+                                                       FontSize="16"
                                                        Style="{StaticResource CaptionTextStyle}"
                                                        Foreground="{DynamicResource TextSecondaryColor}"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
 
                                         <!-- Сообщение -->
-                                        <Border Style="{Binding IsMyMessage, 
-                                                        Converter={StaticResource BoolToMessageStyleConverter}}"
-
-                                                ContextMenu="{StaticResource MessageContextMenu}"
+                                        <Border ContextMenu="{StaticResource MessageContextMenu}"
                                                 Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Page}}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="12"/>
+                                                    <Setter Property="Padding" Value="12,8"/>
+                                                    <Setter Property="Margin" Value="0,2,0,2"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource MyMessageBackground}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                            <Setter Property="Background" Value="{DynamicResource OtherMessageBackground}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <StackPanel>
                                                 <!-- Текст сообщения -->
                                                 <TextBlock Text="{Binding Text}" 
-                                                           Foreground="{Binding IsMyMessage, Converter={StaticResource BoolToMessageTextColorConverter}}"
-                                                           TextWrapping="Wrap"
-                                                           FontSize="14"/>
+                                                           Visibility="{Binding Text, Converter={StaticResource NullToVisibilityConverter}}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="FontSize" Value="15"/>
+                                                            <Setter Property="TextWrapping" Value="Wrap"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource MyMessageTextColor}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource OtherMessageTextColor}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                  
+                                                <!-- Вложения -->
+                                                <ItemsControl ItemsSource="{Binding Attachments}"
+                                                              Margin="0,5,0,0" MaxWidth="500"
+                                                              Visibility="{Binding HasAttachments, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Background="{DynamicResource MainBackgroundBrush}"
+                                                                    CornerRadius="8"
+                                                                    Padding="8,6"
+                                                                    Margin="0,0,8,5"
+                                                                    Cursor="Hand"
+                                                                    ContextMenu="{StaticResource AttachmentContextMenu}"
+                                                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Page}}">
+                                                                <Border.InputBindings>
+                                                                    <MouseBinding Gesture="LeftClick"
+                                                                                  Command="{Binding DataContext.HandleAttachmentClickCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                                                  CommandParameter="{Binding}"/>
+                                                                </Border.InputBindings>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <!-- Эскиз для изображений -->
+                                                                    <Image Source="{Binding ThumbnailBase64, Converter={StaticResource Base64ToImageConverter}}"
+                                                                           Width="40" Height="40"
+                                                                           Margin="0,0,10,0"
+                                                                           Visibility="{Binding IsImage, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                           Stretch="Uniform"/>
+
+                                                                    <!-- Иконка для остальных файлов -->
+                                                                    <TextBlock Text="{Binding FileIcon}"
+                                                                               FontSize="28"
+                                                                               Margin="0,0,10,0"
+                                                                               Visibility="{Binding IsImage, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+
+                                                                    <!-- Информация о файле -->
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding FileName}"
+                                                                                   Style="{DynamicResource BaseTextBlock}"
+                                                                                   FontWeight="Medium"
+                                                                                   FontSize="12"
+                                                                                   TextWrapping="NoWrap"
+                                                                                   MaxWidth="150"
+                                                                                   TextTrimming="CharacterEllipsis">
+                                                                            <TextBlock.ToolTip>
+                                                                                <ToolTip Content="{Binding FileName}"/>
+                                                                            </TextBlock.ToolTip>
+                                                                        </TextBlock>
+                                                                        <DockPanel Margin="0,3,0,0" VerticalAlignment="Bottom">
+                                                                            <TextBlock Text="{Binding FormattedSize}"
+                                                                                       Style="{DynamicResource BodySmallStyle}"
+                                                                                       VerticalAlignment="Bottom"/>
+                                                                            <TextBlock Text="{Binding FileExtension}"
+                                                                                       Style="{DynamicResource BodySmallStyle}"
+                                                                                       Margin="3 0 0 0"
+                                                                                       DockPanel.Dock="Right"/>
+                                                                            <Label/>
+                                                                        </DockPanel>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
 
                                                 <!-- Время и статус -->
                                                 <StackPanel Orientation="Horizontal" 
                                                             HorizontalAlignment="Right"
                                                             Margin="0,5,0,0">
-                                                    <TextBlock Text="{Binding SentAtFormatted}"
-                                                               Foreground="{Binding IsMyMessage, Converter={StaticResource BoolToMessageTimeColorConverter}}"
-                                                               FontSize="10"/>
+                                                    <TextBlock Text="{Binding SentAtFormatted}" FontSize="13">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MyMessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.7"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <TextBlock Text=" ✏️"
+                                                               FontWeight="Medium"
+                                                               FontSize="13"
+                                                               Margin="5,0,0,0"
                                                                ToolTip="Сообщение было отредактировано"
-                                                               Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                               Foreground="{Binding IsMyMessage, Converter={StaticResource BoolToMessageTimeColorConverter}}"
-                                                               FontSize="10"
-                                                               Margin="5,0,0,0"/>
+                                                               Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MyMessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsMyMessage}" Value="False">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource MessageTimeColor}"/>
+                                                                        <Setter Property="Opacity" Value="0.7"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>
@@ -191,19 +292,80 @@
         <!-- Панель ввода сообщения -->
         <Border Style="{StaticResource CardStyle}" Grid.Row="2" Margin="0,10,0,0">
             <StackPanel>
+                <!-- Панель выбранных файлов -->
+                <Border Background="{DynamicResource ControlBackground}"
+                        CornerRadius="8"
+                        Padding="10,5"
+                        Margin="0,0,0,10"
+                        Visibility="{Binding HasFiles, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxHeight="80">
+                        <ItemsControl ItemsSource="{Binding SelectedFiles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{DynamicResource CardStyle}"
+                                            CornerRadius="8"
+                                            Padding="10,8"
+                                            Margin="0,0,8,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding FileIcon}" FontSize="20" Margin="0,0,8,0"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FileName}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           MaxWidth="150"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding FormattedSize}"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource TextSecondaryColor}"/>
+                                            </StackPanel>
+                                            <Button Content="✖"
+                                                    Command="{Binding DataContext.RemoveFileCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource RoundIconButton}"
+                                                    Width="24" Height="24"
+                                                    FontSize="10"
+                                                    Margin="10,0,0,0"
+                                                    Background="Transparent"
+                                                    Foreground="{DynamicResource DangerBrush}"
+                                                    ToolTip="Удалить файл"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- Кнопка добавления файлов -->
+                    <Button Grid.Column="0"
+                            Content="📎"
+                            Command="{Binding AddFilesCommand}"
+                            Style="{StaticResource RoundIconButton}"
+                            ToolTip="Прикрепить файлы (до 50 MB)"
+                            Width="50" Height="50"
+                            Margin="0,0,10,0"/>
+
                     <!-- Поле ввода -->
-                    <TextBox Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox Grid.Column="1"
+                             x:Name="MessageTextBox"
+                             Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource ModernTextBox}"
                              Tag="Введите сообщение..."
                              VerticalContentAlignment="Center"
-                             MinHeight="40"
-                             MaxHeight="70"
+                             MinHeight="50"
+                             MaxHeight="100"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto">
@@ -214,21 +376,44 @@
                         </TextBox.InputBindings>
                     </TextBox>
 
-                    <!-- Кнопка отправки -->
-                    <Button Content="📤"
-                            Command="{Binding SendMessageCommand}"
-                            Style="{StaticResource PrimaryButton}"
-                            Grid.Column="1"
-                            Margin="10,0,0,0"
-                            Width="50"
-                            Height="50"
-                            IsEnabled="{Binding CanSendMessage}"/>
+                    <!-- Кнопки отправки -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <!-- Кнопка @notify -->
+                        <Button Content="🔔"
+                                Command="{Binding InsertNotifyCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Margin="5,0,5,0"
+                                Width="50"
+                                Height="50"
+                                Visibility="{Binding CanNotify, Converter={StaticResource BoolToVisibilityConverter}}"
+                                ToolTip="Вставить @notify для уведомления участников"/>
+
+                        <!-- Кнопка отправки -->
+                        <Button Content="📤"
+                                IsDefault="True"
+                                Command="{Binding SendMessageCommand}"
+                                Style="{StaticResource PrimaryButton}"
+                                Width="50"
+                                Height="50"
+                                IsEnabled="{Binding CanSendMessage}"/>
+                    </StackPanel>
                 </Grid>
-                <TextBlock Text="💡 Напишите команду @notify в сообщении, чтобы отправить уведомление участникам"
-                       Style="{StaticResource CaptionStyle}"
-                       Foreground="{DynamicResource PrimaryBrush}"
-                       HorizontalAlignment="Left"
-                       Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Подсказки -->
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <TextBlock Text="💡 Ctrl+Enter для отправки"
+                               Style="{StaticResource CaptionStyle}"
+                               Foreground="{DynamicResource TextSecondaryColor}"/>
+                    <TextBlock Text=" • 📎 Максимум 10 файлов, до 50 MB каждый"
+                               Style="{StaticResource CaptionStyle}"
+                               Foreground="{DynamicResource TextSecondaryColor}"
+                               Margin="15,0,0,0"/>
+                    <TextBlock Text=" • @notify для уведомления участников"
+                               Style="{StaticResource CaptionStyle}"
+                               Foreground="{DynamicResource PrimaryBrush}"
+                               Margin="15,0,0,0"
+                               Visibility="{Binding IsCaptain, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

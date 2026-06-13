@@ -9,12 +9,12 @@ namespace HackathonCoordinator.WPFClient.ViewModels
 {
     public class AuthorizationViewModel : BaseViewModel
     {
-        private readonly NavigationService _navigationService;
         private readonly AuthService _authService;
         private readonly UserService _userService;
 
         private string _login = "";
         private string _password = "";
+        private bool _isLoggingIn;
 
         public string Login
         {
@@ -28,88 +28,91 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             set => SetProperty(ref _password, value);
         }
 
-        // Только асинхронные команды
+        public bool IsLoggingIn
+        {
+            get => _isLoggingIn;
+            set => SetProperty(ref _isLoggingIn, value);
+        }
+
         public ICommand LoginCommand { get; }
         public ICommand NavigateToRegistrationCommand { get; }
 
         public AuthorizationViewModel()
         {
-            _navigationService = App.NavigationService;
             _authService = new AuthService();
             _userService = new UserService();
 
-            // AsyncRelayCommand для асинхронного входа
             LoginCommand = new AsyncRelayCommand(
                 execute: async () => await ExecuteLoginAsync(),
-                canExecute: () => true);
+                canExecute: () => !IsLoggingIn);
 
-            // Простая навигация - можно оставить RelayCommand
-            NavigateToRegistrationCommand = new RelayCommand(
-                () => _navigationService.NavigateTo(new RegistrationPage()));
+            NavigateToRegistrationCommand = new AsyncRelayCommand(
+                execute: async () => await ExecuteNavigateToRegistrationAsync(),
+                canExecute: () => !IsLoggingIn);
         }
 
         private async Task ExecuteLoginAsync()
         {
+            if (IsLoggingIn) return;
+
+            IsLoggingIn = true;
+
             try
             {
                 var resultMessage = await _authService.LoginAsync(Login, Password);
 
-                if (resultMessage.Success)
+                if (!resultMessage.Success)
                 {
-                    var user = await _userService.GetCurrentUserAsync();
-
-                    // Обновление главного окна
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (Application.Current.MainWindow is MainWindow mainWindow)
-                        {
-                            if (mainWindow.DataContext is MainWindowViewModel mainViewModel)
-                            {
-                                mainViewModel.Username = user.Data.Username;
-                                mainViewModel.CheckUserRole();
-                                mainViewModel.GetUsername();
-                                mainViewModel.InitializeNotificationsSignalR();
-                            }
-                        }
-                    });
-
-                    // Навигация
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (user.Data.TeamId == null)
-                            _navigationService.NavigateTo(new CompetitionsPage());
-                        else
-                            _navigationService.NavigateTo(new TeamPage());
-                    });
+                    await ShowErrorAsync(resultMessage.Message);
+                    return;
                 }
-                else
+
+                var user = await _userService.GetCurrentUserAsync();
+                if (!user.Success)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        MessageBox.Show(resultMessage.Message, "Ошибка входа",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                    });
+                    await ShowErrorAsync("Не удалось загрузить данные пользователя");
+                    return;
                 }
+
+                await Application.Current.Dispatcher.InvokeAsync(async () =>
+                {
+                    if (Application.Current.MainWindow is MainWindow mainWindow &&
+                        mainWindow.DataContext is MainWindowViewModel mainViewModel)
+                    {
+                        mainViewModel.Username = user.Data.Username;
+                        mainViewModel.CheckUserRole();
+                        mainViewModel.GetUsername();
+                        mainViewModel.InitializeNotificationsSignalR();
+                        await mainViewModel.OpenMainPage();
+                    }
+                });
             }
             catch (Exception ex)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    MessageBox.Show($"Ошибка входа: {ex.Message}\n\nПроверьте подключение к серверу.",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                });
+                await ShowErrorAsync($"Ошибка входа: {ex.Message}");
             }
+            finally
+            {
+                IsLoggingIn = false;
+            }
+        }
+
+        private async Task ExecuteNavigateToRegistrationAsync()
+        {
+            if (IsLoggingIn) return;
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _navigationService.NavigateTo(new RegistrationPage());
+            });
         }
 
         protected override void DisposeManagedResources()
         {
             base.DisposeManagedResources();
 
-            if (_authService is IDisposable authDisposable)
-                authDisposable.Dispose();
-
-            if (_userService is IDisposable userDisposable)
-                userDisposable.Dispose();
+            if (_authService is IDisposable authDisposable) authDisposable.Dispose();
+            if (_userService is IDisposable userDisposable) userDisposable.Dispose();
         }
     }
 }

@@ -16,7 +16,7 @@
                 <!-- Заголовок страницы -->
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="← Назад к команде" 
+                        <Button Content="← Назад" 
                                 Command="{Binding BackCommand}"
                                 Style="{StaticResource NavigationButton}"
                                 Margin="0,0,20,0"/>
@@ -127,10 +127,10 @@
                                 <!-- Дедлайн -->
                                 <StackPanel Grid.Column="0" Grid.Row="1" Margin="0,15,0,0">
                                     <TextBlock Text="⏰ Дедлайн"
-                                           Style="{StaticResource StatsHeaderStyle}"
-                                           Margin="0,0,0,8"/>
-                                    <TextBlock Text="{Binding Task.Deadline, StringFormat='{}{0:dd.MM.yyyy}'}"
-                                           Style="{StaticResource StatsValueStyle}"/>
+                                               Style="{StaticResource StatsHeaderStyle}"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding Task.Deadline, Converter={StaticResource DeadlineDisplayConverter}}"
+                                               Style="{StaticResource StatsValueStyle}"/>
                                 </StackPanel>
 
                                 <!-- Разделитель -->
@@ -278,11 +278,6 @@
                         <Button Content="Отмена"
                                 Command="{Binding CancelAssignmentCommand}"
                                 Style="{StaticResource ModalSecondaryButton}"/>
-
-                        <Button Content="Голосование"
-                                DockPanel.Dock="Right"
-                                Command="{Binding OpenVotingCommand}"
-                                Style="{StaticResource ModalPrimaryButton}"/>
 
                         <Button Content="Назначить"
                                 Command="{Binding AssignTaskCommand}"

@@ -2,6 +2,7 @@
 using HackathonCoordinator.WebAPI.Controllers;
 using HackathonCoordinator.WebAPI.Data;
 using HackathonCoordinator.WebAPI.DTOs;
+using HackathonCoordinator.WebAPI.Helpers;
 using HackathonCoordinator.WebAPI.Models;
 using HackathonCoordinator.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -18,12 +19,15 @@ public class TasksController : BaseApiController
     private readonly HackathonCoordinatorContext _context;
     private readonly IEncryptionService _encryptionService;
     private readonly IGitHubService _gitHubService;
+    private readonly IStorageService _storageService;
     private readonly NotificationHelperService _notificationHelper;
 
-    public TasksController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper, IEncryptionService encryptionService, IGitHubService gitHubService)
+    public TasksController(HackathonCoordinatorContext context, NotificationHelperService notificationHelper,
+        IStorageService storageService, IEncryptionService encryptionService, IGitHubService gitHubService)
     {
         _context = context;
         _encryptionService = encryptionService;
+        _storageService = storageService;
         _gitHubService = gitHubService;
         _notificationHelper = notificationHelper;
     }
@@ -172,7 +176,7 @@ public class TasksController : BaseApiController
     /// Обновить задачу
     /// </summary>
     [HttpPut("{taskId}")]
-    public async Task<ActionResult<ApiResponse>> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
+    public async Task<ActionResult<ApiResponse<int>>> UpdateTask(int taskId, [FromBody] CreateTaskDto dto)
     {
         try
         {
@@ -180,7 +184,7 @@ public class TasksController : BaseApiController
             var user = await _context.Users.FindAsync(userId);
 
             if (user == null)
-                return HandleUnauthorized("Пользователь не найден");
+                return HandleUnauthorized<int>("Пользователь не найден");
 
             var task = await _context.Tasks
                 .Include(t => t.Team)
@@ -188,10 +192,10 @@ public class TasksController : BaseApiController
                 .FirstOrDefaultAsync(t => t.Id == taskId);
 
             if (task == null)
-                return HandleNotFound("Задача не найдена");
+                return HandleNotFound<int>("Задача не найдена");
 
             if (user.RoleId != (int)Roles.Captain && !task.Team.Users.Any(u => u.Id == userId && u.RoleId == (int)Roles.Captain))
-                return HandleForbidden("Только капитан команды может редактировать задачи");
+                return HandleForbidden<int>("Только капитан команды может редактировать задачи");
 
             var oldBranchName = task.GithubBranchName;
             var hasExistingBranch = !string.IsNullOrEmpty(oldBranchName);
@@ -263,19 +267,19 @@ public class TasksController : BaseApiController
                 message += $". Предупреждение: {warning}";
             }
 
-            return HandleSuccess(message);
+            return HandleResult(task.Id, message);
         }
         catch (DbUpdateException ex)
         {
-            return HandleError("Ошибка базы данных при обновлении задачи");
+            return HandleError<int>("Ошибка базы данных при обновлении задачи");
         }
         catch (ArgumentNullException ex)
         {
-            return HandleError("Некорректные данные задачи");
+            return HandleError<int>("Некорректные данные задачи");
         }
         catch (Exception ex)
         {
-            return HandleError("Внутренняя ошибка сервера при обновлении задачи");
+            return HandleError<int>("Внутренняя ошибка сервера при обновлении задачи");
         }
     }
 
@@ -369,7 +373,7 @@ public class TasksController : BaseApiController
             // УВЕДОМЛЕНИЕ: Запрос завершения задачи для капитана
             try
             {
-                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == (int)Roles.Captain);
                 if (captain != null)
                 {
                     await _notificationHelper.NotifyRequestTaskCompletion(
@@ -433,7 +437,7 @@ public class TasksController : BaseApiController
             // УВЕДОМЛЕНИЕ: Запрос отмены задачи для капитана
             try
             {
-                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == 1);
+                var captain = task.Team.Users.FirstOrDefault(u => u.RoleId == (int)Roles.Captain);
                 if (captain != null)
                 {
                     await _notificationHelper.NotifyRequestTaskCancellation(
@@ -694,22 +698,33 @@ public class TasksController : BaseApiController
 
             try
             {
-                var chatId = task.ChatId;
+                // Находим чат задачи
+                var chat = await _context.Chats
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.MessageAttachments)
+                    .FirstOrDefaultAsync(c => c.Id == task.ChatId);
+
+                if (chat != null)
+                {
+                    // Удаляем все файлы из MinIO
+                    foreach (var message in chat.Messages)
+                    {
+                        if (message.HasAttachments)
+                        {
+                            foreach (var attachment in message.MessageAttachments)
+                            {
+                                await _storageService.DeleteAsync(attachment.FilePath);
+                            }
+                        }
+                    }
+
+                    _context.Chats.Remove(chat);
+                }
 
                 _context.Tasks.Remove(task);
                 await _context.SaveChangesAsync();
-
-                if (chatId != null)
-                {
-                    var chat = await _context.Chats.FindAsync(chatId);
-                    if (chat != null)
-                    {
-                        _context.Chats.Remove(chat);
-                        await _context.SaveChangesAsync();
-                    }
-                }
-
                 await transaction.CommitAsync();
+
                 return HandleSuccess("Задача успешно удалена");
             }
             catch (DbUpdateException ex)

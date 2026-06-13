@@ -1,4 +1,5 @@
-﻿using HackathonCoordinator.WPFClient.ViewModels;
+﻿using HackathonCoordinator.ServiceLayer.DTOs;
+using HackathonCoordinator.WPFClient.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -6,23 +7,30 @@ namespace HackathonCoordinator.WPFClient.Views
 {
     public partial class TaskDetailsPage : Page
     {
-        public TaskDetailsPage(int taskId)
+        private readonly TaskDetailsDto _task;
+
+        public TaskDetailsPage(TaskDetailsDto task)
         {
             InitializeComponent();
-            Loaded += (s, e) =>
+            _task = task;
+            Loaded += OnPageLoaded;
+        }
+
+        private async void OnPageLoaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is TaskDetailsViewModel viewModel)
             {
-                if (DataContext is TaskDetailsViewModel viewModel)
-                {
-                    viewModel.LoadTaskData(taskId);
-                }
-            };
+                viewModel.doDispose = true;
+                await viewModel.InitializeAsync(_task);
+            }
         }
 
         private void Page_Unloaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is TaskDetailsViewModel viewModel)
             {
-                viewModel.Dispose();
+                if (viewModel.doDispose)
+                    viewModel.Dispose();
             }
         }
     }
