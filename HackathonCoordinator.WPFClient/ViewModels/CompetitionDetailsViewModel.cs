@@ -420,7 +420,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (result != true)
                 return;
 
-            var deleteResult = await _teamService.DeleteTeamAsync(team.Id);
+            var deleteResult = await _teamService.DeleteTeamAsync(team.CompetitionId, team.Id);
             await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
                 if (deleteResult.Success)
