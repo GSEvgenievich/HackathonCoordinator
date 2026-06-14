@@ -20,13 +20,13 @@ namespace HackathonCoordinator.ServiceLayer.Services
             }
         }
 
-        public async Task<ApiResponse> DeleteTeamAsync(int teamId)
+        public async Task<ApiResponse> DeleteTeamAsync(int competitionId, int teamId)
         {
             SetAuthHeader();
 
             try
             {
-                var response = await _client.DeleteAsync($"teams/{teamId}");
+                var response = await _client.DeleteAsync($"competitions/{competitionId}/teams/{teamId}");
                 return await HandleResponseAsync(response);
             }
             catch (Exception ex)
