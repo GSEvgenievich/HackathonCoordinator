@@ -258,22 +258,25 @@ namespace HackathonCoordinator.WPFClient.ViewModels
             if (_isInitialized && CurrentTeam?.Id == team.Id)
                 await RefreshTeamDataAsync(CurrentTeam?.Id);
 
-            IsLoading = true;
+            else
+            {
+                IsLoading = true;
 
-            try
-            {
-                CurrentTeam = team;
-                await LoadTeamDataAsync();
-                _isInitialized = true;
-            }
-            catch (Exception ex)
-            {
-                await ShowErrorAsync($"Ошибка загрузки команды: {ex.Message}");
-                await Application.Current.Dispatcher.InvokeAsync(() => Back());
-            }
-            finally
-            {
-                IsLoading = false;
+                try
+                {
+                    CurrentTeam = team;
+                    await LoadTeamDataAsync();
+                    _isInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    await ShowErrorAsync($"Ошибка загрузки команды: {ex.Message}");
+                    await Application.Current.Dispatcher.InvokeAsync(() => Back());
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
             }
         }
 
