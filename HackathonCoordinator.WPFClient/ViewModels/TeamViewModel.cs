@@ -255,7 +255,8 @@ namespace HackathonCoordinator.WPFClient.ViewModels
         {
             CanGoBack = _navigationService.CanGoBack;
 
-            if (_isInitialized && CurrentTeam?.Id == team.Id) return;
+            if (_isInitialized && CurrentTeam?.Id == team.Id)
+                await RefreshTeamDataAsync(CurrentTeam?.Id);
 
             IsLoading = true;
 
@@ -554,7 +555,7 @@ namespace HackathonCoordinator.WPFClient.ViewModels
                     await ShowErrorAsync(deleteResult.Message);
 
                 if (deleteResult.Success)
-                    await LoadTasksAsync();
+                    await RefreshTeamDataAsync(CurrentTeam?.Id);
             }
         }
 
